@@ -1,0 +1,70 @@
+---
+description: Workflow for adding and syncing dependencies with uv
+alwaysApply: true
+---
+
+# uv dependency workflow (Zenet MVP)
+
+Use this workflow whenever you add or change Python packages for the project.
+
+## 1. Activate the project environment
+
+From the project root:
+
+```bash
+source zenet-mvp/bin/activate
+```
+
+Confirm the prompt shows `(zenet-mvp)`.
+
+## 2. Add a new package
+
+Use `uv add` so the environment and `pyproject.toml` stay in sync:
+
+```bash
+uv add <package-name>
+```
+
+Examples:
+
+```bash
+uv add openai
+uv add "gradio>=4.0"
+```
+
+This will:
+- Install the package into the project environment
+- Add it to `[project] dependencies` in `pyproject.toml`
+- Update the uv lockfile if configured
+
+## 3. (Optional) Update the lockfile
+
+If you use a lockfile for reproducible installs:
+
+```bash
+uv lock
+```
+
+Run this after editing dependencies manually or when you want to refresh the lock.
+
+## 4. (Optional) Regenerate requirements.txt
+
+If the project maintains `requirements.txt` (e.g. for CI or non-uv environments):
+
+```bash
+uv export --no-dev -o requirements.txt
+```
+
+or, to compile directly from `pyproject.toml`:
+
+```bash
+uv pip compile pyproject.toml -o requirements.txt
+```
+
+## 5. Summary
+
+- **Add deps:** `uv add <package>`
+- **Refresh lock:** `uv lock`
+- **Export for pip:** `uv export --no-dev -o requirements.txt`
+- Always run these from the project root with the `zenet-mvp` environment active (or with uv configured to use `zenet-mvp` as the project env).
+

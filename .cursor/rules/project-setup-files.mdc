@@ -1,0 +1,47 @@
+---
+description: Workflow to create .env, .gitignore, and .python-version for the project
+alwaysApply: true
+---
+
+# Project setup files workflow
+
+Use this workflow when creating or re-creating the project bootstrap files: `.env`, `.gitignore`, and `.python-version` at the project root.
+
+## 1. Create `.env`
+
+- **Location:** Project root.
+- **Purpose:** Store secrets and environment variables (API keys, etc.). Never commit real secrets.
+- **Content:** Add placeholder or real variable names, one per line. Example:
+  ```
+  # OPENAI_API_KEY=
+  # ANTHROPIC_API_KEY=
+  ```
+- **Git:** Ensure `.env` is listed in `.gitignore` (see below) so it is never committed.
+
+## 2. Create `.gitignore`
+
+- **Location:** Project root.
+- **Sections to include:**
+  - **Environment and secrets:** `.env`, `.env.local`, `.env.*.local`, `*.pem`
+  - **Python:** `__pycache__/`, `*.py[cod]`, `*.egg-info/`, build/dist artifacts, etc.
+  - **Virtual environments:** `.venv/`, `venv/`, `zenet-mvp/`, `ENV/`, `env/`
+  - **Jupyter:** `.ipynb_checkpoints/`, `.jupyter/`
+  - **IDEs:** `.idea/`, `.vscode/`, `*.swp`, `*~`
+  - **OS:** `.DS_Store`, `Thumbs.db`
+  - **Logs and temp:** `*.log`, `.cache/`, `tmp/`, `temp/`
+  - **Testing:** `.pytest_cache/`, `.coverage`, `htmlcov/`, `.mypy_cache/`
+  - **Optional:** Commented block for `data/raw`, `data/processed`, `data/outputs` if generated data should be ignored.
+  - **LangChain:** `.langchain/` if the project uses it.
+
+Create or update `.gitignore` with these patterns so the repo stays clean and secrets stay local.
+
+## 3. Create `.python-version`
+
+- **Location:** Project root.
+- **Purpose:** Pin the Python version for uv, pyenv, or other version managers when creating the venv.
+- **Content:** A single line with the version number only, e.g. `3.13.5` or `3.10`.
+- No extra text or newlines; this file is read by tooling as the requested version.
+
+## Order
+
+When setting up from scratch, create in any order, but ensure `.gitignore` exists and includes `.env` before committing. Typical sequence: `.gitignore` first (so `.env` is ignored), then `.python-version`, then `.env` (and add real variables locally only).

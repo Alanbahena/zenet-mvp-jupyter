@@ -1,0 +1,9 @@
+[project]
+name = "mvp-jupyter"
+version = "0.1.0"
+description = "It is a cognitive operational system designed to structure, standardize, and model restaurant operations as a foundation for future intelligence and automation."
+readme = "README.md"
+requires-python = ">=3.13.5"
+dependencies = [
+    "openai>=2.20.0",
+]

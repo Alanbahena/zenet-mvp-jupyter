@@ -1,0 +1,78 @@
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+zenet-mvp/
+ENV/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+.jupyter/
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+Thumbs.db
+
+# Data and outputs (uncomment if you don't want to track generated data)
+# data/raw/*
+# data/processed/*
+# data/normalized/*
+# data/outputs/*
+# !data/raw/.gitkeep
+# !data/processed/.gitkeep
+# !data/normalized/.gitkeep
+# !data/outputs/.gitkeep
+
+# Logs and temp
+*.log
+.cache/
+tmp/
+temp/
+*.tmp
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+
+# LangChain / LLM caches (if used)
+.langchain/

@@ -1,0 +1,17 @@
+---
+alwaysApply: false
+---
+# Deactivate zenet-mvp environment
+
+Use this workflow when the user wants to leave the project virtual environment.
+
+## Steps
+
+1. **With the zenet-mvp venv active** (prompt shows `(zenet-mvp)`), run:
+   ```bash
+   deactivate
+   ```
+
+2. **Verify:** The `(zenet-mvp)` prefix disappears from the prompt. The shell uses the system (or base) Python again.
+
+No need to be in any specific directory; `deactivate` works from anywhere while the venv is active.

@@ -1,0 +1,50 @@
+---
+description: Workflow to create and use the project virtual environment (.venv / zenet-mvp)
+alwaysApply: true
+---
+
+# Virtual environment workflow (Zenet MVP)
+
+Use this workflow when creating or documenting a new virtual environment for this project.
+
+## 1. Create the venv
+
+**With uv (preferred):**
+```bash
+uv venv zenet-mvp
+```
+
+**With Python built-in:**
+```bash
+python -m venv zenet-mvp
+```
+
+Use the folder name `zenet-mvp` for this project (or `.venv` if you prefer a hidden name).
+
+## 2. Ensure it is ignored by Git
+
+Add the venv folder to `.gitignore` under "Virtual environments" if not already present, e.g.:
+```
+zenet-mvp/
+```
+(or `.venv/` if using that name).
+
+## 3. Activate the venv
+
+From the project root:
+```bash
+source zenet-mvp/bin/activate
+```
+Or with `.venv`: `source .venv/bin/activate`
+
+Prompt will show `(zenet-mvp)` or `(.venv)` when active. Deactivate with `deactivate`.
+
+## 4. Install / list packages (with uv)
+
+- Install: `uv pip install <package>` or `uv pip install -r requirements.txt`
+- List: `uv pip list`
+- Freeze: `uv pip freeze` (e.g. for `requirements.txt`)
+
+## 5. Optional: pin Python version
+
+Keep `.python-version` at the project root with the desired version (e.g. `3.10`) so uv/pyenv use it when creating the venv.
