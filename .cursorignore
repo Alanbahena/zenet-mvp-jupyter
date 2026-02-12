@@ -1,0 +1,45 @@
+# Virtual environments
+.venv/
+venv/
+zenet-mvp/
+ENV/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+eggs/
+.eggs/
+*.egg
+
+# Jupyter
+.ipynb_checkpoints/
+.jupyter/
+
+# Lock and large dependency lists (reduce index size)
+uv.lock
+
+# Data and outputs (skip from indexing if large)
+data/raw/
+data/processed/
+data/normalized/
+data/outputs/
+
+# Caches and temp
+.cache/
+tmp/
+temp/
+.pytest_cache/
+.mypy_cache/
+.langchain/
+
+# OS and IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Logs
+*.log

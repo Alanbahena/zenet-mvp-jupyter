@@ -1,0 +1,31 @@
+---
+description: Workflow to activate the zenet-mvp virtual environment
+alwaysApply: true
+---
+
+# Activate zenet-mvp environment
+
+Use this workflow when the user wants to activate the project virtual environment or run commands inside it.
+
+## Steps
+
+1. **Ensure you're in the project root** (where the `zenet-mvp` folder lives).
+
+2. **Activate the venv:**
+   ```bash
+   source zenet-mvp/bin/activate
+   ```
+
+3. **Verify:** The shell prompt should start with `(zenet-mvp)`. Commands like `which python` and `pip list` / `uv pip list` will use the venv.
+
+4. **To leave the environment:** run `deactivate`.
+
+## From another directory
+
+If the shell is not in the project root, either:
+- `cd` to the project root first, then run `source zenet-mvp/bin/activate`, or
+- Use the full path: `source /path/to/MVP\ Jupyter/zenet-mvp/bin/activate`
+
+## In Cursor/VS Code
+
+To use this env in the integrated terminal: open a terminal (it usually starts in the project root), then run `source zenet-mvp/bin/activate`. To use it as the project interpreter: select the Python at `zenet-mvp/bin/python` in the interpreter picker.
