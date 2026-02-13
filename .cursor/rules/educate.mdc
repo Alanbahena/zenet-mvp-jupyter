@@ -1,0 +1,14 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+
+EDUCATE
+0. Say # [EDUCATE]
+1. Summarize conversation WRT bug and where you think my knowledge gaps are.
+2. Explain it like a tutorial to me.
+3. Test my understanding based on the source of the bug, to ensure I don't make the same mistake again so you can evaluate my understanding
+ 3a) One question
+ 3b) One new scenario
+

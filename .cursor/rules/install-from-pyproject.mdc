@@ -1,0 +1,53 @@
+---
+description: Workflow to install dependencies from pyproject.toml into the project env
+alwaysApply: true
+---
+
+# Install from pyproject.toml (Zenet MVP)
+
+Use this workflow when you need to install or sync the project's dependencies from `pyproject.toml` (e.g. after clone, or to fix a missing-package env like zenet-mvp).
+
+## 1. Be in the project root
+
+All commands below assume you are in the directory that contains `pyproject.toml`.
+
+## 2. Install into the default project environment (.venv)
+
+If the project uses uv's default `.venv`:
+
+```bash
+uv sync
+```
+
+This reads `pyproject.toml` (and `uv.lock` if present), resolves dependencies, and installs them into `.venv`.
+
+## 3. Install into zenet-mvp specifically
+
+To install into the **zenet-mvp** environment (so `openai` and other deps appear there):
+
+```bash
+uv sync --python zenet-mvp/bin/python
+```
+
+Or activate zenet-mvp first, then sync into the active env:
+
+```bash
+source zenet-mvp/bin/activate
+uv sync --active
+```
+
+## 4. Verify
+
+Check that packages are present:
+
+```bash
+uv pip list --python zenet-mvp/bin/python
+```
+
+You should see the project dependencies (e.g. `openai`) and their sub-dependencies.
+
+## 5. Summary
+
+- **Default env:** `uv sync`
+- **zenet-mvp:** `uv sync --python zenet-mvp/bin/python` or activate + `uv sync --active`
+- **Source of truth:** `pyproject.toml` (and `uv.lock` when present). Use `uv sync` for installs; use `uv pip install -r requirements.txt` only when you explicitly need to install from a requirements file.
