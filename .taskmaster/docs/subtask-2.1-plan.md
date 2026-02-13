@@ -70,13 +70,16 @@ No `add_ingredient`/`remove_ingredient` in 2.1; that belongs to 2.2. Here we onl
 
 ## 5b. Workflow: when an InventoryItem is created
 
-**Behavior:** An **InventoryItem** is created only after an ingredient has been added to a recipe.
+**Behavior:** When an ingredient is added to a recipe and it is **new** (not already in inventory), it is added to the inventory as an **InventoryItem**. The **category_id** (perecedero / no perecedero) for that InventoryItem is **defined by the LLM model**.
 
 1. Recipes are defined and ingredients are added to them (each ingredient has name, quantity, unit_id, and optionally later links to an InventoryItem).
-2. When an ingredient is added to a recipe, the system then creates a corresponding **InventoryItem** for that ingredient (so it can be tracked in inventory, with unit of measure, family, and category such as perecedero / no perecedero).
-3. The Ingredient can reference that InventoryItem via `inventory_item_id`. So the flow is: **add ingredient to recipe → then create (or link) InventoryItem**.
+2. When an ingredient is added to a recipe:
+   - If the ingredient is **new** (not already present in inventory), the system creates a corresponding **InventoryItem** and adds it to inventory (with unit of measure, optional family, and **category_id**).
+   - **category_id** (InventoryCategory: perecedero or no perecedero) is **determined by the LLM** — the agent or structuring flow calls the LLM to classify the ingredient as perishable or non-perishable, then uses the returned category_id when creating the InventoryItem.
+   - If the ingredient already exists in inventory, link to the existing InventoryItem via `inventory_item_id`.
+3. The Ingredient references the InventoryItem via `inventory_item_id`. Flow: **add ingredient to recipe → if new, LLM determines perecedero/no perecedero → create InventoryItem with that category_id and add to inventory → link ingredient**.
 
-In 2.1 we only define the entity classes and the relationship (Ingredient has optional `inventory_item_id`). The actual logic that creates an InventoryItem when an ingredient is added belongs in a later subtask (e.g. 2.2 or structuring flow).
+In 2.1 we only define the entity classes and the relationship (Ingredient has optional `inventory_item_id`). The actual logic (new vs existing, LLM call, create/link) belongs in a later subtask (e.g. 2.2 or structuring flow).
 
 ---
 

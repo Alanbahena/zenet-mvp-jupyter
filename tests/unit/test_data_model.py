@@ -12,6 +12,7 @@ from core.data_model import (
     Recipe,
     RecipeUnit,
     Restaurant,
+    RestaurantType,
 )
 
 
@@ -65,22 +66,34 @@ class TestInventoryCategory(unittest.TestCase):
         self.assertEqual(c.description, "Productos no perecederos")
 
 
+class TestRestaurantType(unittest.TestCase):
+    def test_instantiation(self):
+        t = RestaurantType(id=1, name="Casual")
+        self.assertEqual(t.id, 1)
+        self.assertEqual(t.name, "Casual")
+
+    def test_instantiation_with_description(self):
+        t = RestaurantType(id=2, name="Gourmet", description="Alta cocina")
+        self.assertEqual(t.description, "Alta cocina")
+
+
 class TestRestaurant(unittest.TestCase):
     def test_instantiation_required(self):
         r = Restaurant(id=1, name="Mi Restaurante")
         self.assertEqual(r.id, 1)
         self.assertEqual(r.name, "Mi Restaurante")
         self.assertIsNone(r.address)
+        self.assertIsNone(r.restaurant_type_id)
 
     def test_instantiation_with_optionals(self):
         r = Restaurant(
             id=1,
             name="Test",
             address="Calle 1",
-            restaurant_type="café",
+            restaurant_type_id=1,
             notes="Notas",
         )
-        self.assertEqual(r.restaurant_type, "café")
+        self.assertEqual(r.restaurant_type_id, 1)
 
 
 class TestInventoryItem(unittest.TestCase):
