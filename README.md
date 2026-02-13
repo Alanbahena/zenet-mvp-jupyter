@@ -72,6 +72,79 @@ Build the **cognitive-operational core** of Zenet:
 
 ---
 
+## 🚀 Getting Started
+
+### Requirements
+
+- **Python** 3.13+ (see `.python-version` in the project root)
+- **uv** (recommended) or pip for dependency management
+
+### Environment setup
+
+1. **Clone the repository** and go to the project root.
+
+2. **Create and activate the virtual environment.**
+
+   With **uv**:
+   ```bash
+   uv venv zenet-mvp
+   source zenet-mvp/bin/activate   # Linux/macOS
+   # zenet-mvp\Scripts\activate    # Windows
+   ```
+
+   With **Python**:
+   ```bash
+   python -m venv zenet-mvp
+   source zenet-mvp/bin/activate   # Linux/macOS
+   # zenet-mvp\Scripts\activate    # Windows
+   ```
+
+   Your prompt should show `(zenet-mvp)` when the environment is active.
+
+3. **Install dependencies.**
+
+   With **uv** (from project root):
+   ```bash
+   uv sync
+   ```
+   Or to install into an already-active env: `uv sync --active`.
+
+   With **pip**:
+   ```bash
+   pip install -e .
+   ```
+   Or install from a locked list: `pip install -r requirements.txt`.
+
+4. **Environment variables.**  
+   Copy or create a `.env` file in the project root for API keys (e.g. `OPENAI_API_KEY`). Do not commit `.env`.
+
+### Basic usage
+
+- **Run the main script:**
+  ```bash
+  python main.py
+  ```
+
+- **Start Jupyter** (for notebooks):
+  ```bash
+  jupyter notebook
+  ```
+  Open notebooks from the `notebooks/` directory.
+
+- **Gradio UI** (when implemented):
+  ```bash
+  python gradio/app.py
+  ```
+  Or from the project root: `gradio run gradio/app.py`.
+
+### Development workflow
+
+- Add dependencies with **uv**: `uv add <package-name>` (updates `pyproject.toml` and installs into the env).
+- Regenerate **requirements.txt**: `uv export --no-dev -o requirements.txt`.
+- Deactivate the environment when done: `deactivate`.
+
+---
+
 ## 📁 Project Structure
 
 ```txt

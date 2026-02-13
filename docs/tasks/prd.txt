@@ -1,0 +1,102 @@
+<context>
+# Overview
+
+Zenet MVP 0.1 is a primary cognitive operating system for restaurants. It is not a commercial product, traditional application, or SaaS. Its purpose is to order data, standardize structures, normalize information, build an operational model, and create a foundation for future automation.
+
+The system targets restaurant operations that need to bring order and structure to chaotic operational data before any optimization or automation. Value comes from establishing a cognitive-operational core that can later support intelligence and automation.
+
+# Core Features
+
+- **Data ordering**: Ingest and organize chaotic restaurant data into consistent structures.
+- **Structure standardization**: Define and apply standard operational structures (categories, inventory families, units).
+- **Information normalization**: Normalize units, measures, and semantics across recipes and inventory.
+- **Operational model**: Build a coherent model linking recipes, ingredients, inventory, and units.
+- **Foundation for automation**: Create a solid, normalized base so future systems can automate reliably.
+
+**Agent-led flows (Jupyter notebooks)**:
+- Welcome agent: onboarding, initial info capture, emotional support, anxiety reduction, virtual support.
+- Classification agent: restaurant-type classification, suggested templates, editable presets, default categories and inventory families, operational-level diagnosis (accompaniment level, automation level, AI suggestions level, visible guides).
+- Configuration agent: guided setup of recipe categories and inventory families; structural bases for normalization, future forecast, and distribution.
+- Alignment agent: represent data in predetermined structures; accept PDF, photo, text, Excel; run normalization, unit conversion, semantic unification, auto-correction.
+- Structuring agent: structured representation of recipes and ingredients; generate base inventory, coherent units, normalized structure, recipe-inventory relations; accompaniment agent for questions.
+- Operational manual agent: data visualization, digital operational manual generation, accompaniment, business Q&A, explanatory interaction with the database.
+
+# User Experience
+
+- **Persona**: Restaurant operator or owner who needs to bring order to recipes, inventory, and operations before scaling or automating.
+- **Journey**: Welcome → Classification → Initial configuration → Alignment (upload/capture data) → Structuring (recipes and inventory) → Consult operational manual and resolve doubts.
+- **UI**: Temporary Gradio UI; primary prototyping and validation in Jupyter Notebooks. Experience is guided and agent-accompanied at each step.
+</context>
+
+<PRD>
+# Technical Architecture
+
+**Stack**:
+- Language: Python.
+- Prototyping: Jupyter Notebooks.
+- Temporary UI: Gradio.
+- LLM frameworks: LangChain, LangGraph, CrewAI, OpenAI SDK, Claude AI SDK, Autogen.
+- Orchestration: Custom workflow engine.
+- Persistence: JSON, SQLite.
+- Data: Local data lake.
+
+**Data architecture (main entities)**:
+- Restaurant, Recipe, Ingredient, RecipeUnit, InventoryItem, InventoryUnit, FamilyInventory, CategoryRecipe.
+- Ontology, taxonomy, semantic relations, normalization, data states, transformation flows, inferences. This defines the semantic model, not the storage format.
+
+**LLM architecture**:
+- Prompt engineering, function calling, tool use, structured outputs, memory, MCP, API model calling, open-source models.
+- Agentic workflows and workflow architecture. LLM is a cognitive engine integrated into the system, not a chatbot.
+
+**Agents**:
+- Welcome, Classification, Configuration, Alignment, Structuring, Operational Manual.
+- Orchestration: agentic pipelines, state-based flows, workflow engine, cognitive orchestration.
+
+**Notebook pipeline (Phase A)**:
+1. bienvenida.ipynb — Welcome agent and initial flow.
+2. Clasificación.ipynb — Classification agent and presets.
+3. Configuración_inicial.ipynb — Configuration agent and initial setup.
+4. alineamiento.ipynb — Alignment agent (PDF, photo, text, Excel → normalized structures).
+5. Estructura.ipynb — Structuring agent (recipes, ingredients, inventory, relations).
+6. manual_operativo.ipynb — Operational manual visualization and Q&A.
+
+# Development Roadmap
+
+**Phase 1 – Cognitive prototyping**
+- Validate intelligence and architecture.
+- Deliverables: Jupyter notebooks, LLM validation, agent testing, workflow experiments, data-architecture tests, logical solution development.
+
+**MVP scope (Phase A)**:
+- Implement the six-notebook pipeline with the six agents.
+- Data model and persistence (JSON/SQLite, local data lake).
+- Gradio UI for interaction with the flows.
+- Custom workflow engine for orchestration.
+- Normalization and semantic unification (units, measures, recipe-inventory relations).
+
+# Logical Dependency Chain
+
+1. **Foundation**: Data model and ontology (entities, relations, normalization rules); project layout (notebooks, core, data, gradio).
+2. **First visible flow**: Welcome notebook and agent + minimal Gradio entry point so the user can start the journey.
+3. **Classification and configuration**: Classification and Configuración_inicial notebooks and agents; presets, categories, inventory families.
+4. **Data ingestion and alignment**: Alignment notebook; input handling (PDF, photo, text, Excel); normalization and conversion.
+5. **Structuring**: Structuring notebook; recipe and ingredient structuring; base inventory and recipe-inventory relations.
+6. **Manual and support**: Manual operativo notebook; visualization and Q&A over the database.
+7. **Orchestration**: Workflow engine and pipeline wiring so notebooks/agents run in sequence with state.
+
+Each feature should be atomic but build on the previous; later phases can refine and extend without redoing the core.
+
+# Risks and Mitigations
+
+- **Scope creep**: MVP is the six-notebook pipeline and core data model only; defer advanced automation and control.
+- **LLM dependency**: Validate multiple providers (OpenAI, Claude) and structured outputs early; keep prompts and tools modular.
+- **Data quality**: Normalization and validation rules must be explicit and testable; start with a small, well-defined ontology.
+- **Principle**: "First we order reality. Then we structure it. Then we understand it. Then we optimize it. Then we automate it." MVP stays in order and structure.
+
+# Appendix
+
+**Principles**: Data-first, Agent-first, Workflow-first, Ontology-first, Schema-first, Intelligence-first; modularity, scalability, extensibility.
+
+**System definition**: Zenet MVP 0.1 is a system of order, structure, standardization, cognition, accompaniment, and foundation. It is not (for now) a system of control, auditing, or automation.
+
+**Document source**: Zenet - Documento Técnico MVP 0.1 Jupyter (10 Feb 2026, Version 0.1).
+</PRD>
