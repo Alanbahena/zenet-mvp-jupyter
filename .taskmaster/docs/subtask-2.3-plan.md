@@ -2,7 +2,7 @@
 
 ## Goal
 
-Create `core/normalization.py` with unit conversion and normalization using **InventoryUnit.base_unit_id** and **factor_to_base** (from 2.2). Support converting quantities to/from a unit’s base and handle multi-step chains. No new entities; conversion logic only.
+Create `core/normalization.py` with unit conversion and normalization using **InventoryUnit.base_unit_id** and **factor_to_base** (from 2.2). Support converting quantities to/from a unit’s base and handle multi-step chains. Add **(1) base rule of normalization:** each inventory family has a designated base inventory unit so the system knows exactly what quantity and unit to deduct when a recipe is created; **(2) conversion table for unofficial recipe units** (scoop, cucharada, “al gusto”, etc.) so recipe lines can be normalized to a quantity and base unit for inventory deduction; and **(3) normalized recipe:** the list of (inventory_item_id, normalized_quantity, base_unit_id) for one recipe, used to discount inventory when a customer orders that recipe (consumo teórico por platillo). Conversion logic and table application in 2.3; LLM suggestion and UI for the table stay in later tasks.
 
 **Reference:** `.taskmaster/docs/inventory-units-and-equivalences-plan.md` Part 2 and Part 5.
 
@@ -12,11 +12,40 @@ Create `core/normalization.py` with unit conversion and normalization using **In
 
 | In scope | Out of scope |
 |----------|--------------|
-| core/normalization.py module | RecipeUnit equivalences (defer unless RecipeUnit gets base_unit_id) |
-| to_base_quantity / from_base_quantity for InventoryUnit | Cross recipe ↔ inventory conversion (later) |
-| Integration with InventoryUnitRegistry (lookup by unit_id) | display_unit_id on InventoryItem (later) |
-| Error handling (missing unit, cycles, invalid quantity) | Parsing free-text user input (e.g. "2 tazas") |
+| core/normalization.py module | display_unit_id on InventoryItem (later) |
+| to_base_quantity / from_base_quantity for InventoryUnit | Parsing free-text user input (e.g. "2 tazas") |
+| Integration with InventoryUnitRegistry (lookup by unit_id) | Who creates/suggests conversion table rows (LLM) and UI for user confirmation (Alignment/Configuration/Structuring) |
+| Error handling (missing unit, cycles, invalid quantity) | |
+| **Base rule: family → base inventory unit** (see below) | |
+| **Recipe-unit conversion table** (design + apply; see below) | |
+| **Normalized recipe** (list per recipe for deduction on order; see below) | Actual order/deduction persistence (later) |
 | Unit tests for conversions | |
+
+---
+
+## Base rule of normalization (family → base inventory unit)
+
+- **Rule:** Each inventory family has a designated **base inventory unit** used for inventory deduction (e.g. Carnes → g, Verduras/Hierbas → g, Líquidos → ml, Insumos unitarios → pieza). When a recipe is normalized, every ingredient in that family is expressed in that base so the system knows exactly what quantity and inventory unit to deduct.
+- **Data:** Add `base_unit_id: Optional[int] = None` to `FamilyInventory` (references InventoryUnit). Templates/Configuration set it per family (e.g. Carnes → g, Líquidos → ml, Insumos unitarios → pza). Implement in 2.2 (data model) or at start of 2.3.
+- **In 2.3:** Provide a way to resolve “base unit for this family” (e.g. `get_family_base_unit_id(family_id, family_registry)` or use `FamilyInventory.base_unit_id`). When normalizing an ingredient for deduction, convert quantity to the family’s base unit using existing `to_base_quantity` / `from_base_quantity` and this rule.
+
+---
+
+## Conversion table for unofficial recipe units
+
+- **Goal:** Support conversions from informal recipe units (scoop, cucharada, rodaja, “al gusto”) to a normalized quantity in a base unit (e.g. 1 scoop quinoa → 30 g, 1 cucharada mantequilla → 14 g). The LLM suggests rows; the user confirms; the system stores and applies them to produce the “normalized recipe” (what actually discounts inventory).
+- **In scope for 2.3:**
+  - **Data shape:** A conversion table keyed by recipe unit and optionally by context (e.g. family_id or inventory_item_id): `(recipe_unit_id, optional family_id or inventory_item_id) → (quantity: float, base_unit_id: int)`. Allow simple entries (recipe_unit_id only) for universal conversions (e.g. 1 scoop = 30 g).
+  - **Apply:** Functions in `normalization.py` that, given an ingredient (recipe_unit_id, optional family/item) and this table, return normalized quantity and base_unit_id. Combined with the family base rule, this yields the “normalized recipe” per ingredient.
+- **Out of scope for 2.3:** Who creates or suggests table rows (LLM) and where the user confirms them (Alignment/Configuration/Structuring agents or notebooks); that stays in later tasks.
+
+---
+
+## Normalized recipe (for inventory deduction on order)
+
+- **Concept:** The **normalized recipe** for a given recipe is the list of deduction lines: for each ingredient, the corresponding inventory item id, the quantity expressed in the family’s base unit, and that base unit id. This is “consumo teórico por platillo” — what the system uses to deduct from inventory when a customer orders that recipe.
+- **In scope for 2.3:** A function that, given a `Recipe` and the necessary registries (family, unit, conversion table, and optionally a way to resolve each ingredient to its inventory_item_id and family_id), returns the normalized recipe: e.g. `list[tuple[int, float, int]]` as (inventory_item_id, normalized_quantity, base_unit_id), or a small dataclass/NamedTuple per line. Implement by iterating over recipe.ingredients and using the per-ingredient normalization (conversion table + family base) for each; skip or error on ingredients that cannot be normalized as documented.
+- **Out of scope for 2.3:** Persisting orders, applying deductions to inventory, or any UI for “customer ordered X”; 2.3 only produces the normalized recipe list. Those belong in persistence or a later task.
 
 ---
 
@@ -62,10 +91,30 @@ Create `core/normalization.py` with unit conversion and normalization using **In
   - **Same family:** The root base (unit with base_unit_id None) reached from from_unit must be the same as the root base reached from to_unit.
 - **Tests:** 0.5 kg → g = 500; 1 caja (10 kg) → g = 10000; incompatible units (e.g. kg vs L) raise.
 
-### Step 2.3.6 — Exports and unit tests
+### Step 2.3.6 — Family base unit (base rule of normalization)
 
-- Export from `core/__init__.py`: `to_base_quantity`, `from_base_quantity`, `to_base_quantity_by_id`, `from_base_quantity_by_id`, `convert_quantity` (or a single normalization namespace).
-- **Test file:** `tests/unit/test_normalization.py` with tests for all steps above (known values, round-trip, by_id, errors, convert_quantity).
+- **Data (if not in 2.2):** Add `base_unit_id: Optional[int] = None` to `FamilyInventory`; ensure FamilyInventoryRegistry can resolve family by id. Templates set base_unit_id per family (Carnes → g, Líquidos → ml, Insumos unitarios → pza, etc.).
+- **Function:** `get_family_base_unit_id(family_id: int, family_registry: FamilyInventoryRegistry, unit_registry: InventoryUnitRegistry) -> Optional[int]`. Return the base_unit_id for the family, or None if not set. Validate that the id is in unit_registry.
+- **Usage:** When normalizing an ingredient for deduction, resolve the ingredient’s family (e.g. from InventoryItem.family_id), get family base_unit_id, then use to_base_quantity / from_base_quantity to express quantity in that base.
+- **Tests:** Family with base_unit_id set returns that id; family with None returns None; invalid base_unit_id (not in registry) raises or returns None as documented.
+
+### Step 2.3.7 — Recipe-unit conversion table (design + apply)
+
+- **Data shape:** Define a conversion table structure: entries keyed by `(recipe_unit_id, optional family_id, optional inventory_item_id)` mapping to `(quantity: float, base_unit_id: int)`. Allow key with only recipe_unit_id for universal conversions (e.g. 1 scoop = 30 g). Implement as a registry or module-level structure (e.g. `RecipeUnitConversionRegistry` or dict-like) that can be populated by Configuration/Structuring later.
+- **Function:** `normalize_recipe_unit_quantity(quantity: float, recipe_unit_id: int, family_id: Optional[int], inventory_item_id: Optional[int], conversion_table, unit_registry: InventoryUnitRegistry) -> tuple[float, int]`. Look up best match (exact context first, then recipe_unit only); return (normalized_quantity, base_unit_id). If no match, raise ValueError or return None as documented.
+- **Integration:** Combined with family base rule, support a higher-level “normalize ingredient for deduction” that returns (quantity, base_unit_id) for inventory discount.
+- **Tests:** Lookup by recipe_unit_id only; lookup by recipe_unit_id + family_id; missing entry raises or returns None; invalid base_unit_id in table raises.
+
+### Step 2.3.8 — Normalized recipe (list per recipe for deduction on order)
+
+- **Function:** `normalize_recipe_for_deduction(recipe: Recipe, ..., family_registry, unit_registry, conversion_table, resolve_ingredient_to_inventory: Callable or similar) -> list[tuple[int, float, int]]` (or list of a small NamedTuple/dataclass with inventory_item_id, normalized_quantity, base_unit_id). Caller must supply a way to resolve each ingredient to its inventory_item_id and family_id (e.g. from Recipe + restaurant inventory or from Ingredient.inventory_item_id and item.family_id). For each ingredient, use the per-ingredient normalizer (normalize_recipe_unit_quantity + family base) to get (quantity, base_unit_id); append (inventory_item_id, quantity, base_unit_id) to the result list. Document behavior when an ingredient cannot be normalized (skip, raise, or partial result).
+- **Output:** The normalized recipe = “consumo teórico por platillo” — exactly what to deduct from inventory when one order of that recipe is placed.
+- **Tests:** Recipe with one or more ingredients yields correct list; ingredient without conversion or missing family/base is handled as documented; empty recipe yields empty list.
+
+### Step 2.3.9 — Exports and unit tests
+
+- Export from `core/__init__.py`: `to_base_quantity`, `from_base_quantity`, `to_base_quantity_by_id`, `from_base_quantity_by_id`, `convert_quantity`, `get_family_base_unit_id`, `normalize_recipe_unit_quantity`, `normalize_recipe_for_deduction` (and conversion table type/registry if public).
+- **Test file:** `tests/unit/test_normalization.py` with tests for all steps above (known values, round-trip, by_id, errors, convert_quantity, family base, recipe-unit conversion table, normalized recipe).
 
 ---
 
@@ -77,6 +126,9 @@ Create `core/normalization.py` with unit conversion and normalization using **In
 - [ ] to_base_quantity_by_id and from_base_quantity_by_id work; invalid unit_id raises.
 - [ ] Broken chain and cycle raise clear errors.
 - [ ] convert_quantity(from_unit_id, to_unit_id, registry) works for same-family units; incompatible units raise.
+- [ ] FamilyInventory has base_unit_id (2.2 or 2.3); get_family_base_unit_id(family_id, family_registry, unit_registry) works.
+- [ ] Recipe-unit conversion table structure and normalize_recipe_unit_quantity implemented; tests for lookups and missing/invalid data.
+- [ ] normalize_recipe_for_deduction(recipe, ...) implemented; returns list of (inventory_item_id, normalized_quantity, base_unit_id) for deduction on order; tests for single/multiple ingredients and edge cases.
 - [ ] Exports added in core/__init__.py.
 - [ ] tests/unit/test_normalization.py added with good coverage.
 
@@ -84,5 +136,5 @@ Create `core/normalization.py` with unit conversion and normalization using **In
 
 ## Optional (later)
 
-- **RecipeUnit equivalences:** If RecipeUnit gets base_unit_id and factor_to_base, add similar functions for RecipeUnitRegistry in normalization.py or a separate section.
-- **Cross recipe ↔ inventory:** Convert ingredient (recipe unit) quantity to inventory unit for matching; can use convert_quantity if both registries share a common base or a bridge is defined later.
+- **Applying deductions:** When a customer order is recorded, use the normalized recipe (output of normalize_recipe_for_deduction) to actually subtract quantities from inventory; persistence and order management are out of 2.3.
+- **LLM and UI for conversion table:** Populating and editing the recipe-unit conversion table via Alignment/Configuration/Structuring agents and notebooks.
