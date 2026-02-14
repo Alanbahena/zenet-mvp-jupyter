@@ -147,9 +147,10 @@
               1
             ],
             "details": "Extend the core entity classes to include proper relationship methods (e.g., add_ingredient, remove_ingredient for Recipe). Implement validation methods to ensure data integrity, such as checking that ingredient quantities are positive and units are valid. Add methods to convert between different units where appropriate. Include helper methods for common operations on entities.\n<info added on 2026-02-13T07:05:03.435Z>\nFor the Recipe.add_ingredient method, implement a workflow that triggers the creation or linking of an InventoryItem for that ingredient. The method should:\n\n1. Accept an ingredient parameter and optional inventory_category parameter\n2. Create or link an InventoryItem for the ingredient if it doesn't already exist in inventory\n3. Validate the inventory_category when provided, ensuring it's either \"perecedero\" or \"no perecedero\"\n4. Add appropriate error handling for validation failures\n5. Update both the Recipe's ingredients list and the restaurant's inventory tracking\n\nThis implementation supports the inventory management workflow where adding ingredients to recipes automatically maintains the corresponding inventory items, ensuring consistency between recipe requirements and available inventory.\n</info added on 2026-02-13T07:05:03.435Z>\n<info added on 2026-02-13T07:27:13.700Z>\nImplementation plan for entity relationships and validation:\n\n1. Recipe.add_ingredient method:\n   - Parameters: ingredient, category_id=None, and other optional parameters\n   - Validate quantity > 0 and optional unit_id\n   - Append ingredient to recipe's ingredients list\n   - If category_id is provided, create and return a new InventoryItem for the caller to add to inventory\n   - Use category_id (InventoryCategory.id), not string values like \"perecedero\"\n\n2. Recipe.remove_ingredient method:\n   - Accept either an ingredient object or index\n   - Remove the specified ingredient from the recipe\n\n3. Validation methods:\n   - Validate ingredient quantities are positive\n   - Validate optional unit_id and category_id references exist\n   - Raise ValueError with descriptive messages for validation failures\n\n4. Helper methods:\n   - ingredient_count(): Return the number of ingredients\n   - has_ingredient(name): Check if recipe contains an ingredient with the given name\n\n5. Unit conversion:\n   - Implement minimal or stub functionality\n   - Full conversion logic will be implemented in subtask 2.3 (normalization.py)\n\n6. Tests:\n   - Test add/remove ingredient functionality\n   - Test validation logic\n   - Test the InventoryItem return workflow\n</info added on 2026-02-13T07:27:13.700Z>\n<info added on 2026-02-13T07:47:31.681Z>\nAdditional implementation plan for entity relationships and validation:\n\n1. Recipe Unit Management:\n   - Implement RecipeUnitRegistry class to manage valid recipe units\n   - Add methods:\n     - add_recipe_unit(unit_id, unit_name, unit_abbreviation)\n     - remove_recipe_unit(unit_id)\n     - get_valid_recipe_unit_ids()\n     - is_valid_recipe_unit(unit_id)\n   - Include validation to prevent duplicate unit IDs or names\n\n2. Inventory Unit Management:\n   - Implement InventoryUnitRegistry class to manage valid inventory units\n   - Add methods:\n     - add_inventory_unit(unit_id, unit_name, unit_abbreviation)\n     - remove_inventory_unit(unit_id)\n     - get_valid_inventory_unit_ids()\n     - is_valid_inventory_unit(unit_id)\n   - Include validation to prevent duplicate unit IDs or names\n\n3. Restaurant Optional Information Management:\n   - Add methods to Restaurant class:\n     - update_address(street, city, state, zip_code, country=None)\n     - update_restaurant_type(restaurant_type)\n     - update_notes(notes)\n     - clear_address()\n     - clear_restaurant_type()\n     - clear_notes()\n   - Implement validation for address fields and restaurant_type values\n   - Ensure all optional fields can be properly updated and cleared\n</info added on 2026-02-13T07:47:31.681Z>\n<info added on 2026-02-13T07:50:04.505Z>\n4. Additional Registry and Relationship Implementation:\n\n1. CategoryRecipe Management:\n   - Implement CategoryRecipeRegistry class to manage recipe categories\n   - Add methods:\n     - add_category_recipe(category): Add a new recipe category\n     - remove_category_recipe(category_id): Remove a recipe category\n     - valid_category_recipe_ids(): Return list of valid category IDs\n     - is_valid_category_recipe(category_id): Check if a category ID is valid\n   - Include validation to prevent duplicate category IDs or names\n\n2. FamilyInventory Management:\n   - Implement FamilyInventoryRegistry class to manage inventory families\n   - Add methods:\n     - add_family_inventory(family): Add a new inventory family\n     - remove_family_inventory(family_id): Remove an inventory family\n     - valid_family_inventory_ids(): Return list of valid family IDs\n     - is_valid_family_inventory(family_id): Check if a family ID is valid\n   - Include validation to prevent duplicate family IDs or names\n\n3. Recipe Category Relationships:\n   - Add methods to Recipe class:\n     - add_category(category_id): Add recipe to a category\n     - remove_category(category_id): Remove recipe from a category\n     - get_categories(): Return all categories for this recipe\n   - Validate category_id against CategoryRecipeRegistry\n\n4. Inventory Family Relationships:\n   - Add methods to InventoryItem class:\n     - add_family(family_id): Add inventory item to a family\n     - remove_family(family_id): Remove inventory item from a family\n     - get_families(): Return all families for this inventory item\n   - Validate family_id against FamilyInventoryRegistry\n</info added on 2026-02-13T07:50:04.505Z>\n<info added on 2026-02-13T08:09:01.896Z>\nUpdated workflow for Recipe.add_ingredient method:\n\n1. When an ingredient is added to a recipe, check if it already exists in the restaurant's inventory\n2. If the ingredient already exists in inventory:\n   - Link to the existing InventoryItem\n   - No new InventoryItem is created\n   - No LLM classification is needed\n3. If the ingredient is NEW (not already in inventory):\n   - The caller (e.g., Structuring agent) is responsible for:\n     - Calling the LLM model to classify the ingredient as perishable (\"perecedero\") or non-perishable (\"no perecedero\")\n     - Obtaining the appropriate InventoryCategory id based on this classification\n     - Passing this category_id when creating the InventoryItem\n   - The Recipe.add_ingredient method will:\n     - Accept the ingredient and the LLM-determined category_id\n     - Create a new InventoryItem with this category_id\n     - Add the new InventoryItem to the restaurant's inventory\n4. Implementation should include validation for the category_id parameter\n5. The method should return the created or linked InventoryItem for reference\n</info added on 2026-02-13T08:09:01.896Z>",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test relationship methods with various scenarios. Verify validation logic correctly identifies invalid data. Test edge cases like empty ingredients lists or invalid relationships.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-14T07:10:27.520Z"
           },
           {
             "id": 3,
@@ -206,7 +207,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-02-13T07:09:01.827Z"
+        "updatedAt": "2026-02-14T07:10:27.520Z"
       },
       {
         "id": 3,
@@ -342,7 +343,8 @@
             "dependencies": [
               1
             ],
-            "parentTaskId": 9
+            "parentTaskId": 9,
+            "parentId": "undefined"
           }
         ]
       },
@@ -477,13 +479,13 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-02-13T07:09:01.828Z",
+      "lastModified": "2026-02-14T07:10:27.520Z",
       "taskCount": 16,
       "completedCount": 1,
       "tags": [
         "master"
       ],
-      "created": "2026-02-13T07:27:06.154Z",
+      "created": "2026-02-14T07:12:23.798Z",
       "description": "Tasks for master context"
     }
   }
