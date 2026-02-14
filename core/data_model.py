@@ -103,6 +103,112 @@ def _valid_restaurant_type_ids() -> set[int]:
     return {t.id for t in DEFAULT_RESTAURANT_TYPES}
 
 
+# Recipe category templates by restaurant type (id=0 means template; assign real id when applying).
+# Use get_category_recipe_template(restaurant_type_id) to obtain the tuple for a given type.
+_CATEGORY_RECIPE_TEMPLATES: dict[int, tuple[CategoryRecipe, ...]] = {
+    1: (  # Casual
+        CategoryRecipe(0, "Entradas", None),
+        CategoryRecipe(0, "Platos fuertes", None),
+        CategoryRecipe(0, "Postres", None),
+        CategoryRecipe(0, "Bebidas", None),
+    ),
+    2: (  # Rápida
+        CategoryRecipe(0, "Combos", None),
+        CategoryRecipe(0, "Bebidas", None),
+        CategoryRecipe(0, "Postres", None),
+    ),
+    3: (  # Gourmet
+        CategoryRecipe(0, "Entradas", None),
+        CategoryRecipe(0, "Platos principales", None),
+        CategoryRecipe(0, "Postres", None),
+        CategoryRecipe(0, "Bebidas", None),
+        CategoryRecipe(0, "Vinos", None),
+    ),
+    4: (  # Cafeterías
+        CategoryRecipe(0, "Desayunos", None),
+        CategoryRecipe(0, "Comidas", None),
+        CategoryRecipe(0, "Bebidas calientes", None),
+        CategoryRecipe(0, "Bebidas frías", None),
+        CategoryRecipe(0, "Repostería", None),
+    ),
+    5: (  # Cafés
+        CategoryRecipe(0, "Bebidas calientes", None),
+        CategoryRecipe(0, "Bebidas frías", None),
+        CategoryRecipe(0, "Repostería", None),
+        CategoryRecipe(0, "Comidas ligeras", None),
+    ),
+}
+
+
+def get_category_recipe_template(restaurant_type_id: int) -> tuple[CategoryRecipe, ...]:
+    """Return the default recipe categories template for the given restaurant type.
+    Returns empty tuple if restaurant_type_id is not in the template map.
+    Template categories use id=0; assign real ids when adding to a registry."""
+    valid_ids = _valid_restaurant_type_ids()
+    if restaurant_type_id not in valid_ids:
+        return ()
+    return _CATEGORY_RECIPE_TEMPLATES.get(restaurant_type_id, ())
+
+
+# Family inventory templates by restaurant type (id=0 means template; assign real id when applying).
+_FAMILY_INVENTORY_TEMPLATES: dict[int, tuple[FamilyInventory, ...]] = {
+    1: (  # Casual
+        FamilyInventory(0, "Lácteos", None),
+        FamilyInventory(0, "Carnes", None),
+        FamilyInventory(0, "Pescados", None),
+        FamilyInventory(0, "Verduras", None),
+        FamilyInventory(0, "Frutas", None),
+        FamilyInventory(0, "Granos", None),
+        FamilyInventory(0, "Bebidas", None),
+        FamilyInventory(0, "Condimentos", None),
+    ),
+    2: (  # Rápida
+        FamilyInventory(0, "Carnes", None),
+        FamilyInventory(0, "Verduras", None),
+        FamilyInventory(0, "Lácteos", None),
+        FamilyInventory(0, "Bebidas", None),
+        FamilyInventory(0, "Panadería", None),
+        FamilyInventory(0, "Congelados", None),
+    ),
+    3: (  # Gourmet
+        FamilyInventory(0, "Carnes", None),
+        FamilyInventory(0, "Pescados", None),
+        FamilyInventory(0, "Mariscos", None),
+        FamilyInventory(0, "Verduras", None),
+        FamilyInventory(0, "Frutas", None),
+        FamilyInventory(0, "Lácteos", None),
+        FamilyInventory(0, "Vinos y licores", None),
+        FamilyInventory(0, "Condimentos y especias", None),
+    ),
+    4: (  # Cafeterías
+        FamilyInventory(0, "Lácteos", None),
+        FamilyInventory(0, "Panadería", None),
+        FamilyInventory(0, "Bebidas calientes", None),
+        FamilyInventory(0, "Bebidas frías", None),
+        FamilyInventory(0, "Frutas", None),
+        FamilyInventory(0, "Congelados", None),
+        FamilyInventory(0, "Envasados", None),
+    ),
+    5: (  # Cafés
+        FamilyInventory(0, "Bebidas", None),
+        FamilyInventory(0, "Lácteos", None),
+        FamilyInventory(0, "Panadería y repostería", None),
+        FamilyInventory(0, "Frutas", None),
+        FamilyInventory(0, "Envasados", None),
+    ),
+}
+
+
+def get_family_inventory_template(restaurant_type_id: int) -> tuple[FamilyInventory, ...]:
+    """Return the default inventory family template for the given restaurant type.
+    Returns empty tuple if restaurant_type_id is not in the template map.
+    Template families use id=0; assign real ids when adding to a registry."""
+    valid_ids = _valid_restaurant_type_ids()
+    if restaurant_type_id not in valid_ids:
+        return ()
+    return _FAMILY_INVENTORY_TEMPLATES.get(restaurant_type_id, ())
+
+
 @dataclass
 class Restaurant:
     """Top-level entity: basic restaurant information."""
@@ -426,6 +532,23 @@ class CategoryRecipeRegistry:
             if c.name.strip().lower() == category.name.strip().lower():
                 raise ValueError(f"duplicate category name: {category.name!r}")
         self._categories.append(category)
+
+    def update(self, category_id: int, updates: dict) -> None:
+        """Update name and/or description of a category. Raises if name is empty or duplicate."""
+        for c in self._categories:
+            if c.id == category_id:
+                if "name" in updates:
+                    name = updates["name"]
+                    if not (name or "").strip():
+                        raise ValueError("category.name must be non-empty")
+                    for other in self._categories:
+                        if other.id != category_id and other.name.strip().lower() == name.strip().lower():
+                            raise ValueError(f"duplicate category name: {name!r}")
+                    c.name = name.strip() if name else ""
+                if "description" in updates:
+                    c.description = updates["description"]
+                return
+        raise ValueError(f"category id {category_id} not found")
 
     def remove(
         self, category_id: int, recipes: Optional[list[Recipe]] = None

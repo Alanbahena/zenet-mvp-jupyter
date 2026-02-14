@@ -8,6 +8,8 @@ from core.data_model import (
     DEFAULT_INVENTORY_CATEGORIES,
     DEFAULT_RESTAURANT_TYPES,
     FamilyInventory,
+    get_category_recipe_template,
+    get_family_inventory_template,
     FamilyInventoryRegistry,
     Ingredient,
     InventoryCategory,
@@ -102,8 +104,8 @@ class TestUser(unittest.TestCase):
         self.assertEqual(u.role, "admin")
 
     def test_instantiation_user_role(self):
-        u = User(id=2, name="Juan Pérez", email="juan@example.com", role="user")
-        self.assertEqual(u.role, "user")
+        u = User(id=2, name="Juan Pérez", email="juan@example.com", role="mesero")
+        self.assertEqual(u.role, "mesero")
 
 
 class TestRestaurant(unittest.TestCase):
@@ -565,6 +567,45 @@ class TestInventoryUnitRegistry(unittest.TestCase):
             reg.remove(1, inventory_items=items)
 
 
+class TestGetCategoryRecipeTemplate(unittest.TestCase):
+    def test_template_for_casual_has_four_categories(self):
+        t = get_category_recipe_template(1)
+        self.assertEqual(len(t), 4)
+        names = {c.name for c in t}
+        self.assertIn("Entradas", names)
+        self.assertIn("Bebidas", names)
+        for c in t:
+            self.assertEqual(c.id, 0, "template categories use id=0")
+
+    def test_template_for_cafes_has_four_categories(self):
+        t = get_category_recipe_template(5)
+        self.assertEqual(len(t), 4)
+        self.assertIn("Bebidas calientes", {c.name for c in t})
+
+    def test_template_invalid_restaurant_type_returns_empty(self):
+        self.assertEqual(get_category_recipe_template(99), ())
+
+
+class TestGetFamilyInventoryTemplate(unittest.TestCase):
+    def test_template_for_casual_has_families(self):
+        t = get_family_inventory_template(1)
+        self.assertGreaterEqual(len(t), 6)
+        names = {f.name for f in t}
+        self.assertIn("Lácteos", names)
+        self.assertIn("Carnes", names)
+        self.assertIn("Bebidas", names)
+        for f in t:
+            self.assertEqual(f.id, 0, "template families use id=0")
+
+    def test_template_for_cafes_has_families(self):
+        t = get_family_inventory_template(5)
+        self.assertGreaterEqual(len(t), 4)
+        self.assertIn("Panadería y repostería", {f.name for f in t})
+
+    def test_template_invalid_restaurant_type_returns_empty(self):
+        self.assertEqual(get_family_inventory_template(99), ())
+
+
 class TestCategoryRecipeRegistry(unittest.TestCase):
     def test_add_remove_valid_ids_get(self):
         reg = CategoryRecipeRegistry()
@@ -588,6 +629,39 @@ class TestCategoryRecipeRegistry(unittest.TestCase):
         with self.assertRaises(ValueError):
             reg.remove(1, recipes=recipes)
 
+    def test_update_name_success(self):
+        reg = CategoryRecipeRegistry()
+        reg.add(CategoryRecipe(1, "Desayuno"))
+        reg.update(1, {"name": "Desayunos"})
+        self.assertEqual(reg.get(1).name, "Desayunos")
+
+    def test_update_description(self):
+        reg = CategoryRecipeRegistry()
+        reg.add(CategoryRecipe(1, "D"))
+        reg.update(1, {"description": "Para la mañana"})
+        self.assertEqual(reg.get(1).description, "Para la mañana")
+
+    def test_update_empty_name_raises(self):
+        reg = CategoryRecipeRegistry()
+        reg.add(CategoryRecipe(1, "D"))
+        with self.assertRaises(ValueError) as ctx:
+            reg.update(1, {"name": "  "})
+        self.assertIn("non-empty", str(ctx.exception))
+
+    def test_update_duplicate_name_raises(self):
+        reg = CategoryRecipeRegistry()
+        reg.add(CategoryRecipe(1, "A"))
+        reg.add(CategoryRecipe(2, "B"))
+        with self.assertRaises(ValueError) as ctx:
+            reg.update(2, {"name": "a"})
+        self.assertIn("duplicate", str(ctx.exception))
+
+    def test_update_category_not_found_raises(self):
+        reg = CategoryRecipeRegistry()
+        with self.assertRaises(ValueError) as ctx:
+            reg.update(1, {"name": "X"})
+        self.assertIn("not found", str(ctx.exception))
+
 
 class TestFamilyInventoryRegistry(unittest.TestCase):
     def test_add_remove_valid_ids_get(self):
@@ -609,16 +683,16 @@ class TestUserRegistry(unittest.TestCase):
     def test_add_as_admin_success(self):
         reg = UserRegistry()
         admin = User(1, "Admin", "admin@example.com", "admin")
-        user = User(2, "Juan", "juan@example.com", "user")
+        user = User(2, "Juan", "juan@example.com", "mesero")
         reg.add(user, admin)
         self.assertEqual(reg.get(2).name, "Juan")
 
     def test_add_as_non_admin_raises(self):
         reg = UserRegistry()
         admin = User(1, "A", "a@b.com", "admin")
-        non_admin = User(2, "B", "b@b.com", "user")
+        non_admin = User(2, "B", "b@b.com", "mesero")
         reg.add(non_admin, admin)
-        other = User(3, "C", "c@b.com", "user")
+        other = User(3, "C", "c@b.com", "mesero")
         with self.assertRaises(PermissionError):
             reg.add(other, non_admin)
 
@@ -634,18 +708,18 @@ class TestUserRegistry(unittest.TestCase):
         reg = UserRegistry()
         admin = User(1, "A", "a@b.com", "admin")
         with self.assertRaises(ValueError):
-            reg.add(User(2, "  ", "x@x.com", "user"), admin)
+            reg.add(User(2, "  ", "x@x.com", "mesero"), admin)
 
     def test_add_invalid_email_raises(self):
         reg = UserRegistry()
         admin = User(1, "A", "a@b.com", "admin")
         with self.assertRaises(ValueError):
-            reg.add(User(2, "X", "not-an-email", "user"), admin)
+            reg.add(User(2, "X", "not-an-email", "mesero"), admin)
 
     def test_update_as_admin(self):
         reg = UserRegistry()
         admin = User(1, "Admin", "admin@example.com", "admin")
-        user = User(2, "Juan", "juan@example.com", "user")
+        user = User(2, "Juan", "juan@example.com", "mesero")
         reg.add(user, admin)
         reg.update(2, {"name": "Juan Pérez"}, admin)
         self.assertEqual(reg.get(2).name, "Juan Pérez")
@@ -653,7 +727,7 @@ class TestUserRegistry(unittest.TestCase):
     def test_update_as_non_admin_raises(self):
         reg = UserRegistry()
         admin = User(1, "A", "a@b.com", "admin")
-        user = User(2, "B", "b@b.com", "user")
+        user = User(2, "B", "b@b.com", "mesero")
         reg.add(user, admin)
         with self.assertRaises(PermissionError):
             reg.update(2, {"name": "X"}, user)
@@ -661,7 +735,7 @@ class TestUserRegistry(unittest.TestCase):
     def test_delete_as_admin(self):
         reg = UserRegistry()
         admin = User(1, "Admin", "admin@example.com", "admin")
-        user = User(2, "J", "j@j.com", "user")
+        user = User(2, "J", "j@j.com", "mesero")
         reg.add(user, admin)
         reg.delete(2, admin)
         self.assertIsNone(reg.get(2))
@@ -669,7 +743,7 @@ class TestUserRegistry(unittest.TestCase):
     def test_delete_as_non_admin_raises(self):
         reg = UserRegistry()
         admin = User(1, "A", "a@b.com", "admin")
-        user = User(2, "B", "b@b.com", "user")
+        user = User(2, "B", "b@b.com", "mesero")
         reg.add(user, admin)
         with self.assertRaises(PermissionError):
             reg.delete(2, user)
