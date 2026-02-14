@@ -18,6 +18,7 @@ Extend the core entity classes (from 2.1) with **relationship methods**, **valid
 | **Category/family registries:** add/remove CategoryRecipe, add/remove FamilyInventory | |
 | **Restaurant:** add/update optional info (including restaurant_type_id), clear (delete) optional info | |
 | **Restaurant types:** Fixed set provided by the software (user selects only; no add/remove) | |
+| **User:** add, update, delete user; workflow: only admin can do these; business-profile creator gets admin automatically | |
 
 ---
 
@@ -27,9 +28,10 @@ Extend the core entity classes (from 2.1) with **relationship methods**, **valid
 2. **Unit registries** — Add/remove recipe units and inventory units (so valid_unit_ids has a clear source).
 3. **Category and family registries** — Add/remove CategoryRecipe and FamilyInventory (so recipe category_id and inventory family_id reference valid ids).
 4. **Restaurant info** — Add/update and clear optional restaurant information (address, restaurant_type_id, notes). Restaurant types: fixed set provided by software (user selects only).
-5. **Recipe relationship methods** — add_ingredient, remove_ingredient.
-6. **add_ingredient and InventoryItem workflow** — Optional creation/linking of InventoryItem when adding an ingredient.
-7. **Helper methods** — e.g. on Recipe: ingredient count, find by name.
+5. **User management** — Add, update, delete user; enforce workflow (only admin; business-profile creator gets admin).
+6. **Recipe relationship methods** — add_ingredient, remove_ingredient.
+7. **add_ingredient and InventoryItem workflow** — Optional creation/linking of InventoryItem when adding an ingredient.
+8. **Helper methods** — e.g. on Recipe: ingredient count, find by name.
 
 ---
 
@@ -149,6 +151,37 @@ Extend the core entity classes (from 2.1) with **relationship methods**, **valid
 
 ---
 
+## 3f. User: add, update, delete (workflow: only admin; business-profile creator gets admin)
+
+**Yes, this belongs in 2.2.** User entity exists in the data model (id, name, email, role). Implement add user, update user, and delete user with the following **workflow rules**:
+
+### 3f.1 Workflow rule 1: Only admin can create, update, or delete users
+
+- **Create user:** Allowed only if the **current user** (the one performing the action) has `role == "admin"`. Otherwise raise a permission error (e.g. `PermissionError` or a custom `ForbiddenError`).
+- **Update user:** Same: only an **admin** can update any user (e.g. change name, email, or role of another user).
+- **Delete user:** Same: only an **admin** can delete a user.
+- **Implementation:** The add/update/delete functions or methods accept a **current_user: User** (or current_user_id). Before performing the operation, check `current_user.role == "admin"`; if not, do not perform the operation and raise an error. Optionally: prevent an admin from deleting themselves or the last admin (document behavior).
+
+### 3f.2 Workflow rule 2: The user who created the business profile gets admin rights automatically
+
+- When a user **creates the business profile** (i.e. creates the Restaurant / completes the initial business setup), that user is automatically assigned the role **"admin"**.
+- **Implementation:** In the flow that creates the restaurant (e.g. Welcome or Configuration agent, or first-time setup), after creating or linking the Restaurant, set the creating user’s `role` to `"admin"` (or create the user with `role="admin"` if they are created at that moment). No separate “grant admin” action by another admin is required for the business-profile creator.
+- This ensures there is always at least one admin per business (the one who created the profile).
+
+### 3f.3 Add, update, delete user (signature / behavior)
+
+- **Add user:** `add_user(user: User, current_user: User) -> None` or add to a `UserRegistry` with `add(user, current_user)`. Validate email format and uniqueness if required. Enforce: `current_user.role == "admin"`.
+- **Update user:** `update_user(user_id: int, updates: dict, current_user: User)` or registry method. Enforce: `current_user.role == "admin"`. Allowed updates: name, email, role (admin can promote/demote others; document whether an admin can demote themselves).
+- **Delete user:** `delete_user(user_id: int, current_user: User)` or registry method. Enforce: `current_user.role == "admin"`.
+
+### 3f.4 Where to put this
+
+- **Option A:** `UserRegistry` in `data_model.py` with `add(user, current_user)`, `update(user_id, updates, current_user)`, `delete(user_id, current_user)`, each checking `current_user.role == "admin"` and raising if not.
+- **Option B:** Standalone functions or a small `user_service` module that takes a user list/registry and performs add/update/delete with the same authorization check.
+- The **business-profile creator gets admin** logic lives in the flow that creates the Restaurant (e.g. in the agent or setup code that creates the first Restaurant and the creating user), not necessarily in the UserRegistry itself.
+
+---
+
 ## 4. Validation
 
 ### 4.1 Ingredient
@@ -206,7 +239,8 @@ Extend the core entity classes (from 2.1) with **relationship methods**, **valid
 - **Category/family registries:** add_category_recipe / remove_category_recipe; valid_category_recipe_ids(); add_family_inventory / remove_family_inventory; valid_family_inventory_ids().
 - **Restaurant types:** Fixed set (Casual, Rápida, Gourmet, Cafeterías, Cafés); no registry; validation that restaurant_type_id is in the fixed set when setting.
 - **Restaurant:** update_info or update_* sets optional fields (including restaurant_type_id); clear_address / clear_restaurant_type_id / clear_notes etc. set to None; name and id unchanged.
-- **Edge cases:** Empty ingredients list; remove from empty list; duplicate ingredient names allowed or not; remove unit that is in use (document behavior).
+- **User:** add_user / update_user / delete_user only succeed when current_user.role == "admin"; otherwise raise permission error. When a user creates the business profile (Restaurant), that user is assigned role "admin" automatically. Tests: admin can add/update/delete; non-admin cannot.
+- **Edge cases:** Empty ingredients list; remove from empty list; duplicate ingredient names allowed or not; remove unit that is in use; last admin or self-delete (document behavior).
 
 ---
 
@@ -222,7 +256,8 @@ Extend the core entity classes (from 2.1) with **relationship methods**, **valid
 - [ ] **Family inventory:** Registry with add_family_inventory(family), remove_family_inventory(family_id), valid_family_inventory_ids() -> set[int].
 - [ ] **Restaurant types:** Fixed set provided by software (Casual, Rápida, Gourmet, Cafeterías, Cafés); user selects only; no add/remove. Validate restaurant_type_id against this set when updating Restaurant.
 - [ ] **Restaurant:** Add/update optional info (address, restaurant_type_id, notes); clear_* methods to set optional fields to None.
-- [ ] Unit tests for add/remove ingredient, validation, InventoryItem workflow, unit registries, category/family registries, and restaurant info.
+- [ ] **User:** Add, update, delete user. **Workflow:** (1) Only users with role "admin" can create, update, or delete users; otherwise raise permission error. (2) The user who creates the business profile (Restaurant) is automatically assigned the admin role.
+- [ ] Unit tests for add/remove ingredient, validation, InventoryItem workflow, unit registries, category/family registries, restaurant info, and user add/update/delete with admin check.
 - [ ] Docstrings and type hints on new methods.
 
 ---
@@ -232,3 +267,4 @@ Extend the core entity classes (from 2.1) with **relationship methods**, **valid
 - **2.1 plan (section 5b):** When an ingredient added to a recipe is **new**, it is added to inventory as an InventoryItem; **category_id** (perecedero / no perecedero) is **determined by the LLM**. 2.2 implements add_ingredient; the caller (e.g. Structuring agent) calls the LLM to get category_id when the ingredient is new, then creates/links the InventoryItem.
 - **InventoryCategory:** Use `category_id: int` (reference to InventoryCategory.id); validate against allowed ids if a set is provided. No string "perecedero"/"no perecedero" in the API; those are the names of InventoryCategory instances.
 - **RestaurantType:** Restaurant uses `restaurant_type_id: Optional[int]` (reference to RestaurantType.id). Types are a **fixed set provided by the software** (Casual, Rápida, Gourmet, Cafeterías, Cafés). The user **selects** one option only; there is no registry and the user cannot create or remove restaurant types.
+- **User:** Add, update, delete user are in 2.2. **Workflow:** (1) Only **admin** users can create, update, or delete users; enforce by passing current_user and checking role before performing the operation. (2) The **user who created the business profile** (Restaurant) gets **admin** rights automatically when the profile is created.

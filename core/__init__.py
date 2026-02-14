@@ -11,6 +11,7 @@ from core.data_model import (
     RecipeUnit,
     Restaurant,
     RestaurantType,
+    User,
 )
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "RecipeUnit",
     "Restaurant",
     "RestaurantType",
+    "User",
 ]

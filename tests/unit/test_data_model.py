@@ -13,6 +13,7 @@ from core.data_model import (
     RecipeUnit,
     Restaurant,
     RestaurantType,
+    User,
 )
 
 
@@ -75,6 +76,19 @@ class TestRestaurantType(unittest.TestCase):
     def test_instantiation_with_description(self):
         t = RestaurantType(id=2, name="Gourmet", description="Alta cocina")
         self.assertEqual(t.description, "Alta cocina")
+
+
+class TestUser(unittest.TestCase):
+    def test_instantiation(self):
+        u = User(id=1, name="Ana López", email="ana@example.com", role="admin")
+        self.assertEqual(u.id, 1)
+        self.assertEqual(u.name, "Ana López")
+        self.assertEqual(u.email, "ana@example.com")
+        self.assertEqual(u.role, "admin")
+
+    def test_instantiation_user_role(self):
+        u = User(id=2, name="Juan Pérez", email="juan@example.com", role="user")
+        self.assertEqual(u.role, "user")
 
 
 class TestRestaurant(unittest.TestCase):

@@ -1,9 +1,9 @@
 """
 Core entity classes for recipes, inventory, units, and categories.
 
-Defines the foundational data model for Zenet MVP: Restaurant, RestaurantType, Recipe,
-Ingredient, RecipeUnit, InventoryItem, InventoryUnit, FamilyInventory, CategoryRecipe,
-and InventoryCategory.
+Defines the foundational data model for Zenet MVP: Restaurant, RestaurantType, User,
+Recipe, Ingredient, RecipeUnit, InventoryItem, InventoryUnit, FamilyInventory,
+CategoryRecipe, and InventoryCategory.
 """
 
 from dataclasses import dataclass, field
@@ -75,6 +75,20 @@ class Restaurant:
     address: Optional[str] = None
     restaurant_type_id: Optional[int] = None
     notes: Optional[str] = None
+
+
+@dataclass
+class User:
+    """
+    User with name, email, and role.
+    Only the role 'admin' can create, update, and delete users.
+    The person who creates the business profile (restaurant) gets admin rights automatically.
+    """
+
+    id: int
+    name: str
+    email: str
+    role: str
 
 
 @dataclass
