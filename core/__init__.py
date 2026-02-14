@@ -1,29 +1,43 @@
 # Zenet MVP 0.1 — core package
 
 from core.data_model import (
+    ALLOWED_USER_ROLES,
     CategoryRecipe,
+    CategoryRecipeRegistry,
+    DEFAULT_RESTAURANT_TYPES,
     FamilyInventory,
+    FamilyInventoryRegistry,
     Ingredient,
     InventoryCategory,
     InventoryItem,
     InventoryUnit,
+    InventoryUnitRegistry,
     Recipe,
     RecipeUnit,
+    RecipeUnitRegistry,
     Restaurant,
     RestaurantType,
     User,
+    UserRegistry,
 )
 
 __all__ = [
+    "ALLOWED_USER_ROLES",
     "CategoryRecipe",
+    "CategoryRecipeRegistry",
+    "DEFAULT_RESTAURANT_TYPES",
     "FamilyInventory",
+    "FamilyInventoryRegistry",
     "Ingredient",
     "InventoryCategory",
     "InventoryItem",
     "InventoryUnit",
+    "InventoryUnitRegistry",
     "Recipe",
     "RecipeUnit",
+    "RecipeUnitRegistry",
     "Restaurant",
     "RestaurantType",
     "User",
+    "UserRegistry",
 ]
