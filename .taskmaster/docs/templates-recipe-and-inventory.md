@@ -17,7 +17,7 @@ This doc makes the design explicit.
 - **Inventory family template**: predefined set of `FamilyInventory`-like entries (e.g. Lácteos, Granos, Carnes, Verduras, Bebidas) so inventory is structured consistently.
 - **Recipe unit template**: predefined set of `RecipeUnit` entries (e.g. g, kg, ml, L, pza, cucharada, taza) so recipes and ingredients use consistent units from the start.
 - **Inventory unit template**: predefined set of `InventoryUnit` entries (e.g. kg, L, caja, bolsa, pza, litro) so inventory items share the same units and normalization is easier.
-- **Restaurant type** (from Classification) drives which template(s) are suggested; the user selects one (or customizes) in Configuration.
+- **Restaurant type** (from Classification) drives which template(s) are suggested; the user **selects** one in Configuration. Restaurant types are a **fixed set provided by the software** (modeled as `RestaurantType`): **Casual**, **Rápida**, **Gourmet**, **Cafeterías**, **Cafés**. The user cannot create or remove restaurant types.
 
 ---
 
