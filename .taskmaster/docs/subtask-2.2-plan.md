@@ -78,6 +78,15 @@ Extend the core entity classes (from 2.1) with **relationship methods**, **valid
 
 **Implementation option:** Introduce a small class, e.g. `RecipeUnitRegistry`, that holds `units: list[RecipeUnit]` and provides `add(unit)`, `remove(unit_id: int) -> RecipeUnit | None`, `valid_ids() -> set[int]`, and optionally `get(unit_id: int) -> RecipeUnit | None`. Same idea for inventory units.
 
+### 3b.1b. New unit when creating a recipe (auto-add missing recipe unit)
+
+**Workflow:** When the user is creating a new recipe and uses a unit that **does not exist** in the RecipeUnit registry (e.g. they type "2 tazas de harina" and "taza" is not yet a recipe unit), then **once the recipe has been created/saved**, that unit is **automatically added** as a new RecipeUnit in the software.
+
+- **Why it works:** Reduces friction — the user doesn’t have to leave the recipe flow to add a unit in Configuration. Units that weren’t in the template (e.g. "pizca", "taza", "cucharadita") are created on demand when the recipe is saved.
+- **Flow:** (1) User creates a recipe and adds ingredients; for some ingredients they specify a unit by name/symbol that is not yet in the registry. (2) The UI or agent captures that unit (name + symbol) as a "pending" or new unit. (3) When the recipe is finalized/saved, for each ingredient whose unit is not in the registry, the system creates a new `RecipeUnit`, adds it to the RecipeUnitRegistry, and sets the ingredient’s `unit_id` to the new unit’s id. (4) The recipe is then stored with all `unit_id`s resolved.
+- **Implementation notes:** Ingredients may be supplied with either an existing `unit_id` or a provisional (name, symbol) when the unit doesn’t exist yet. The "recipe save" or "finalize recipe" step (in the Structuring agent or recipe service) resolves new units: create RecipeUnit, add to registry, assign id to each such ingredient. Optionally: before creating a new unit, check for an existing one with the same or normalized name/symbol to avoid duplicates (e.g. "taza" vs "tazas").
+- **Add to 2.2:** Yes — document this behavior in the plan and implement the "on recipe save, add any missing recipe units and resolve ingredient.unit_id" logic (in the registry or in the flow that saves the recipe).
+
 ### 3b.2 Inventory units
 
 - **Container:** Same idea as recipe units: a list or registry of `InventoryUnit` instances.
@@ -235,7 +244,7 @@ Extend the core entity classes (from 2.1) with **relationship methods**, **valid
 - **Relationship methods:** Add ingredient → list grows; remove by index and by ingredient; remove missing → no error or return None.
 - **Validation:** quantity <= 0 → ValueError; **ingredient.unit_id not in valid_unit_ids → ValueError** (required); invalid category_id (when provided) → ValueError.
 - **Workflow:** add_ingredient with category_id returns an InventoryItem with correct name, unit_id, category_id; ingredient.inventory_item_id remains unset until caller assigns it.
-- **Unit registries:** add_recipe_unit / remove_recipe_unit (by id); valid_recipe_unit_ids() returns correct set; same for inventory units.
+- **Unit registries:** add_recipe_unit / remove_recipe_unit (by id); valid_recipe_unit_ids() returns correct set; same for inventory units. **Recipe units:** When a recipe is saved with an ingredient whose unit (name/symbol) is not in the registry, that unit is auto-added and ingredient.unit_id resolved.
 - **Category/family registries:** add_category_recipe / remove_category_recipe; valid_category_recipe_ids(); add_family_inventory / remove_family_inventory; valid_family_inventory_ids().
 - **Restaurant types:** Fixed set (Casual, Rápida, Gourmet, Cafeterías, Cafés); no registry; validation that restaurant_type_id is in the fixed set when setting.
 - **Restaurant:** update_info or update_* sets optional fields (including restaurant_type_id); clear_address / clear_restaurant_type_id / clear_notes etc. set to None; name and id unchanged.
@@ -250,7 +259,7 @@ Extend the core entity classes (from 2.1) with **relationship methods**, **valid
 - [ ] add_ingredient **requires** `valid_unit_ids`; validates quantity > 0 and `ingredient.unit_id in valid_unit_ids`; raises on failure.
 - [ ] When category_id is provided, add_ingredient returns an InventoryItem for the caller to add to inventory.
 - [ ] Recipe helpers: at least ingredient_count(); optional has_ingredient / get_ingredient_by_name.
-- [ ] **Recipe units:** Registry with add_recipe_unit(unit), remove_recipe_unit(unit_id), valid_recipe_unit_ids() -> set[int].
+- [ ] **Recipe units:** Registry with add_recipe_unit(unit), remove_recipe_unit(unit_id), valid_recipe_unit_ids() -> set[int]. **On recipe save:** if an ingredient uses a unit not in the registry, auto-add that unit as a new RecipeUnit and resolve ingredient.unit_id.
 - [ ] **Inventory units:** Registry with add_inventory_unit(unit), remove_inventory_unit(unit_id), valid_inventory_unit_ids() -> set[int].
 - [ ] **Category recipes:** Registry with add_category_recipe(category), remove_category_recipe(category_id), valid_category_recipe_ids() -> set[int].
 - [ ] **Family inventory:** Registry with add_family_inventory(family), remove_family_inventory(family_id), valid_family_inventory_ids() -> set[int].

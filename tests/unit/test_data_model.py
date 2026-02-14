@@ -156,6 +156,7 @@ class TestIngredient(unittest.TestCase):
 class TestRecipe(unittest.TestCase):
     def test_instantiation_empty_ingredients(self):
         r = Recipe(
+            id=0,
             name="Pasta Carbonara",
             description="Clásica pasta italiana",
             steps=["Paso 1", "Paso 2"],
@@ -164,12 +165,13 @@ class TestRecipe(unittest.TestCase):
         self.assertEqual(r.name, "Pasta Carbonara")
         self.assertEqual(r.category_id, 1)
         self.assertEqual(r.ingredients, [])
-        self.assertIsNone(r.id)
+        self.assertEqual(r.id, 0)
 
     def test_instantiation_with_ingredients(self):
         ing1 = Ingredient(name="Pasta", quantity=200.0, unit_id=1)
         ing2 = Ingredient(name="Huevo", quantity=2.0, unit_id=2)
         r = Recipe(
+            id=0,
             name="Pasta",
             description="Desc",
             steps=["Cocer pasta"],
@@ -183,19 +185,19 @@ class TestRecipe(unittest.TestCase):
 
     def test_recipe_ingredients_default_factory(self):
         """Each recipe gets its own list; mutating one does not affect another."""
-        r1 = Recipe("A", "Desc A", [], category_id=1)
-        r2 = Recipe("B", "Desc B", [], category_id=1)
+        r1 = Recipe(0, "A", "Desc A", [], 1)
+        r2 = Recipe(0, "B", "Desc B", [], 1)
         r1.ingredients.append(Ingredient("X", 1.0, 1))
         self.assertEqual(len(r1.ingredients), 1)
         self.assertEqual(len(r2.ingredients), 0)
 
-    def test_recipe_with_optional_id(self):
+    def test_recipe_required_id(self):
         r = Recipe(
+            id=42,
             name="R",
             description="D",
             steps=[],
             category_id=1,
-            id=42,
         )
         self.assertEqual(r.id, 42)
 
@@ -209,6 +211,7 @@ class TestRecipeIngredientRelationship(unittest.TestCase):
             Ingredient("Sal", 10.0, 2),
         ]
         recipe = Recipe(
+            id=0,
             name="Caldo",
             description="Caldo simple",
             steps=["Hervir agua", "Añadir sal"],

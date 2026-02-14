@@ -118,11 +118,14 @@ class Ingredient:
 
 @dataclass
 class Recipe:
-    """Recipe with name, description, steps, category, and list of ingredients."""
+    """
+    Recipe with name, description, steps, category, and list of ingredients.
+    id is required; use 0 for a new recipe not yet persisted (persistence layer assigns a real id on save).
+    """
 
+    id: int
     name: str
     description: str
     steps: list[str]
     category_id: int
     ingredients: list[Ingredient] = field(default_factory=list)
-    id: Optional[int] = None
