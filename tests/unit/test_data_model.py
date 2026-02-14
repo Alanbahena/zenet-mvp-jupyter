@@ -5,6 +5,7 @@ import unittest
 from core.data_model import (
     CategoryRecipe,
     CategoryRecipeRegistry,
+    DEFAULT_INVENTORY_CATEGORIES,
     DEFAULT_RESTAURANT_TYPES,
     FamilyInventory,
     FamilyInventoryRegistry,
@@ -316,6 +317,19 @@ class TestRecipeAddIngredient(unittest.TestCase):
             )
         self.assertIn("valid_family_inventory_ids", str(ctx.exception))
 
+    def test_add_ingredient_invalid_category_id_raises(self):
+        recipe = Recipe(0, "R", "D", [], 1)
+        ing = Ingredient("Leche", 100.0, 1)
+        with self.assertRaises(ValueError) as ctx:
+            recipe.add_ingredient(
+                ing, {1},
+                category_id=99,
+                unit_id_for_inventory=1,
+                valid_inventory_unit_ids={1},
+            )
+        self.assertIn("category_id", str(ctx.exception))
+        self.assertIn("Perecedero", str(ctx.exception))
+
 
 class TestRecipeRemoveIngredient(unittest.TestCase):
     def test_remove_by_index(self):
@@ -432,11 +446,33 @@ class TestInventoryItemUpdateFamilyId(unittest.TestCase):
         self.assertIn("valid_ids", str(ctx.exception))
 
 
+class TestInventoryItemUpdateCategoryId(unittest.TestCase):
+    def test_update_category_id_default_valid_ids(self):
+        item = InventoryItem(1, "Leche", 1, 1)
+        item.update_category_id(2)  # No perecedero; valid_ids=None uses fixed set {1, 2}
+        self.assertEqual(item.category_id, 2)
+
+    def test_update_category_id_invalid_raises(self):
+        item = InventoryItem(1, "Leche", 1, 1)
+        with self.assertRaises(ValueError) as ctx:
+            item.update_category_id(99)
+        self.assertIn("valid_ids", str(ctx.exception))
+
+
 class TestDEFAULT_RESTAURANT_TYPES(unittest.TestCase):
     def test_five_types(self):
         self.assertEqual(len(DEFAULT_RESTAURANT_TYPES), 5)
         ids = {t.id for t in DEFAULT_RESTAURANT_TYPES}
         self.assertEqual(ids, {1, 2, 3, 4, 5})
+
+
+class TestDEFAULT_INVENTORY_CATEGORIES(unittest.TestCase):
+    def test_two_categories_perecedero_no_perecedero(self):
+        self.assertEqual(len(DEFAULT_INVENTORY_CATEGORIES), 2)
+        ids = {c.id for c in DEFAULT_INVENTORY_CATEGORIES}
+        names = {c.name for c in DEFAULT_INVENTORY_CATEGORIES}
+        self.assertEqual(ids, {1, 2})
+        self.assertEqual(names, {"Perecedero", "No perecedero"})
 
 
 # --- Registries (2.2) ---

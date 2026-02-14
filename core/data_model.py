@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 # Allowed roles for User (2.2 validation)
-ALLOWED_USER_ROLES = frozenset({"admin", "user"})
+ALLOWED_USER_ROLES = frozenset({"admin", "mesero", "cocinero", "inventario"})
 
 
 @dataclass
@@ -60,11 +60,23 @@ class FamilyInventory:
 
 @dataclass
 class InventoryCategory:
-    """Category for inventory items by perishability (e.g. perecedero, no perecedero)."""
+    """Category for inventory items by perishability (perecedero, no perecedero)."""
 
     id: int
     name: str
     description: Optional[str] = None
+
+
+# Fixed inventory categories (user selects only; no add/remove)
+DEFAULT_INVENTORY_CATEGORIES = (
+    InventoryCategory(1, "Perecedero", None),
+    InventoryCategory(2, "No perecedero", None),
+)
+
+
+def _valid_inventory_category_ids() -> set[int]:
+    """Return valid inventory category ids from the fixed set (for validation)."""
+    return {c.id for c in DEFAULT_INVENTORY_CATEGORIES}
 
 
 @dataclass
@@ -159,6 +171,14 @@ class InventoryItem:
             raise ValueError(f"family_id must be in valid_ids, got {family_id}")
         self.family_id = family_id
 
+    def update_category_id(
+        self, category_id: int, valid_ids: Optional[set[int]] = None
+    ) -> None:
+        ids = valid_ids if valid_ids is not None else _valid_inventory_category_ids()
+        if category_id not in ids:
+            raise ValueError(f"category_id must be in valid_ids, got {category_id}")
+        self.category_id = category_id
+
 
 @dataclass
 class Ingredient:
@@ -204,6 +224,10 @@ class Recipe:
             )
         new_item: Optional[InventoryItem] = None
         if category_id is not None:
+            if category_id not in _valid_inventory_category_ids():
+                raise ValueError(
+                    f"category_id must be one of {sorted(_valid_inventory_category_ids())} (Perecedero / No perecedero)"
+                )
             if valid_inventory_unit_ids is None:
                 raise ValueError(
                     "valid_inventory_unit_ids required when category_id is provided"
