@@ -209,6 +209,132 @@ def get_family_inventory_template(restaurant_type_id: int) -> tuple[FamilyInvent
     return _FAMILY_INVENTORY_TEMPLATES.get(restaurant_type_id, ())
 
 
+# Recipe unit templates by restaurant type (id=0 means template; assign real id when applying).
+# Use get_recipe_unit_template(restaurant_type_id) to obtain the tuple for a given type.
+_RECIPE_UNIT_TEMPLATES: dict[int, tuple[RecipeUnit, ...]] = {
+    1: (  # Casual
+        RecipeUnit(0, "gramo", "g", None),
+        RecipeUnit(0, "kilogramo", "kg", None),
+        RecipeUnit(0, "mililitro", "ml", None),
+        RecipeUnit(0, "litro", "L", None),
+        RecipeUnit(0, "pieza", "pza", None),
+        RecipeUnit(0, "cucharada", "cda", None),
+        RecipeUnit(0, "cucharadita", "cdta", None),
+        RecipeUnit(0, "taza", "taza", None),
+    ),
+    2: (  # Rápida
+        RecipeUnit(0, "gramo", "g", None),
+        RecipeUnit(0, "kilogramo", "kg", None),
+        RecipeUnit(0, "mililitro", "ml", None),
+        RecipeUnit(0, "litro", "L", None),
+        RecipeUnit(0, "pieza", "pza", None),
+        RecipeUnit(0, "porción", "porc", None),
+    ),
+    3: (  # Gourmet
+        RecipeUnit(0, "gramo", "g", None),
+        RecipeUnit(0, "kilogramo", "kg", None),
+        RecipeUnit(0, "mililitro", "ml", None),
+        RecipeUnit(0, "litro", "L", None),
+        RecipeUnit(0, "pieza", "pza", None),
+        RecipeUnit(0, "cucharada", "cda", None),
+        RecipeUnit(0, "cucharadita", "cdta", None),
+        RecipeUnit(0, "taza", "taza", None),
+        RecipeUnit(0, "onza", "oz", None),
+    ),
+    4: (  # Cafeterías
+        RecipeUnit(0, "gramo", "g", None),
+        RecipeUnit(0, "kilogramo", "kg", None),
+        RecipeUnit(0, "mililitro", "ml", None),
+        RecipeUnit(0, "litro", "L", None),
+        RecipeUnit(0, "pieza", "pza", None),
+        RecipeUnit(0, "taza", "taza", None),
+        RecipeUnit(0, "cucharada", "cda", None),
+    ),
+    5: (  # Cafés
+        RecipeUnit(0, "gramo", "g", None),
+        RecipeUnit(0, "mililitro", "ml", None),
+        RecipeUnit(0, "litro", "L", None),
+        RecipeUnit(0, "pieza", "pza", None),
+        RecipeUnit(0, "taza", "taza", None),
+        RecipeUnit(0, "shot", "shot", None),
+    ),
+}
+
+
+def get_recipe_unit_template(restaurant_type_id: int) -> tuple[RecipeUnit, ...]:
+    """Return the default recipe unit template for the given restaurant type.
+    Returns empty tuple if restaurant_type_id is not in the template map.
+    Template units use id=0; assign real ids when adding to a registry."""
+    valid_ids = _valid_restaurant_type_ids()
+    if restaurant_type_id not in valid_ids:
+        return ()
+    return _RECIPE_UNIT_TEMPLATES.get(restaurant_type_id, ())
+
+
+# Inventory unit templates by restaurant type (id=0 means template; assign real id when applying).
+# base_unit_id=None and factor_to_base=1.0 for all; equivalences can be set when applying to registry.
+# Use get_inventory_unit_template(restaurant_type_id) to obtain the tuple for a given type.
+_INVENTORY_UNIT_TEMPLATES: dict[int, tuple[InventoryUnit, ...]] = {
+    1: (  # Casual
+        InventoryUnit(0, "kilogramo", "kg", None, None, 1.0),
+        InventoryUnit(0, "gramo", "g", None, None, 1.0),
+        InventoryUnit(0, "litro", "L", None, None, 1.0),
+        InventoryUnit(0, "mililitro", "ml", None, None, 1.0),
+        InventoryUnit(0, "pieza", "pza", None, None, 1.0),
+        InventoryUnit(0, "caja", "caja", None, None, 1.0),
+        InventoryUnit(0, "bolsa", "bolsa", None, None, 1.0),
+        InventoryUnit(0, "bote", "bote", None, None, 1.0),
+    ),
+    2: (  # Rápida
+        InventoryUnit(0, "kilogramo", "kg", None, None, 1.0),
+        InventoryUnit(0, "gramo", "g", None, None, 1.0),
+        InventoryUnit(0, "litro", "L", None, None, 1.0),
+        InventoryUnit(0, "mililitro", "ml", None, None, 1.0),
+        InventoryUnit(0, "pieza", "pza", None, None, 1.0),
+        InventoryUnit(0, "caja", "caja", None, None, 1.0),
+        InventoryUnit(0, "paquete", "pkg", None, None, 1.0),
+    ),
+    3: (  # Gourmet
+        InventoryUnit(0, "kilogramo", "kg", None, None, 1.0),
+        InventoryUnit(0, "gramo", "g", None, None, 1.0),
+        InventoryUnit(0, "litro", "L", None, None, 1.0),
+        InventoryUnit(0, "mililitro", "ml", None, None, 1.0),
+        InventoryUnit(0, "pieza", "pza", None, None, 1.0),
+        InventoryUnit(0, "caja", "caja", None, None, 1.0),
+        InventoryUnit(0, "botella", "bot", None, None, 1.0),
+    ),
+    4: (  # Cafeterías
+        InventoryUnit(0, "kilogramo", "kg", None, None, 1.0),
+        InventoryUnit(0, "gramo", "g", None, None, 1.0),
+        InventoryUnit(0, "litro", "L", None, None, 1.0),
+        InventoryUnit(0, "mililitro", "ml", None, None, 1.0),
+        InventoryUnit(0, "pieza", "pza", None, None, 1.0),
+        InventoryUnit(0, "caja", "caja", None, None, 1.0),
+        InventoryUnit(0, "bolsa", "bolsa", None, None, 1.0),
+    ),
+    5: (  # Cafés
+        InventoryUnit(0, "kilogramo", "kg", None, None, 1.0),
+        InventoryUnit(0, "gramo", "g", None, None, 1.0),
+        InventoryUnit(0, "litro", "L", None, None, 1.0),
+        InventoryUnit(0, "mililitro", "ml", None, None, 1.0),
+        InventoryUnit(0, "pieza", "pza", None, None, 1.0),
+        InventoryUnit(0, "caja", "caja", None, None, 1.0),
+        InventoryUnit(0, "bote", "bote", None, None, 1.0),
+    ),
+}
+
+
+def get_inventory_unit_template(restaurant_type_id: int) -> tuple[InventoryUnit, ...]:
+    """Return the default inventory unit template for the given restaurant type.
+    Returns empty tuple if restaurant_type_id is not in the template map.
+    Template units use id=0; assign real ids when adding to a registry.
+    Equivalences (base_unit_id, factor_to_base) can be set when applying to a registry."""
+    valid_ids = _valid_restaurant_type_ids()
+    if restaurant_type_id not in valid_ids:
+        return ()
+    return _INVENTORY_UNIT_TEMPLATES.get(restaurant_type_id, ())
+
+
 @dataclass
 class Restaurant:
     """Top-level entity: basic restaurant information."""
