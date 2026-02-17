@@ -149,6 +149,8 @@ Create `core/normalization.py` with unit conversion and normalization using **In
 
 **Design choice:** `InventoryUnit` and `InventoryUnitRegistry` are unchanged. Global default (e.g. 1 Caja = 10 kg) remains on the unit; item-specific overrides live in `InventoryUnitEquivalenceRegistry`. Lookup order: item-specific first, then unit’s chain.
 
+**Caller responsibility when creating items with non-standard units:** When creating a new inventory item whose unit is non-standard (e.g. via `Recipe.add_ingredient(..., unit_requires_equivalence=True, equivalence_base_unit_id=..., equivalence_factor_to_base=...)` or a direct “Add inventory item” flow), the model only validates the equivalence parameters. The caller must: (1) persist the new `InventoryItem` and obtain its assigned id; (2) call `InventoryUnitEquivalenceRegistry.add(InventoryUnitEquivalence(unit_id=..., inventory_item_id=<new_item_id>, base_unit_id=..., factor_to_base=...), unit_registry)` so that normalization can use the item-specific conversion. This is also documented in `Recipe.add_ingredient`’s docstring.
+
 **Tests:** `tests/unit/test_data_model.py` — InventoryUnitEquivalence instantiation; InventoryUnitEquivalenceRegistry add/get/remove, duplicate and invalid unit_id/base_unit_id. `tests/unit/test_normalization.py` — to_base_quantity with inventory_item_id and equivalence_registry (same unit, different items, different factors); normalize_recipe_for_deduction with equivalence_registry (two ingredients, same unit, different item-specific factors).
 
 ---

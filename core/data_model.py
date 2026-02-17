@@ -30,6 +30,8 @@ class InventoryUnit:
     """
     Unit of measure used for inventory (e.g. kg, L, caja, bolsa).
     Optional equivalence: base_unit_id and factor_to_base (e.g. 1 Caja = 10 kg).
+    is_standard: True for official units (kg, g, L, ml, pza); False for contextual
+    units (caja, bolsa, bote) that require a conversion (global or per-item).
     """
 
     id: int
@@ -38,6 +40,7 @@ class InventoryUnit:
     description: Optional[str] = None
     base_unit_id: Optional[int] = None
     factor_to_base: float = 1.0
+    is_standard: bool = True
 
 
 @dataclass
@@ -275,53 +278,54 @@ def get_recipe_unit_template(restaurant_type_id: int) -> tuple[RecipeUnit, ...]:
 
 # Inventory unit templates by restaurant type (id=0 means template; assign real id when applying).
 # base_unit_id=None and factor_to_base=1.0 for all; equivalences can be set when applying to registry.
+# is_standard: True for kg, g, L, ml, pza; False for caja, bolsa, bote, etc. (require conversion).
 # Use get_inventory_unit_template(restaurant_type_id) to obtain the tuple for a given type.
 _INVENTORY_UNIT_TEMPLATES: dict[int, tuple[InventoryUnit, ...]] = {
     1: (  # Casual
-        InventoryUnit(0, "kilogramo", "kg", None, None, 1.0),
-        InventoryUnit(0, "gramo", "g", None, None, 1.0),
-        InventoryUnit(0, "litro", "L", None, None, 1.0),
-        InventoryUnit(0, "mililitro", "ml", None, None, 1.0),
-        InventoryUnit(0, "pieza", "pza", None, None, 1.0),
-        InventoryUnit(0, "caja", "caja", None, None, 1.0),
-        InventoryUnit(0, "bolsa", "bolsa", None, None, 1.0),
-        InventoryUnit(0, "bote", "bote", None, None, 1.0),
+        InventoryUnit(0, "kilogramo", "kg", None, None, 1.0, True),
+        InventoryUnit(0, "gramo", "g", None, None, 1.0, True),
+        InventoryUnit(0, "litro", "L", None, None, 1.0, True),
+        InventoryUnit(0, "mililitro", "ml", None, None, 1.0, True),
+        InventoryUnit(0, "pieza", "pza", None, None, 1.0, True),
+        InventoryUnit(0, "caja", "caja", None, None, 1.0, False),
+        InventoryUnit(0, "bolsa", "bolsa", None, None, 1.0, False),
+        InventoryUnit(0, "bote", "bote", None, None, 1.0, False),
     ),
     2: (  # Rápida
-        InventoryUnit(0, "kilogramo", "kg", None, None, 1.0),
-        InventoryUnit(0, "gramo", "g", None, None, 1.0),
-        InventoryUnit(0, "litro", "L", None, None, 1.0),
-        InventoryUnit(0, "mililitro", "ml", None, None, 1.0),
-        InventoryUnit(0, "pieza", "pza", None, None, 1.0),
-        InventoryUnit(0, "caja", "caja", None, None, 1.0),
-        InventoryUnit(0, "paquete", "pkg", None, None, 1.0),
+        InventoryUnit(0, "kilogramo", "kg", None, None, 1.0, True),
+        InventoryUnit(0, "gramo", "g", None, None, 1.0, True),
+        InventoryUnit(0, "litro", "L", None, None, 1.0, True),
+        InventoryUnit(0, "mililitro", "ml", None, None, 1.0, True),
+        InventoryUnit(0, "pieza", "pza", None, None, 1.0, True),
+        InventoryUnit(0, "caja", "caja", None, None, 1.0, False),
+        InventoryUnit(0, "paquete", "pkg", None, None, 1.0, False),
     ),
     3: (  # Gourmet
-        InventoryUnit(0, "kilogramo", "kg", None, None, 1.0),
-        InventoryUnit(0, "gramo", "g", None, None, 1.0),
-        InventoryUnit(0, "litro", "L", None, None, 1.0),
-        InventoryUnit(0, "mililitro", "ml", None, None, 1.0),
-        InventoryUnit(0, "pieza", "pza", None, None, 1.0),
-        InventoryUnit(0, "caja", "caja", None, None, 1.0),
-        InventoryUnit(0, "botella", "bot", None, None, 1.0),
+        InventoryUnit(0, "kilogramo", "kg", None, None, 1.0, True),
+        InventoryUnit(0, "gramo", "g", None, None, 1.0, True),
+        InventoryUnit(0, "litro", "L", None, None, 1.0, True),
+        InventoryUnit(0, "mililitro", "ml", None, None, 1.0, True),
+        InventoryUnit(0, "pieza", "pza", None, None, 1.0, True),
+        InventoryUnit(0, "caja", "caja", None, None, 1.0, False),
+        InventoryUnit(0, "botella", "bot", None, None, 1.0, False),
     ),
     4: (  # Cafeterías
-        InventoryUnit(0, "kilogramo", "kg", None, None, 1.0),
-        InventoryUnit(0, "gramo", "g", None, None, 1.0),
-        InventoryUnit(0, "litro", "L", None, None, 1.0),
-        InventoryUnit(0, "mililitro", "ml", None, None, 1.0),
-        InventoryUnit(0, "pieza", "pza", None, None, 1.0),
-        InventoryUnit(0, "caja", "caja", None, None, 1.0),
-        InventoryUnit(0, "bolsa", "bolsa", None, None, 1.0),
+        InventoryUnit(0, "kilogramo", "kg", None, None, 1.0, True),
+        InventoryUnit(0, "gramo", "g", None, None, 1.0, True),
+        InventoryUnit(0, "litro", "L", None, None, 1.0, True),
+        InventoryUnit(0, "mililitro", "ml", None, None, 1.0, True),
+        InventoryUnit(0, "pieza", "pza", None, None, 1.0, True),
+        InventoryUnit(0, "caja", "caja", None, None, 1.0, False),
+        InventoryUnit(0, "bolsa", "bolsa", None, None, 1.0, False),
     ),
     5: (  # Cafés
-        InventoryUnit(0, "kilogramo", "kg", None, None, 1.0),
-        InventoryUnit(0, "gramo", "g", None, None, 1.0),
-        InventoryUnit(0, "litro", "L", None, None, 1.0),
-        InventoryUnit(0, "mililitro", "ml", None, None, 1.0),
-        InventoryUnit(0, "pieza", "pza", None, None, 1.0),
-        InventoryUnit(0, "caja", "caja", None, None, 1.0),
-        InventoryUnit(0, "bote", "bote", None, None, 1.0),
+        InventoryUnit(0, "kilogramo", "kg", None, None, 1.0, True),
+        InventoryUnit(0, "gramo", "g", None, None, 1.0, True),
+        InventoryUnit(0, "litro", "L", None, None, 1.0, True),
+        InventoryUnit(0, "mililitro", "ml", None, None, 1.0, True),
+        InventoryUnit(0, "pieza", "pza", None, None, 1.0, True),
+        InventoryUnit(0, "caja", "caja", None, None, 1.0, False),
+        InventoryUnit(0, "bote", "bote", None, None, 1.0, False),
     ),
 }
 
@@ -389,6 +393,13 @@ class InventoryItem:
     """
     One inventory item; unit of measure via unit_id (InventoryUnit).
     category_id references InventoryCategory (e.g. perecedero, no perecedero).
+
+    The unit (InventoryUnit) may be standard (kg, g, L, ml, pza) or non-standard
+    (caja, bolsa, bote, etc.). When non-standard, conversion to base quantities
+    can use an item-specific equivalence from InventoryUnitEquivalenceRegistry
+    keyed by (unit_id, inventory_item_id). Callers that create items with
+    non-standard units must register the equivalence after persisting the item
+    (see Recipe.add_ingredient docstring for the flow).
     """
 
     id: int
@@ -447,7 +458,26 @@ class Recipe:
         family_id: Optional[int] = None,
         valid_inventory_unit_ids: Optional[set[int]] = None,
         valid_family_inventory_ids: Optional[set[int]] = None,
+        unit_requires_equivalence: bool = False,
+        equivalence_base_unit_id: Optional[int] = None,
+        equivalence_factor_to_base: Optional[float] = None,
     ) -> Optional[InventoryItem]:
+        """Add an ingredient to this recipe.
+
+        When category_id is provided, a new InventoryItem is built (id=0) and returned
+        for the caller to persist. If unit_requires_equivalence is True, the caller
+        must after persisting the item call
+        InventoryUnitEquivalenceRegistry.add(
+            InventoryUnitEquivalence(
+                unit_id=unit_id_for_inventory,
+                inventory_item_id=<new_item_id>,
+                base_unit_id=equivalence_base_unit_id,
+                factor_to_base=equivalence_factor_to_base,
+            ),
+            unit_registry,
+        )
+        so that normalization can convert quantities for this item correctly.
+        """
         if not (ingredient.name or "").strip():
             raise ValueError("ingredient.name must be non-empty")
         if not math.isfinite(ingredient.quantity) or ingredient.quantity <= 0:
@@ -470,6 +500,19 @@ class Recipe:
                 raise ValueError(
                     "unit_id_for_inventory required and must be in valid_inventory_unit_ids when creating new InventoryItem"
                 )
+            if unit_requires_equivalence:
+                if equivalence_base_unit_id is None or equivalence_factor_to_base is None:
+                    raise ValueError(
+                        "equivalence_base_unit_id and equivalence_factor_to_base required when unit_requires_equivalence is True"
+                    )
+                if equivalence_base_unit_id not in valid_inventory_unit_ids:
+                    raise ValueError(
+                        f"equivalence_base_unit_id {equivalence_base_unit_id} must be in valid_inventory_unit_ids"
+                    )
+                if not math.isfinite(equivalence_factor_to_base) or equivalence_factor_to_base <= 0:
+                    raise ValueError(
+                        "equivalence_factor_to_base must be finite and > 0"
+                    )
             if family_id is not None:
                 if valid_family_inventory_ids is None or family_id not in valid_family_inventory_ids:
                     raise ValueError(
@@ -662,7 +705,12 @@ class InventoryUnitEquivalence:
 
 
 class InventoryUnitEquivalenceRegistry:
-    """Registry of item-specific unit equivalences. Key: (unit_id, inventory_item_id)."""
+    """Registry of item-specific unit equivalences. Key: (unit_id, inventory_item_id).
+
+    When creating a new inventory item that uses a non-standard unit, the caller
+    must persist the item, then add an equivalence here with the new item's id
+    (see Recipe.add_ingredient docstring for the full flow).
+    """
 
     def __init__(self) -> None:
         self._entries: dict[tuple[int, int], InventoryUnitEquivalence] = {}
