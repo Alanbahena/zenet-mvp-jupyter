@@ -148,6 +148,13 @@ flowchart LR
 
 ![Recipe to deduction flow](images/normalization-04-recipe-to-deduction.png)
 
+### Recipe unit vs inventory unit (same vs different dimension)
+
+Deduction is always in the **inventory item's unit**. How we get there depends on whether the recipe unit and item unit are in the same dimension:
+
+- **Same dimension** (e.g. recipe "2 cajas", item in kg): The fallback path converts via the unit chain and optional item-specific equivalence (e.g. 1 caja = 5 kg). No conversion table entry is required.
+- **Different dimension** (e.g. recipe "1 tortilla" in pza, item stored in kg): The unit chain cannot convert pza to kg (different roots). A **recipe-unit conversion table** entry is required (e.g. "1 pza = 0.05 kg" for that item). Without it, the ingredient is skipped and no deduction line is produced.
+
 ---
 
 ## 5. External dependencies

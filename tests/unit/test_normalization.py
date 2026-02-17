@@ -337,8 +337,8 @@ class TestNormalizeRecipeForDeduction(unittest.TestCase):
         unit_reg = _make_registry_kg_g()
         tbl = RecipeUnitConversionRegistry()
 
-        def resolve(ing: Ingredient) -> tuple[int, Optional[int]]:
-            return (0, None)
+        def resolve(ing: Ingredient) -> tuple[int, Optional[int], int]:
+            return (0, None, 1)
 
         result = normalize_recipe_for_deduction(
             recipe, fam_reg, unit_reg, tbl, resolve
@@ -355,8 +355,8 @@ class TestNormalizeRecipeForDeduction(unittest.TestCase):
             Ingredient("quinoa", 2.0, 1, None),
         ])
 
-        def resolve(ing: Ingredient) -> tuple[int, Optional[int]]:
-            return (101, 1)
+        def resolve(ing: Ingredient) -> tuple[int, Optional[int], int]:
+            return (101, 1, 1)
 
         result = normalize_recipe_for_deduction(
             recipe, fam_reg, unit_reg, tbl, resolve
@@ -374,25 +374,24 @@ class TestNormalizeRecipeForDeduction(unittest.TestCase):
             Ingredient("mystery", 1.0, 99, None),
         ])
 
-        def resolve(ing: Ingredient) -> tuple[int, Optional[int]]:
-            return (102, 1)
+        def resolve(ing: Ingredient) -> tuple[int, Optional[int], int]:
+            return (102, 1, 1)
 
         result = normalize_recipe_for_deduction(
             recipe, fam_reg, unit_reg, tbl, resolve
         )
         self.assertEqual(len(result), 0)
 
-    def test_fallback_family_base_when_unit_in_registry(self):
+    def test_fallback_to_item_unit_when_unit_in_registry(self):
         unit_reg = _make_registry_kg_g()
         tbl = RecipeUnitConversionRegistry()
         fam_reg = FamilyInventoryRegistry()
-        fam_reg.add(FamilyInventory(1, "Carnes", None, 1))
         recipe = Recipe(1, "Test", "", [], 1, ingredients=[
             Ingredient("pollo", 150.0, 1, 201),
         ])
-        # unit_id 1 = g, family base = 1 (g), so 150 g -> 150 g
-        def resolve(ing: Ingredient) -> tuple[int, Optional[int]]:
-            return (201, 1)
+        # item 201 has unit_id 1 (g); 150 g -> 150 g in item's unit
+        def resolve(ing: Ingredient) -> tuple[int, Optional[int], int]:
+            return (201, 1, 1)
 
         result = normalize_recipe_for_deduction(
             recipe, fam_reg, unit_reg, tbl, resolve
@@ -416,13 +415,14 @@ class TestNormalizeRecipeForDeduction(unittest.TestCase):
         )
         tbl = RecipeUnitConversionRegistry()
         fam_reg = FamilyInventoryRegistry()
-        fam_reg.add(FamilyInventory(1, "Frutas", None, 1))
+        fam_reg = FamilyInventoryRegistry()
         recipe = Recipe(1, "Test", "", [], 1, ingredients=[
             Ingredient("fresas", 1.0, 3, 201),
             Ingredient("naranjas", 1.0, 3, 202),
         ])
-        def resolve(ing: Ingredient) -> tuple[int, Optional[int]]:
-            return (ing.inventory_item_id or 0, 1)
+        # items 201 and 202 use unit_id 1 (g); equivalence gives 1 caja -> 2 g and 10 g
+        def resolve(ing: Ingredient) -> tuple[int, Optional[int], int]:
+            return (ing.inventory_item_id or 0, 1, 1)
 
         result = normalize_recipe_for_deduction(
             recipe, fam_reg, unit_reg, tbl, resolve,

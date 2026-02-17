@@ -2,8 +2,10 @@
 Unit conversion and normalization for inventory deduction (subtask 2.3).
 
 Provides: to_base_quantity / from_base_quantity for InventoryUnit chains;
-family base unit resolution; recipe-unit conversion table application;
-normalized recipe (list per recipe for deduction on order).
+get_family_base_unit_id (optional, e.g. for reporting); recipe-unit conversion table;
+normalized recipe (list of deduction lines, each in the inventory item's own unit).
+Deduction uses per-item unit (not a single family base) so items in the same family
+can use different units (e.g. kg for meat, pza for eggs).
 """
 
 from __future__ import annotations
@@ -273,7 +275,13 @@ class RecipeUnitConversionEntry:
 
 
 class RecipeUnitConversionRegistry:
-    """Registry of recipe-unit -> (quantity, base_unit_id) for unofficial units (scoop, cucharada, etc.)."""
+    """Registry of recipe-unit -> (quantity, base_unit_id) for unofficial units (scoop, cucharada, etc.).
+
+    Required when the recipe unit and the inventory item's unit are in different dimensions
+    (e.g. recipe "1 tortilla" in pza, item stored in kg). Add an entry such as
+    "1 pza = 0.05 kg" for that inventory_item_id (or context) so normalize_recipe_for_deduction
+    can output a deduction line in kg.
+    """
 
     def __init__(self) -> None:
         self._entries: dict[tuple[int, Optional[int], Optional[int]], RecipeUnitConversionEntry] = {}
@@ -343,7 +351,7 @@ def normalize_recipe_unit_quantity(
 
 # --- Step 2.3.8: Normalized recipe for deduction ----------------------------
 
-DeductionLine = tuple[int, float, int]  # (inventory_item_id, normalized_quantity, base_unit_id)
+DeductionLine = tuple[int, float, int]  # (inventory_item_id, normalized_quantity, unit_id)
 
 
 def normalize_recipe_for_deduction(
@@ -351,23 +359,34 @@ def normalize_recipe_for_deduction(
     family_registry: FamilyInventoryRegistry,
     unit_registry: InventoryUnitRegistry,
     conversion_table: RecipeUnitConversionRegistry,
-    resolve_ingredient_to_inventory: Callable[[Ingredient], tuple[int, Optional[int]]],
+    resolve_ingredient_to_inventory: Callable[[Ingredient], tuple[int, Optional[int], int]],
     *,
     equivalence_registry: Optional[InventoryUnitEquivalenceRegistry] = None,
 ) -> list[DeductionLine]:
-    """Produce the normalized recipe: list of (inventory_item_id, normalized_quantity, base_unit_id).
+    """Produce the normalized recipe: list of (inventory_item_id, normalized_quantity, unit_id).
 
-    For each ingredient, resolves to (inventory_item_id, family_id) via resolve_ingredient_to_inventory.
-    Then normalizes using conversion table (recipe unit -> quantity, base_unit_id) or family base.
-    When equivalence_registry is provided, item-specific unit equivalences (e.g. 1 box strawberries
-    = 2 kg, 1 box oranges = 10 kg) are used in the fallback path. Ingredients that cannot be
-    normalized are skipped. Returns "consumo teórico por platillo" for one order of this recipe.
+    Each line is expressed in the inventory item's own unit (not a family-wide base), so items
+    in the same family can use different units (e.g. kg for meat, pza for eggs).
+    Resolver returns (inventory_item_id, family_id, item_unit_id). We normalize using the
+    conversion table (recipe unit -> quantity, base_unit_id) then convert to item_unit_id,
+    or fallback: convert ingredient quantity to item_unit_id via unit chain and optional
+    equivalence_registry. Ingredients that cannot be normalized are skipped.
+    Returns "consumo teórico por platillo" for one order of this recipe.
+
+    Recipe unit vs inventory unit (same vs different dimension):
+    - Same dimension (e.g. recipe "2 cajas", item in kg): fallback converts via unit chain
+      and optional equivalence_registry (e.g. 1 caja = 5 kg). No conversion table entry needed.
+    - Different dimension (e.g. recipe "1 tortilla" in pza, item stored in kg): a conversion
+      table entry is required (e.g. "1 pza = 0.05 kg" for that item). Without it, the
+      ingredient is skipped because pza and kg have different roots.
     """
     result: list[DeductionLine] = []
     for ing in recipe.ingredients:
         try:
-            inventory_item_id, family_id = resolve_ingredient_to_inventory(ing)
+            inventory_item_id, family_id, item_unit_id = resolve_ingredient_to_inventory(ing)
         except (ValueError, KeyError):
+            continue
+        if unit_registry.get(item_unit_id) is None:
             continue
         try:
             norm_qty, base_unit_id = normalize_recipe_unit_quantity(
@@ -378,19 +397,25 @@ def normalize_recipe_for_deduction(
                 conversion_table,
                 unit_registry,
             )
-            result.append((inventory_item_id, norm_qty, base_unit_id))
+            if base_unit_id == item_unit_id:
+                result.append((inventory_item_id, norm_qty, item_unit_id))
+            else:
+                try:
+                    qty_in_item_unit = convert_quantity(
+                        norm_qty, base_unit_id, item_unit_id, unit_registry
+                    )
+                    result.append((inventory_item_id, qty_in_item_unit, item_unit_id))
+                except ValueError:
+                    continue
         except ValueError:
-            # Fallback: if ingredient.unit_id is in unit_registry (inventory unit) and family has base, convert to family base
-            base_uid = get_family_base_unit_id(family_id, family_registry, unit_registry)
-            if base_uid is None:
-                continue
+            # Fallback: ingredient.unit_id is in unit_registry; convert to item's unit
             if unit_registry.get(ing.unit_id) is None:
-                continue  # recipe-only unit, no conversion table entry and not in inventory registry
+                continue
             try:
                 root_ing = _root_base_unit_id(ing.unit_id, unit_registry)
-                root_base = _root_base_unit_id(base_uid, unit_registry)
-                if root_ing != root_base:
-                    continue  # incompatible dimensions
+                root_item = _root_base_unit_id(item_unit_id, unit_registry)
+                if root_ing != root_item:
+                    continue
                 base_qty = to_base_quantity_by_id(
                     ing.quantity,
                     ing.unit_id,
@@ -398,8 +423,10 @@ def normalize_recipe_for_deduction(
                     inventory_item_id=inventory_item_id,
                     equivalence_registry=equivalence_registry,
                 )
-                norm_qty = from_base_quantity_by_id(base_qty, base_uid, unit_registry)
-                result.append((inventory_item_id, norm_qty, base_uid))
+                norm_qty = from_base_quantity_by_id(
+                    base_qty, item_unit_id, unit_registry
+                )
+                result.append((inventory_item_id, norm_qty, item_unit_id))
             except ValueError:
                 continue
     return result
