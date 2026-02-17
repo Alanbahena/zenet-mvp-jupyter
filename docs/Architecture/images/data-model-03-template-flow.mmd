@@ -1,0 +1,9 @@
+flowchart LR
+    RT[RestaurantType id 1..5] --> get_category_recipe_template
+    RT --> get_family_inventory_template
+    RT --> get_recipe_unit_template
+    RT --> get_inventory_unit_template
+    get_category_recipe_template --> CR[CategoryRecipe tuple]
+    get_family_inventory_template --> FI[FamilyInventory tuple]
+    get_recipe_unit_template --> RU[RecipeUnit tuple]
+    get_inventory_unit_template --> IU[InventoryUnit tuple]

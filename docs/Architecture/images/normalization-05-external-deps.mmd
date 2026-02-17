@@ -1,0 +1,28 @@
+flowchart TB
+    subgraph external["From core.data_model"]
+        Recipe
+        Ingredient
+        InventoryUnit
+        InventoryUnitRegistry
+        FamilyInventoryRegistry
+    end
+
+    subgraph normalization_module["core.normalization"]
+        to_base_quantity
+        from_base_quantity
+        convert_quantity
+        get_family_base_unit_id
+        RecipeUnitConversionRegistry
+        normalize_recipe_unit_quantity
+        normalize_recipe_for_deduction
+    end
+
+    InventoryUnit --> to_base_quantity
+    InventoryUnitRegistry --> to_base_quantity
+    InventoryUnitRegistry --> from_base_quantity
+    InventoryUnitRegistry --> convert_quantity
+    FamilyInventoryRegistry --> get_family_base_unit_id
+    InventoryUnitRegistry --> get_family_base_unit_id
+    Recipe --> normalize_recipe_for_deduction
+    Ingredient --> normalize_recipe_for_deduction
+    resolve["resolve_ingredient_to_inventory (callable)"] --> normalize_recipe_for_deduction

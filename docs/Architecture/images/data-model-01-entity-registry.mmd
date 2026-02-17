@@ -1,0 +1,45 @@
+flowchart TB
+    subgraph fixed["Fixed / templates (by RestaurantType)"]
+        RT[RestaurantType]
+        IC[InventoryCategory]
+        T[CategoryRecipe template]
+        T2[FamilyInventory template]
+        T3[RecipeUnit template]
+        T4[InventoryUnit template]
+    end
+
+    subgraph entities["Core entities"]
+        R[Restaurant]
+        U[User]
+        Rec[Recipe]
+        Ing[Ingredient]
+        II[InventoryItem]
+        RU[RecipeUnit]
+        IU[InventoryUnit]
+        CR[CategoryRecipe]
+        FI[FamilyInventory]
+    end
+
+    subgraph registries["Registries (add/remove/valid_ids/get)"]
+        RUR[RecipeUnitRegistry]
+        IUR[InventoryUnitRegistry]
+        CRR[CategoryRecipeRegistry]
+        FIR[FamilyInventoryRegistry]
+        UR[UserRegistry]
+    end
+
+    R -->|restaurant_type_id| RT
+    Rec -->|category_id| CR
+    Rec -->|ingredients| Ing
+    Ing -->|unit_id| RU
+    Ing -.->|inventory_item_id| II
+    II -->|unit_id| IU
+    II -->|category_id| IC
+    II -.->|family_id| FI
+    U -->|role| ROLES[admin, mesero, cocinero, inventario]
+
+    RUR -.->|stores| RU
+    IUR -.->|stores| IU
+    CRR -.->|stores| CR
+    FIR -.->|stores| FI
+    UR -.->|stores| U

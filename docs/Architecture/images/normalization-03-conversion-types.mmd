@@ -1,0 +1,19 @@
+classDiagram
+    class RecipeUnitConversionKey {
+        <<frozen dataclass>>
+        +int recipe_unit_id
+        +int? family_id
+        +int? inventory_item_id
+    }
+    class RecipeUnitConversionEntry {
+        +float quantity
+        +int base_unit_id
+    }
+    class RecipeUnitConversionRegistry {
+        -dict key~Entry _entries
+        +add(recipe_unit_id, quantity, base_unit_id, family_id?, inventory_item_id?)
+        +get(recipe_unit_id, family_id?, inventory_item_id?) Optional~Entry~
+    }
+
+    RecipeUnitConversionRegistry ..> RecipeUnitConversionEntry : stores
+    RecipeUnitConversionRegistry ..> RecipeUnitConversionKey : key as tuple

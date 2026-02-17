@@ -51,11 +51,13 @@ class CategoryRecipe:
 
 @dataclass
 class FamilyInventory:
-    """Grouping of inventory items (e.g. Lácteos, Granos, Carnes)."""
+    """Grouping of inventory items (e.g. Lácteos, Granos, Carnes).
+    base_unit_id designates the inventory unit used for deduction (e.g. g, ml, pza)."""
 
     id: int
     name: str
     description: Optional[str] = None
+    base_unit_id: Optional[int] = None
 
 
 @dataclass

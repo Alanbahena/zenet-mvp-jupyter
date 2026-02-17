@@ -25,6 +25,19 @@ from core.data_model import (
     User,
     UserRegistry,
 )
+from core.normalization import (
+    convert_quantity,
+    DeductionLine,
+    from_base_quantity,
+    from_base_quantity_by_id,
+    get_family_base_unit_id,
+    normalize_recipe_for_deduction,
+    normalize_recipe_unit_quantity,
+    RecipeUnitConversionEntry,
+    RecipeUnitConversionRegistry,
+    to_base_quantity,
+    to_base_quantity_by_id,
+)
 
 __all__ = [
     "ALLOWED_USER_ROLES",
@@ -50,4 +63,15 @@ __all__ = [
     "RestaurantType",
     "User",
     "UserRegistry",
+    "convert_quantity",
+    "DeductionLine",
+    "from_base_quantity",
+    "from_base_quantity_by_id",
+    "get_family_base_unit_id",
+    "normalize_recipe_for_deduction",
+    "normalize_recipe_unit_quantity",
+    "RecipeUnitConversionEntry",
+    "RecipeUnitConversionRegistry",
+    "to_base_quantity",
+    "to_base_quantity_by_id",
 ]
