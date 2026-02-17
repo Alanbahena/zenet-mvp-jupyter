@@ -225,6 +225,30 @@ class TestConvertQuantity(unittest.TestCase):
             convert_quantity(1.0, 2, 11, reg)
         self.assertIn("incompatible", str(ctx.exception).lower())
 
+    def test_convert_quantity_with_item_equivalence_uses_item_specific_factor(self):
+        """With inventory_item_id and equivalence_registry, from_unit uses item-specific conversion."""
+        reg = InventoryUnitRegistry()
+        reg.add(InventoryUnit(1, "gramo", "g", None, None, 1.0))
+        reg.add(InventoryUnit(2, "kilogramo", "kg", None, 1, 1000.0))
+        reg.add(InventoryUnit(3, "caja", "caja", None, 2, 10.0))  # global: 1 caja = 10 kg
+        eq_reg = InventoryUnitEquivalenceRegistry()
+        eq_reg.add(
+            InventoryUnitEquivalence(unit_id=3, inventory_item_id=101, base_unit_id=2, factor_to_base=2.0),
+            reg,
+        )  # item 101: 1 caja = 2 kg
+        # Without item: 1 caja -> 10 kg -> 10_000 g
+        self.assertEqual(convert_quantity(1.0, 3, 1, reg), 10000.0)
+        # With item 101: 1 caja -> 2 kg -> 2000 g
+        self.assertEqual(
+            convert_quantity(1.0, 3, 1, reg, inventory_item_id=101, equivalence_registry=eq_reg),
+            2000.0,
+        )
+        # Same item, convert to kg: 1 caja -> 2 kg
+        self.assertEqual(
+            convert_quantity(1.0, 3, 2, reg, inventory_item_id=101, equivalence_registry=eq_reg),
+            2.0,
+        )
+
 
 class TestGetFamilyBaseUnitId(unittest.TestCase):
     def test_family_with_base_returns_id(self):

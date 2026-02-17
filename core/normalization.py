@@ -201,10 +201,16 @@ def convert_quantity(
     from_unit_id: int,
     to_unit_id: int,
     registry: InventoryUnitRegistry,
+    *,
+    inventory_item_id: Optional[int] = None,
+    equivalence_registry: Optional[InventoryUnitEquivalenceRegistry] = None,
 ) -> float:
     """Convert quantity between two units that share the same root base.
 
     If the two units have different root bases (e.g. kg vs L), raises ValueError.
+    Optional inventory_item_id and equivalence_registry apply when converting
+    from_unit_id to base (e.g. 1 caja strawberries = 2 kg); the step from base
+    to to_unit_id uses the unit chain only.
     """
     if not math.isfinite(quantity):
         raise ValueError("quantity must be finite")
@@ -215,7 +221,13 @@ def convert_quantity(
             f"incompatible units: from_unit_id {from_unit_id} (root {root_from}) "
             f"and to_unit_id {to_unit_id} (root {root_to})"
         )
-    base_qty = to_base_quantity_by_id(quantity, from_unit_id, registry)
+    base_qty = to_base_quantity_by_id(
+        quantity,
+        from_unit_id,
+        registry,
+        inventory_item_id=inventory_item_id,
+        equivalence_registry=equivalence_registry,
+    )
     return from_base_quantity_by_id(base_qty, to_unit_id, registry)
 
 
