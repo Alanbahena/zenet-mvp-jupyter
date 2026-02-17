@@ -645,6 +645,66 @@ class InventoryUnitRegistry:
         return None
 
 
+# --- Item-specific inventory unit equivalence (e.g. 1 box strawberries ≠ 1 box oranges) ---
+
+@dataclass(frozen=True)
+class InventoryUnitEquivalence:
+    """Per-inventory-item equivalence: for this unit and item, 1 unit = factor_to_base in base_unit_id.
+
+    Example: (unit_id=Caja, inventory_item_id=Strawberries) -> base_unit_id=kg, factor_to_base=2.0
+    means 1 box of strawberries = 2 kg.
+    """
+
+    unit_id: int
+    inventory_item_id: int
+    base_unit_id: int
+    factor_to_base: float
+
+
+class InventoryUnitEquivalenceRegistry:
+    """Registry of item-specific unit equivalences. Key: (unit_id, inventory_item_id)."""
+
+    def __init__(self) -> None:
+        self._entries: dict[tuple[int, int], InventoryUnitEquivalence] = {}
+
+    def add(
+        self,
+        equivalence: InventoryUnitEquivalence,
+        unit_registry: InventoryUnitRegistry,
+    ) -> None:
+        if equivalence.factor_to_base <= 0:
+            raise ValueError("factor_to_base must be > 0")
+        if unit_registry.get(equivalence.unit_id) is None:
+            raise ValueError(
+                f"unit_id {equivalence.unit_id} not found in unit registry"
+            )
+        if unit_registry.get(equivalence.base_unit_id) is None:
+            raise ValueError(
+                f"base_unit_id {equivalence.base_unit_id} not found in unit registry"
+            )
+        if equivalence.unit_id == equivalence.base_unit_id and equivalence.factor_to_base != 1.0:
+            raise ValueError(
+                "when unit_id == base_unit_id, factor_to_base must be 1.0"
+            )
+        key = (equivalence.unit_id, equivalence.inventory_item_id)
+        if key in self._entries:
+            raise ValueError(
+                f"duplicate equivalence for (unit_id={equivalence.unit_id}, "
+                f"inventory_item_id={equivalence.inventory_item_id})"
+            )
+        self._entries[key] = equivalence
+
+    def get(
+        self,
+        unit_id: int,
+        inventory_item_id: int,
+    ) -> Optional[InventoryUnitEquivalence]:
+        return self._entries.get((unit_id, inventory_item_id))
+
+    def remove(self, unit_id: int, inventory_item_id: int) -> Optional[InventoryUnitEquivalence]:
+        return self._entries.pop((unit_id, inventory_item_id), None)
+
+
 class CategoryRecipeRegistry:
     """Registry of CategoryRecipe instances; validates on add, guards on remove."""
 

@@ -131,6 +131,25 @@ Create `core/normalization.py` with unit conversion and normalization using **In
 - [ ] normalize_recipe_for_deduction(recipe, ...) implemented; returns list of (inventory_item_id, normalized_quantity, base_unit_id) for deduction on order; tests for single/multiple ingredients and edge cases.
 - [ ] Exports added in core/__init__.py.
 - [ ] tests/unit/test_normalization.py added with good coverage.
+- [ ] Item-specific inventory unit equivalence (see below) implemented and tested.
+
+---
+
+## Item-specific inventory unit equivalence
+
+**Goal:** The same unit label (e.g. “Caja”) can have different conversion factors depending on the **inventory item** (e.g. 1 box strawberries = 2 kg, 1 box oranges = 10 kg).
+
+**Data model (`core/data_model.py`):**
+- **`InventoryUnitEquivalence`** (frozen dataclass): `unit_id`, `inventory_item_id`, `base_unit_id`, `factor_to_base`. One row per (unit, item) override.
+- **`InventoryUnitEquivalenceRegistry`**: `add(equivalence, unit_registry)`, `get(unit_id, inventory_item_id)`, `remove(unit_id, inventory_item_id)`. Validates unit_id and base_unit_id exist in unit_registry; factor_to_base > 0; no duplicate (unit_id, inventory_item_id).
+
+**Normalization (`core/normalization.py`):**
+- **`to_base_quantity`** / **`from_base_quantity`** (and **`to_base_quantity_by_id`** / **`from_base_quantity_by_id`**): Optional kwargs `inventory_item_id` and `equivalence_registry`. When both are provided and an equivalence exists for (unit.id, inventory_item_id), use that row for the first conversion step; otherwise use the unit’s built-in `base_unit_id` / `factor_to_base` chain.
+- **`normalize_recipe_for_deduction`**: Optional parameter **`equivalence_registry`**. In the fallback path (inventory unit → family base), pass `inventory_item_id` and `equivalence_registry` into `to_base_quantity_by_id` so that “1 box strawberries” and “1 box oranges” yield different normalized quantities when equivalences are registered.
+
+**Design choice:** `InventoryUnit` and `InventoryUnitRegistry` are unchanged. Global default (e.g. 1 Caja = 10 kg) remains on the unit; item-specific overrides live in `InventoryUnitEquivalenceRegistry`. Lookup order: item-specific first, then unit’s chain.
+
+**Tests:** `tests/unit/test_data_model.py` — InventoryUnitEquivalence instantiation; InventoryUnitEquivalenceRegistry add/get/remove, duplicate and invalid unit_id/base_unit_id. `tests/unit/test_normalization.py` — to_base_quantity with inventory_item_id and equivalence_registry (same unit, different items, different factors); normalize_recipe_for_deduction with equivalence_registry (two ingredients, same unit, different item-specific factors).
 
 ---
 
