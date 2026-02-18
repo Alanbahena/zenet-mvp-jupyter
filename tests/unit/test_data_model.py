@@ -15,6 +15,8 @@ from core.data_model import (
     InventoryCategory,
     InventoryItem,
     InventoryUnit,
+    InventoryUnitEquivalence,
+    InventoryUnitEquivalenceRegistry,
     InventoryUnitRegistry,
     Recipe,
     RecipeUnit,
@@ -52,6 +54,18 @@ class TestInventoryUnit(unittest.TestCase):
         )
         self.assertEqual(u.base_unit_id, 1)
         self.assertEqual(u.factor_to_base, 10.0)
+
+    def test_is_standard_default_true(self):
+        u = InventoryUnit(id=1, name="litro", symbol="L")
+        self.assertTrue(u.is_standard)
+
+    def test_is_standard_explicit_true(self):
+        u = InventoryUnit(id=1, name="kg", symbol="kg", is_standard=True)
+        self.assertTrue(u.is_standard)
+
+    def test_is_standard_explicit_false(self):
+        u = InventoryUnit(id=1, name="caja", symbol="caja", is_standard=False)
+        self.assertFalse(u.is_standard)
 
 
 class TestCategoryRecipe(unittest.TestCase):
@@ -332,6 +346,93 @@ class TestRecipeAddIngredient(unittest.TestCase):
         self.assertIn("category_id", str(ctx.exception))
         self.assertIn("Perecedero", str(ctx.exception))
 
+    def test_add_ingredient_new_item_standard_unit_no_equivalence(self):
+        """Creating new item with standard unit does not require equivalence args."""
+        recipe = Recipe(0, "R", "D", [], 1)
+        ing = Ingredient("Harina", 500.0, 1)
+        valid_units = {1}
+        valid_inv_units = {1, 2}
+        new_item = recipe.add_ingredient(
+            ing,
+            valid_units,
+            category_id=1,
+            unit_id_for_inventory=1,
+            valid_inventory_unit_ids=valid_inv_units,
+            unit_requires_equivalence=False,
+        )
+        self.assertIsNotNone(new_item)
+        self.assertEqual(new_item.unit_id, 1)
+        self.assertEqual(len(recipe.ingredients), 1)
+
+    def test_add_ingredient_new_item_non_standard_unit_without_equivalence_raises(self):
+        """Creating new item with unit_requires_equivalence=True but no equivalence args raises."""
+        recipe = Recipe(0, "R", "D", [], 1)
+        ing = Ingredient("Fresas", 2.0, 1)
+        valid_units = {1}
+        valid_inv_units = {1, 2}  # 1=kg, 2=caja
+        with self.assertRaises(ValueError) as ctx:
+            recipe.add_ingredient(
+                ing,
+                valid_units,
+                category_id=1,
+                unit_id_for_inventory=2,
+                valid_inventory_unit_ids=valid_inv_units,
+                unit_requires_equivalence=True,
+            )
+        self.assertIn("equivalence_base_unit_id", str(ctx.exception))
+        self.assertIn("equivalence_factor_to_base", str(ctx.exception))
+
+    def test_add_ingredient_new_item_non_standard_unit_with_valid_equivalence_succeeds(self):
+        """Creating new item with unit_requires_equivalence=True and valid equivalence args succeeds."""
+        recipe = Recipe(0, "R", "D", [], 1)
+        ing = Ingredient("Fresas", 2.0, 1)
+        valid_units = {1}
+        valid_inv_units = {1, 2}  # 1=kg (base), 2=caja
+        new_item = recipe.add_ingredient(
+            ing,
+            valid_units,
+            category_id=1,
+            unit_id_for_inventory=2,
+            valid_inventory_unit_ids=valid_inv_units,
+            unit_requires_equivalence=True,
+            equivalence_base_unit_id=1,
+            equivalence_factor_to_base=5.0,
+        )
+        self.assertIsNotNone(new_item)
+        self.assertEqual(new_item.unit_id, 2)
+        self.assertEqual(len(recipe.ingredients), 1)
+
+    def test_add_ingredient_equivalence_base_unit_id_not_in_valid_raises(self):
+        recipe = Recipe(0, "R", "D", [], 1)
+        ing = Ingredient("Fresas", 1.0, 1)
+        with self.assertRaises(ValueError) as ctx:
+            recipe.add_ingredient(
+                ing, {1},
+                category_id=1,
+                unit_id_for_inventory=2,
+                valid_inventory_unit_ids={1, 2},
+                unit_requires_equivalence=True,
+                equivalence_base_unit_id=99,
+                equivalence_factor_to_base=5.0,
+            )
+        self.assertIn("equivalence_base_unit_id", str(ctx.exception))
+        self.assertIn("valid_inventory_unit_ids", str(ctx.exception))
+
+    def test_add_ingredient_equivalence_factor_invalid_raises(self):
+        recipe = Recipe(0, "R", "D", [], 1)
+        ing = Ingredient("Fresas", 1.0, 1)
+        with self.assertRaises(ValueError) as ctx:
+            recipe.add_ingredient(
+                ing, {1},
+                category_id=1,
+                unit_id_for_inventory=2,
+                valid_inventory_unit_ids={1, 2},
+                unit_requires_equivalence=True,
+                equivalence_base_unit_id=1,
+                equivalence_factor_to_base=0.0,
+            )
+        self.assertIn("equivalence_factor_to_base", str(ctx.exception))
+
 
 class TestRecipeRemoveIngredient(unittest.TestCase):
     def test_remove_by_index(self):
@@ -565,6 +666,93 @@ class TestInventoryUnitRegistry(unittest.TestCase):
         items = [InventoryItem(1, "X", 1, 1)]
         with self.assertRaises(ValueError):
             reg.remove(1, inventory_items=items)
+
+
+class TestInventoryUnitEquivalence(unittest.TestCase):
+    def test_instantiation(self):
+        eq = InventoryUnitEquivalence(
+            unit_id=3,
+            inventory_item_id=101,
+            base_unit_id=1,
+            factor_to_base=2.0,
+        )
+        self.assertEqual(eq.unit_id, 3)
+        self.assertEqual(eq.inventory_item_id, 101)
+        self.assertEqual(eq.base_unit_id, 1)
+        self.assertEqual(eq.factor_to_base, 2.0)
+
+
+class TestInventoryUnitEquivalenceRegistry(unittest.TestCase):
+    def _unit_registry(self):
+        reg = InventoryUnitRegistry()
+        reg.add(InventoryUnit(1, "gramo", "g"))
+        reg.add(InventoryUnit(2, "kilogramo", "kg", base_unit_id=1, factor_to_base=1000.0))
+        reg.add(InventoryUnit(3, "caja", "caja"))
+        return reg
+
+    def test_add_and_get(self):
+        unit_reg = self._unit_registry()
+        eq_reg = InventoryUnitEquivalenceRegistry()
+        eq = InventoryUnitEquivalence(
+            unit_id=3, inventory_item_id=10, base_unit_id=1, factor_to_base=2.0
+        )
+        eq_reg.add(eq, unit_reg)
+        self.assertIs(eq_reg.get(3, 10), eq)
+        self.assertIsNone(eq_reg.get(3, 99))
+        self.assertIsNone(eq_reg.get(2, 10))
+
+    def test_add_duplicate_raises(self):
+        unit_reg = self._unit_registry()
+        eq_reg = InventoryUnitEquivalenceRegistry()
+        eq = InventoryUnitEquivalence(
+            unit_id=3, inventory_item_id=10, base_unit_id=1, factor_to_base=2.0
+        )
+        eq_reg.add(eq, unit_reg)
+        with self.assertRaises(ValueError) as ctx:
+            eq_reg.add(eq, unit_reg)
+        self.assertIn("duplicate", str(ctx.exception))
+
+    def test_add_invalid_unit_id_raises(self):
+        unit_reg = self._unit_registry()
+        eq_reg = InventoryUnitEquivalenceRegistry()
+        eq = InventoryUnitEquivalence(
+            unit_id=99, inventory_item_id=10, base_unit_id=1, factor_to_base=2.0
+        )
+        with self.assertRaises(ValueError) as ctx:
+            eq_reg.add(eq, unit_reg)
+        self.assertIn("unit_id", str(ctx.exception))
+
+    def test_add_invalid_base_unit_id_raises(self):
+        unit_reg = self._unit_registry()
+        eq_reg = InventoryUnitEquivalenceRegistry()
+        eq = InventoryUnitEquivalence(
+            unit_id=3, inventory_item_id=10, base_unit_id=99, factor_to_base=2.0
+        )
+        with self.assertRaises(ValueError) as ctx:
+            eq_reg.add(eq, unit_reg)
+        self.assertIn("base_unit_id", str(ctx.exception))
+
+    def test_add_factor_to_base_zero_raises(self):
+        unit_reg = self._unit_registry()
+        eq_reg = InventoryUnitEquivalenceRegistry()
+        eq = InventoryUnitEquivalence(
+            unit_id=3, inventory_item_id=10, base_unit_id=1, factor_to_base=0.0
+        )
+        with self.assertRaises(ValueError) as ctx:
+            eq_reg.add(eq, unit_reg)
+        self.assertIn("factor_to_base", str(ctx.exception))
+
+    def test_remove(self):
+        unit_reg = self._unit_registry()
+        eq_reg = InventoryUnitEquivalenceRegistry()
+        eq = InventoryUnitEquivalence(
+            unit_id=3, inventory_item_id=10, base_unit_id=1, factor_to_base=2.0
+        )
+        eq_reg.add(eq, unit_reg)
+        removed = eq_reg.remove(3, 10)
+        self.assertIs(removed, eq)
+        self.assertIsNone(eq_reg.get(3, 10))
+        self.assertIsNone(eq_reg.remove(3, 10))
 
 
 class TestGetCategoryRecipeTemplate(unittest.TestCase):
