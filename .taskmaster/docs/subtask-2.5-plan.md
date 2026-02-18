@@ -23,6 +23,12 @@ Subtask 2.5 depends on 2.2 (entity relationships and registries), 2.3 (normaliza
 
 ---
 
+## Link to taxonomy (core/taxonomy.py)
+
+The goal mentions integrating **data_model**, **normalization**, and **taxonomy**. The current 2.5 implementation integrates data_model and normalization only; it does not import or use taxonomy. Taxonomy remains a separate semantic layer that callers populate and keep in sync with registries (see subtask-2.4-plan.md). This is intentional: format, validation, and resolver helpers do not require taxonomy. Optional future addition: helpers that accept a taxonomy (e.g. `get_related_inventory_items_for_display(item_id, inventory_taxonomy, item_registry)`) for UI or agents.
+
+---
+
 ## Step 2.5.1 — Module skeleton and format: normalized → display
 
 - **Deliverable:** Create `core/data_model_utils.py` with minimal imports from `data_model` and `normalization`.
@@ -101,7 +107,21 @@ Subtask 2.5 depends on 2.2 (entity relationships and registries), 2.3 (normaliza
 
 ---
 
+## When to use data_model_utils
+
+- **Display:** Use `format_deduction_line_for_display`, `format_ingredient_for_display`, and `ingredients_to_display` when showing deduction lines or recipe ingredients in UI or reports.
+- **Validation:** Use `validate_ingredient_with_registries` before adding an ingredient (e.g. in forms); use `validate_recipe_for_deduction` before running deduction or to show issues to the user.
+- **Resolvers:** Use `resolve_ingredient_to_inventory_item` and `make_resolver_from_item_registry` when calling `normalize_recipe_for_deduction` with an `InventoryItemRegistry`.
+- **Factories:** Use `create_inventory_item_from_ingredient` when creating a new inventory item from an ingredient outside `Recipe.add_ingredient`; use `build_ingredient` for consistent Ingredient construction.
+
+Consider updating `docs/Architecture/architecture-data-model.md` to reference `core.data_model_utils` and these use cases.
+
+---
+
 ## Optional (later)
 
-- Deeper validation in `validate_recipe_for_deduction`: check that normalization would succeed (e.g. conversion table or same-dimension path) and report which ingredients would be skipped.
-- Parsing richer input (e.g. "2 tazas de harina") with unit and ingredient resolution; currently limited to "quantity unit_symbol" with one token.
+- **Deeper validation** in `validate_recipe_for_deduction`: check that normalization would succeed (e.g. conversion table or same-dimension path) and report which ingredients would be skipped.
+- **Parsing** richer input (e.g. "2 tazas de harina") with unit and ingredient resolution; currently limited to "quantity unit_symbol" with one token.
+- **`validate_inventory_item_with_registries(item, valid_category_ids, valid_unit_ids, valid_family_ids=None) -> list[str]`** — Entity-level validation for an InventoryItem (name non-empty, category_id and unit_id in valid sets, optional family_id). Useful when creating items from the inventory section before calling `item_registry.add()`.
+- **`format_deduction_lines_for_display(lines, unit_registry, item_registry) -> list[str]`** — Batch version: map each DeductionLine to a display string (convenience for "consumo teórico" report or UI).
+- **Taxonomy helpers** — e.g. get related inventory items for an ingredient or item for display (requires passing InventoryTaxonomy or IngredientTaxonomy into data_model_utils).
