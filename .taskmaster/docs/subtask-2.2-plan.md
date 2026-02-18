@@ -39,7 +39,8 @@ Extend the core entity classes (from 2.1) with **relationship methods**, **valid
 
 ### 3.1 `add_ingredient(ingredient: Ingredient, valid_unit_ids: set[int], ...)`
 
-- **Required:** Append `ingredient` to `self.ingredients`.
+- **Duplicate ingredient by name:** If the recipe already has an ingredient with the same name (case-insensitive), **replace** the existing one (update quantity and unit_id) and return `None` (no new InventoryItem). Otherwise append and continue.
+- **Required (when not replacing):** Append `ingredient` to `self.ingredients`.
 - **Validation before adding (all required):**
   - **`ingredient.name`** must be non-empty after stripping whitespace; raise `ValueError` otherwise.
   - `ingredient.quantity > 0` and **finite** (reject `math.inf`, `-math.inf`, `math.nan`); raise `ValueError` otherwise.
@@ -159,6 +160,11 @@ Extend the core entity classes (from 2.1) with **relationship methods**, **valid
 
 - Same pattern as unit registries: separate classes `CategoryRecipeRegistry` and `FamilyInventoryRegistry` in `data_model.py`. The Configuration agent or restaurant context holds one instance of each; templates can seed them with default categories and families.
 
+### 3d.4 Inventory item registry (post-2.2 extension)
+
+- **InventoryItemRegistry** is the canonical place for inventory items. Items can be created from (1) the recipe flow — when `Recipe.add_ingredient(..., category_id=...)` returns a new `InventoryItem`, the caller adds it with `inventory_item_registry.add(new_item)` — and (2) the inventory section (user creates an item from the form). **Validation on add:** Unique name (case-insensitive); raise `ValueError` on duplicate name. Reject duplicate id when `item.id != 0`; reject empty name and invalid `category_id`. **Remove:** `remove(item_id, recipes=None)`; when `recipes` is provided, block removal if any recipe has an ingredient whose name matches the item (case-insensitive). **API:** `add(item)`, `get(item_id)`, `get_by_name(name)`, `valid_ids()`, `list_all()`, `remove(item_id, recipes=None)`.
+- **Recipe duplicate-ingredient validator:** In `Recipe.add_ingredient`, if an ingredient with the same name (case-insensitive) already exists, **replace** the existing ingredient (update quantity and unit_id) and return `None` (no new InventoryItem). Otherwise append and return new InventoryItem when category_id is provided.
+
 ---
 
 ## 3e. Restaurant types: fixed options (no registry)
@@ -228,10 +234,10 @@ Extend the core entity classes (from 2.1) with **relationship methods**, **valid
 
 **Rule:** When an ingredient added to a recipe is **new** (not already in inventory), it is added to the inventory as an InventoryItem. The **category_id** (perecedero / no perecedero) is **defined by the LLM model**.
 
-- **When ingredient is new:** The caller (e.g. Structuring agent) (1) calls the **LLM** to classify the ingredient as perecedero or no perecedero and gets the corresponding InventoryCategory id, (2) calls `add_ingredient(ingredient, valid_unit_ids, category_id=<from LLM>, ...)`, (3) receives the new InventoryItem, adds it to the restaurant’s inventory, and sets `ingredient.inventory_item_id`. If the ingredient already exists in inventory, link to the existing InventoryItem (no LLM call, no new InventoryItem).
+- **When ingredient is new:** The caller (e.g. Structuring agent) (1) calls the **LLM** to classify the ingredient as perecedero or no perecedero and gets the corresponding InventoryCategory id, (2) calls `add_ingredient(ingredient, valid_unit_ids, category_id=<from LLM>, ...)`, (3) receives the new InventoryItem (or `None` if the ingredient name was a duplicate — see duplicate-ingredient validator below), and when not None adds it to **InventoryItemRegistry** with `inventory_item_registry.add(new_item)` (and sets `ingredient.inventory_item_id` after persistence assigns an id). If the ingredient already exists in inventory, link to the existing InventoryItem (no LLM call, no new InventoryItem).
 - **Inputs:** ingredient (name non-empty, quantity finite and > 0, unit_id), **category_id** (obtained from LLM when ingredient is new), **unit_id_for_inventory** (required: from valid_inventory_unit_ids), **valid_inventory_unit_ids** (required when category_id provided), optional family_id (if provided, **valid_family_inventory_ids** required and family_id must be in it). Unit of the new InventoryItem is **unit_id_for_inventory**, not ingredient.unit_id.
-- **Output:** When new and category_id and unit_id_for_inventory provided, new `InventoryItem(id=0, name=ingredient.name, unit_id=unit_id_for_inventory, category_id=..., family_id=...)`. Caller assigns a real id, appends to inventory, sets `ingredient.inventory_item_id`.
-- **No “restaurant” inside Recipe:** Recipe does not hold a reference to Restaurant or to an inventory list; the caller is responsible for storing the returned InventoryItem and linking it.
+- **Output:** When the ingredient name is new and category_id and unit_id_for_inventory provided, new `InventoryItem(id=0, name=ingredient.name, unit_id=unit_id_for_inventory, category_id=..., family_id=...)`. Caller adds it to **InventoryItemRegistry**, assigns a real id (at persistence), sets `ingredient.inventory_item_id`. When the recipe already has an ingredient with the same name (case-insensitive), `add_ingredient` updates that ingredient and returns `None`.
+- **No “restaurant” inside Recipe:** Recipe does not hold a reference to Restaurant or to an inventory list; the caller is responsible for storing the returned InventoryItem in **InventoryItemRegistry** and linking it.
 
 ---
 
@@ -279,6 +285,7 @@ Extend the core entity classes (from 2.1) with **relationship methods**, **valid
 - [ ] **Inventory units:** Registry with add_inventory_unit(unit) — reject duplicate id/symbol, non-empty name/symbol; remove_inventory_unit(unit_id) — block if in use; valid_inventory_unit_ids() -> set[int]. **InventoryUnit** has optional `base_unit_id` and `factor_to_base`; registry validates no cycles and factor_to_base > 0.
 - [ ] **Category recipes:** Registry with add_category_recipe(category) — reject duplicate id/name, non-empty name; remove_category_recipe(category_id) — block if category in use; valid_category_recipe_ids() -> set[int]. Recipe.category_id validated when set.
 - [ ] **Family inventory:** Registry with add_family_inventory(family) — reject duplicate id/name, non-empty name; remove_family_inventory(family_id) — block if family in use; valid_family_inventory_ids() -> set[int].
+- [ ] **Inventory item registry:** InventoryItemRegistry with add(item), get(item_id), get_by_name(name), valid_ids(), list_all(), remove(item_id, recipes=None). On add: unique name (case-insensitive), reject empty name and invalid category_id; on remove with recipes: block if any recipe uses the item by name. Recipe add_ingredient: duplicate ingredient by name (case-insensitive) → replace existing (quantity, unit_id) and return None.
 - [ ] **Restaurant types:** Fixed set provided by software (Casual, Rápida, Gourmet, Cafeterías, Cafés); user selects only; no add/remove. Validate restaurant_type_id against this set when updating Restaurant.
 - [ ] **Restaurant:** Add/update optional info (address, restaurant_type_id, notes); clear_* methods to set optional fields to None.
 - [ ] **User:** Add, update, delete user. **Workflow:** (1) Only users with role "admin" can create, update, or delete users; otherwise raise permission error. (2) The user who creates the business profile (Restaurant) is automatically assigned the admin role. **Validation:** name and email non-empty; email format valid; role in allowed set (e.g. {"admin", "user"}).

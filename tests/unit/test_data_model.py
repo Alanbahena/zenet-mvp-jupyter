@@ -14,6 +14,7 @@ from core.data_model import (
     Ingredient,
     InventoryCategory,
     InventoryItem,
+    InventoryItemRegistry,
     InventoryUnit,
     InventoryUnitEquivalence,
     InventoryUnitEquivalenceRegistry,
@@ -432,6 +433,33 @@ class TestRecipeAddIngredient(unittest.TestCase):
                 equivalence_factor_to_base=0.0,
             )
         self.assertIn("equivalence_factor_to_base", str(ctx.exception))
+
+    def test_add_ingredient_duplicate_name_replaces_and_returns_none(self):
+        """Adding an ingredient with same name (case-insensitive) updates existing and returns None."""
+        recipe = Recipe(0, "R", "D", [], 1)
+        valid = {1, 2}
+        recipe.add_ingredient(Ingredient("Queso Oaxaca", 100.0, 1), valid)
+        self.assertEqual(len(recipe.ingredients), 1)
+        self.assertEqual(recipe.ingredients[0].quantity, 100.0)
+        out = recipe.add_ingredient(
+            Ingredient("queso oaxaca", 250.0, 2),
+            valid,
+        )
+        self.assertIsNone(out)
+        self.assertEqual(len(recipe.ingredients), 1)
+        self.assertEqual(recipe.ingredients[0].name, "Queso Oaxaca")
+        self.assertEqual(recipe.ingredients[0].quantity, 250.0)
+        self.assertEqual(recipe.ingredients[0].unit_id, 2)
+
+    def test_add_ingredient_different_names_both_present(self):
+        """Adding ingredients with different names keeps both."""
+        recipe = Recipe(0, "R", "D", [], 1)
+        valid = {1}
+        recipe.add_ingredient(Ingredient("Harina", 200.0, 1), valid)
+        recipe.add_ingredient(Ingredient("Azúcar", 50.0, 1), valid)
+        self.assertEqual(len(recipe.ingredients), 2)
+        self.assertEqual(recipe.ingredients[0].name, "Harina")
+        self.assertEqual(recipe.ingredients[1].name, "Azúcar")
 
 
 class TestRecipeRemoveIngredient(unittest.TestCase):
@@ -865,6 +893,80 @@ class TestFamilyInventoryRegistry(unittest.TestCase):
         items = [InventoryItem(1, "X", 1, 1, family_id=1)]
         with self.assertRaises(ValueError):
             reg.remove(1, inventory_items=items)
+
+
+class TestInventoryItemRegistry(unittest.TestCase):
+    def test_add_get_get_by_name_valid_ids_list_all(self):
+        reg = InventoryItemRegistry()
+        item = InventoryItem(1, "Leche", 1, 1)
+        reg.add(item)
+        self.assertEqual(reg.get(1), item)
+        self.assertEqual(reg.get_by_name("Leche"), item)
+        self.assertEqual(reg.get_by_name("  leche  "), item)
+        self.assertEqual(reg.valid_ids(), {1})
+        self.assertEqual(reg.list_all(), [item])
+
+    def test_add_duplicate_name_raises(self):
+        reg = InventoryItemRegistry()
+        reg.add(InventoryItem(1, "Queso", 1, 1))
+        with self.assertRaises(ValueError) as ctx:
+            reg.add(InventoryItem(2, "queso", 1, 1))
+        self.assertIn("duplicate", str(ctx.exception).lower())
+        self.assertIn("name", str(ctx.exception).lower())
+
+    def test_add_duplicate_id_raises(self):
+        reg = InventoryItemRegistry()
+        reg.add(InventoryItem(1, "A", 1, 1))
+        with self.assertRaises(ValueError) as ctx:
+            reg.add(InventoryItem(1, "B", 1, 1))
+        self.assertIn("duplicate", str(ctx.exception).lower())
+        self.assertIn("id", str(ctx.exception).lower())
+
+    def test_add_empty_name_raises(self):
+        reg = InventoryItemRegistry()
+        with self.assertRaises(ValueError) as ctx:
+            reg.add(InventoryItem(1, "  ", 1, 1))
+        self.assertIn("non-empty", str(ctx.exception))
+
+    def test_add_invalid_category_id_raises(self):
+        reg = InventoryItemRegistry()
+        with self.assertRaises(ValueError) as ctx:
+            reg.add(InventoryItem(1, "X", 1, 99))
+        self.assertIn("category_id", str(ctx.exception))
+
+    def test_remove_returns_item(self):
+        reg = InventoryItemRegistry()
+        item = InventoryItem(1, "Harina", 1, 1)
+        reg.add(item)
+        removed = reg.remove(1)
+        self.assertIs(removed, item)
+        self.assertIsNone(reg.get(1))
+        self.assertEqual(len(reg.list_all()), 0)
+
+    def test_remove_missing_returns_none(self):
+        reg = InventoryItemRegistry()
+        reg.add(InventoryItem(1, "X", 1, 1))
+        self.assertIsNone(reg.remove(99))
+
+    def test_remove_when_in_use_by_recipe_raises(self):
+        reg = InventoryItemRegistry()
+        item = InventoryItem(1, "Leche", 1, 1)
+        reg.add(item)
+        recipe = Recipe(0, "R", "D", [], 1, ingredients=[Ingredient("Leche", 100.0, 1)])
+        with self.assertRaises(ValueError) as ctx:
+            reg.remove(1, recipes=[recipe])
+        self.assertIn("in use", str(ctx.exception))
+
+    def test_get_by_name_case_insensitive(self):
+        reg = InventoryItemRegistry()
+        reg.add(InventoryItem(1, "Queso Oaxaca", 1, 1))
+        self.assertEqual(reg.get_by_name("QUESO OAXACA").id, 1)
+        self.assertEqual(reg.get_by_name("queso oaxaca").id, 1)
+
+    def test_get_missing_returns_none(self):
+        reg = InventoryItemRegistry()
+        self.assertIsNone(reg.get(1))
+        self.assertIsNone(reg.get_by_name("Missing"))
 
 
 class TestUserRegistry(unittest.TestCase):

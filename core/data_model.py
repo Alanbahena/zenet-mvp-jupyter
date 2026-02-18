@@ -464,7 +464,10 @@ class Recipe:
     ) -> Optional[InventoryItem]:
         """Add an ingredient to this recipe.
 
-        When category_id is provided, a new InventoryItem is built (id=0) and returned
+        If an ingredient with the same name (case-insensitive) already exists,
+        the existing entry is updated (quantity, unit_id) and None is returned
+        (no new InventoryItem). Otherwise the ingredient is appended and, when
+        category_id is provided, a new InventoryItem is built (id=0) and returned
         for the caller to persist. If unit_requires_equivalence is True, the caller
         must after persisting the item call
         InventoryUnitEquivalenceRegistry.add(
@@ -486,6 +489,11 @@ class Recipe:
             raise ValueError(
                 f"ingredient.unit_id {ingredient.unit_id} not in valid_unit_ids"
             )
+        existing = self.get_ingredient_by_name(ingredient.name)
+        if existing is not None:
+            existing.quantity = ingredient.quantity
+            existing.unit_id = ingredient.unit_id
+            return None
         new_item: Optional[InventoryItem] = None
         if category_id is not None:
             if category_id not in _valid_inventory_category_ids():
@@ -844,6 +852,72 @@ class FamilyInventoryRegistry:
             if f.id == family_id:
                 return f
         return None
+
+
+class InventoryItemRegistry:
+    """Registry of InventoryItem instances; validates on add, optional guard on remove.
+
+    Canonical place for inventory items created from the recipe flow (add_ingredient
+    return) or from the inventory section. On add: enforces unique name (case-insensitive).
+    On remove: optionally pass recipes to block removal when an item is in use by name.
+    """
+
+    def __init__(self) -> None:
+        self._items: list[InventoryItem] = []
+
+    def add(self, item: InventoryItem) -> None:
+        if not (item.name or "").strip():
+            raise ValueError("inventory item name must be non-empty")
+        if item.category_id not in _valid_inventory_category_ids():
+            raise ValueError(
+                f"category_id must be one of {sorted(_valid_inventory_category_ids())} (Perecedero / No perecedero)"
+            )
+        if item.id != 0:
+            for i in self._items:
+                if i.id == item.id:
+                    raise ValueError(f"duplicate inventory item id: {item.id}")
+        name_norm = item.name.strip().lower()
+        for i in self._items:
+            if i.name.strip().lower() == name_norm:
+                raise ValueError(f"duplicate inventory item name: {item.name!r}")
+        self._items.append(item)
+
+    def remove(
+        self, item_id: int, recipes: Optional[list[Recipe]] = None
+    ) -> Optional[InventoryItem]:
+        if recipes is not None:
+            item = self.get(item_id)
+            if item is not None:
+                name_norm = item.name.strip().lower()
+                for r in recipes:
+                    for ing in r.ingredients:
+                        if (ing.name or "").strip().lower() == name_norm:
+                            raise ValueError(
+                                "Inventory item is in use by a recipe"
+                            )
+        for i, it in enumerate(self._items):
+            if it.id == item_id:
+                return self._items.pop(i)
+        return None
+
+    def get(self, item_id: int) -> Optional[InventoryItem]:
+        for i in self._items:
+            if i.id == item_id:
+                return i
+        return None
+
+    def get_by_name(self, name: str) -> Optional[InventoryItem]:
+        name_norm = (name or "").strip().lower()
+        for i in self._items:
+            if i.name.strip().lower() == name_norm:
+                return i
+        return None
+
+    def valid_ids(self) -> set[int]:
+        return {i.id for i in self._items}
+
+    def list_all(self) -> list[InventoryItem]:
+        return list(self._items)
 
 
 class UserRegistry:
