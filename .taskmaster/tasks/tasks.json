@@ -160,9 +160,10 @@
               1
             ],
             "details": "Create core/normalization.py module with functions to standardize units and measures. Implement conversion functions between different unit systems (metric/imperial). Create normalization classes for handling ingredient quantities, cooking times, and temperatures. Include functions to parse and normalize user input for units and measures. Implement a registry of standard units with conversion factors.\n<info added on 2026-02-14T06:07:14.455Z>\nImplement unit conversion functions using the database model fields:\n\n1. Use InventoryUnit.base_unit_id and factor_to_base for standardizing units\n2. Create to_base_quantity(quantity, unit) function that converts a quantity from any unit to its base unit using the factor_to_base multiplier\n3. Create from_base_quantity(base_quantity, unit) function that converts a base unit quantity to the specified unit using the inverse of factor_to_base\n4. Build a registry of standard units that loads conversion factors directly from the database models\n5. Implement similar conversion logic for RecipeUnit equivalences when available\n6. Add support for bidirectional conversions between related units\n7. Include error handling for incompatible unit conversions\n8. Reference the implementation details in inventory-units-and-equivalences-plan.md Part 2 for the complete conversion system\n</info added on 2026-02-14T06:07:14.455Z>",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test unit conversions with known values. Verify normalization functions correctly standardize various input formats. Test edge cases like unusual units or extreme values.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-18T08:20:04.677Z"
           },
           {
             "id": 4,
@@ -207,7 +208,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-02-14T07:10:27.520Z"
+        "updatedAt": "2026-02-18T08:20:04.677Z"
       },
       {
         "id": 3,
@@ -479,13 +480,13 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-02-14T07:10:27.520Z",
+      "lastModified": "2026-02-18T08:20:04.679Z",
       "taskCount": 16,
       "completedCount": 1,
       "tags": [
         "master"
       ],
-      "created": "2026-02-14T07:12:23.798Z",
+      "created": "2026-02-18T08:22:45.947Z",
       "description": "Tasks for master context"
     }
   }
