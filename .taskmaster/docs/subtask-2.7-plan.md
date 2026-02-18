@@ -190,7 +190,7 @@ Note: **InventoryCategory** (Perecedero/No perecedero) is a fixed set (`DEFAULT_
 
 #### Recipe completeness KPIs (required vs enrichment)
 
-In `core/data_model.py`, `Recipe` has required fields: `id`, `name`, `description`, `steps`, `category_id`, `ingredients`.\nFor readiness, we should score **validity of required fields** and treat “richness” separately.
+In `core/data_model.py`, `Recipe` has required fields: `id`, `name`, `description`, `steps`, `category_id`, `ingredients`. For readiness, we should score **validity of required fields** and treat “richness” separately.
 
 - `recipes.recipesRequiredFieldsValidPct` (ratio): % of recipes where:
   - `name` is non-empty
@@ -336,6 +336,20 @@ If these aren’t set, users will argue with the score. Lock these defaults:
 - **Readiness-critical:** “Linked to inventory” = ingredient resolves to an InventoryItem by **inventory_item_id OR by name** (get_by_name). So name-based linking counts as linked.
 - **Enrichment:** `recipes.ingredientsInventoryItemIdSetPct` = % of ingredients with `inventory_item_id` set. Setting ids is more robust (no name drift) but not required for Phase A readiness.
 - **Report copy:** Be explicit in the readiness report (or UI) that name-linking is “acceptable but less robust” so users understand why the enrichment KPI exists. See `.taskmaster/docs/readiness-scorecard-ux.md` for presentation.
+
+---
+
+## Implementation decisions (for 2.7 implementation)
+
+These choices remove ambiguity so the report is deterministic and UI-ready.
+
+- **Grade (overall):** Map `score_0_100` to letter: A ≥ 90, B ≥ 80, C ≥ 70, D < 70. Use same bands for labels if needed (e.g. "Ready" ≥ 80, "Needs work" ≥ 60, "Not ready" < 60).
+- **Overall status (ok/warn/fail):** Set from overall score: ok ≥ 90, warn ≥ 70, fail < 70 (or derive from worst dimension status; either is fine if consistent).
+- **Dimension status:** Set from dimension score: ok ≥ 90, warn ≥ 70, fail < 70 (exclude `na` KPIs from dimension score as in NA handling).
+- **Per-KPI weights inside a dimension:** Use **equal weight** for all non-`na` KPIs in that dimension (simplest). If a KPI is `na`, exclude it and re-normalize the rest.
+- **Count-type KPIs (setup.*Configured, setup.*Present):** Treat as pass/fail: `required_min = 1` (score 100 if count ≥ 1, else 0). No need for higher thresholds in Phase A.
+- **Default targets for other KPIs:** For any ratio KPI not explicitly set above, use: **min_ok = 1.0, min_warn = 0.95** for "required fields valid" / "configured" style; **min_ok = 0.9, min_warn = 0.7** for coverage-style ratios (or document overrides in "Phase A defaults" if you tune later).
+- **Recommendations order:** Sort by impact (e.g. dimension weight × severity), then take top N (e.g. 3 for UI). Tie to related_kpi_ids as in schema.
 
 ---
 
