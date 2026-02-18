@@ -42,6 +42,15 @@ from core.normalization import (
     to_base_quantity,
     to_base_quantity_by_id,
 )
+from core.taxonomy import (
+    IS_A,
+    PART_OF,
+    find_related_items,
+    IngredientTaxonomy,
+    InventoryTaxonomy,
+    RecipeTaxonomy,
+    Taxonomy,
+)
 
 __all__ = [
     "ALLOWED_USER_ROLES",
@@ -82,4 +91,11 @@ __all__ = [
     "RecipeUnitConversionRegistry",
     "to_base_quantity",
     "to_base_quantity_by_id",
+    "IS_A",
+    "PART_OF",
+    "find_related_items",
+    "IngredientTaxonomy",
+    "InventoryTaxonomy",
+    "RecipeTaxonomy",
+    "Taxonomy",
 ]

@@ -33,6 +33,13 @@ Create `core/taxonomy.py` with a **Taxonomy** class and support for semantic rel
 - **Relationship types:** At least **is-a** (subtype / classification) and **part-of** (meronymy). Others can be added (e.g. used_in, substitutes) as needed.
 - **Query API:** Functions such as `get_children(node_id)`, `get_parents(node_id)`, `get_related(node_id, relationship_type)`, and optionally `has_relationship(a, b, type)`. Return lists of node ids or node references as documented.
 - **Design:** Store edges as (source, target, type) or equivalent; support lookup by type so queries are efficient for the expected scale (hundreds to low thousands of nodes).
+- **Edge direction:** For **is_a**, store (child, parent) so that e.g. (tomate, verdura) means “tomate is_a verdura” (source = child, target = parent). For **part_of**, define consistently (e.g. part = source, whole = target). Document in code so traversal and queries are unambiguous.
+
+---
+
+## Link to data model (core/data_model.py)
+
+The taxonomy is a **separate semantic layer**; it does not replace Ingredient, Recipe, InventoryItem, or their registries. Node ids may match data model ids (e.g. Recipe.id, InventoryItem.id) or names (e.g. ingredient name); the chosen convention per taxonomy should be documented. The **caller** is responsible for populating the taxonomy and keeping it in sync with the data model; 2.4 does not implement persistence or automatic sync.
 
 ---
 
@@ -107,13 +114,13 @@ Create `core/taxonomy.py` with a **Taxonomy** class and support for semantic rel
 
 ## Checklist before marking 2.4 done
 
-- [ ] core/taxonomy.py exists with Taxonomy class (nodes + edges, optional relationship_type).
-- [ ] get_children, get_parents, get_related(node, type) (and optionally has_relationship) implemented and tested.
-- [ ] Ingredient taxonomy implemented with query API; tests pass.
-- [ ] Recipe taxonomy implemented with query API; tests pass.
-- [ ] Inventory item taxonomy implemented with query API; tests pass.
-- [ ] find_related_items (or equivalent) by proximity implemented; tests pass.
-- [ ] Exports added in core/__init__.py; tests/unit/test_taxonomy.py has good coverage.
+- [x] core/taxonomy.py exists with Taxonomy class (nodes + edges, optional relationship_type).
+- [x] get_children, get_parents, get_related(node, type) (and optionally has_relationship) implemented and tested.
+- [x] Ingredient taxonomy implemented with query API; tests pass.
+- [x] Recipe taxonomy implemented with query API; tests pass.
+- [x] Inventory item taxonomy implemented with query API; tests pass.
+- [x] find_related_items (or equivalent) by proximity implemented; tests pass.
+- [x] Exports added in core/__init__.py; tests/unit/test_taxonomy.py has good coverage.
 
 ---
 
