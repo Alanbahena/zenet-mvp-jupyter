@@ -2,7 +2,7 @@
 
 ## Goal
 
-Create `core/normalization.py` with unit conversion and normalization using **InventoryUnit.base_unit_id** and **factor_to_base** (from 2.2). Support converting quantities to/from a unit’s base and handle multi-step chains. Add **(1) base rule of normalization:** each inventory family has a designated base inventory unit so the system knows exactly what quantity and unit to deduct when a recipe is created; **(2) conversion table for unofficial recipe units** (scoop, cucharada, “al gusto”, etc.) so recipe lines can be normalized to a quantity and base unit for inventory deduction; and **(3) normalized recipe:** the list of (inventory_item_id, normalized_quantity, base_unit_id) for one recipe, used to discount inventory when a customer orders that recipe (consumo teórico por platillo). Conversion logic and table application in 2.3; LLM suggestion and UI for the table stay in later tasks.
+Create `core/normalization.py` with unit conversion and normalization using **InventoryUnit.base_unit_id** and **factor_to_base** (from 2.2). Support converting quantities to/from a unit’s base and handle multi-step chains. Add **(1) base rule of normalization:** each inventory family may have a designated base unit (for reporting/aggregation); **for deduction** each line uses the **inventory item’s unit** (per-item); **(2) conversion table for unofficial recipe units** (scoop, cucharada, “al gusto”, etc.) so recipe lines can be normalized to a quantity and base unit for inventory deduction; and **(3) normalized recipe:** the list of (inventory_item_id, normalized_quantity, unit_id) with unit_id = that item’s unit, used to discount inventory when a customer orders that recipe (consumo teórico por platillo). Conversion logic and table application in 2.3; LLM suggestion and UI for the table stay in later tasks.
 
 **Reference:** `.taskmaster/docs/inventory-units-and-equivalences-plan.md` Part 2 and Part 5.
 
@@ -16,18 +16,18 @@ Create `core/normalization.py` with unit conversion and normalization using **In
 | to_base_quantity / from_base_quantity for InventoryUnit | Parsing free-text user input (e.g. "2 tazas") |
 | Integration with InventoryUnitRegistry (lookup by unit_id) | Who creates/suggests conversion table rows (LLM) and UI for user confirmation (Alignment/Configuration/Structuring) |
 | Error handling (missing unit, cycles, invalid quantity) | |
-| **Base rule: family → base inventory unit** (see below) | |
+| **Per-item unit for deduction;** family base optional for reporting (see below) | |
 | **Recipe-unit conversion table** (design + apply; see below) | |
 | **Normalized recipe** (list per recipe for deduction on order; see below) | Actual order/deduction persistence (later) |
 | Unit tests for conversions | |
 
 ---
 
-## Base rule of normalization (family → base inventory unit)
+## Base rule of normalization (family base vs per-item unit for deduction)
 
-- **Rule:** Each inventory family has a designated **base inventory unit** used for inventory deduction (e.g. Carnes → g, Verduras/Hierbas → g, Líquidos → ml, Insumos unitarios → pieza). When a recipe is normalized, every ingredient in that family is expressed in that base so the system knows exactly what quantity and inventory unit to deduct.
-- **Data:** Add `base_unit_id: Optional[int] = None` to `FamilyInventory` (references InventoryUnit). Templates/Configuration set it per family (e.g. Carnes → g, Líquidos → ml, Insumos unitarios → pza). Implement in 2.2 (data model) or at start of 2.3.
-- **In 2.3:** Provide a way to resolve “base unit for this family” (e.g. `get_family_base_unit_id(family_id, family_registry)` or use `FamilyInventory.base_unit_id`). When normalizing an ingredient for deduction, convert quantity to the family’s base unit using existing `to_base_quantity` / `from_base_quantity` and this rule.
+- **For deduction:** Each deduction line is expressed in the **inventory item’s own unit** (InventoryItem.unit_id), not a family-wide base. So the system deducts exactly (inventory_item_id, quantity, unit_id) per line; items in the same family can use different units (e.g. kg for meat, pza for eggs).
+- **Family base (optional):** Each inventory family may have a designated **base inventory unit** (e.g. Carnes → g, Líquidos → ml) for reporting or aggregation. `get_family_base_unit_id(family_id, family_registry, unit_registry)` is provided but **is not used** when producing deduction lines; it remains available for other use (e.g. reports).
+- **Data:** `base_unit_id: Optional[int] = None` on `FamilyInventory` (references InventoryUnit). Templates/Configuration set it per family. Implement in 2.2 (data model) or at start of 2.3.
 
 ---
 
@@ -37,7 +37,7 @@ Create `core/normalization.py` with unit conversion and normalization using **In
 - **Required when recipe and inventory use different dimensions:** If the recipe states a unit in one dimension (e.g. "1 tortilla" in pza) but the inventory item is stored in another (e.g. tortillas in kg), the conversion table **must** have an entry (e.g. "1 pza = 0.05 kg" for that item) so that `normalize_recipe_for_deduction` can output a deduction line in kg. Without it, the ingredient is skipped.
 - **In scope for 2.3:**
   - **Data shape:** A conversion table keyed by recipe unit and optionally by context (e.g. family_id or inventory_item_id): `(recipe_unit_id, optional family_id or inventory_item_id) → (quantity: float, base_unit_id: int)`. Allow simple entries (recipe_unit_id only) for universal conversions (e.g. 1 scoop = 30 g).
-  - **Apply:** Functions in `normalization.py` that, given an ingredient (recipe_unit_id, optional family/item) and this table, return normalized quantity and base_unit_id. Combined with the family base rule, this yields the “normalized recipe” per ingredient.
+  - **Apply:** Functions in `normalization.py` that, given an ingredient (recipe_unit_id, optional family/item) and this table, return normalized quantity and base_unit_id. Combined with conversion to the inventory item’s unit, this yields the “normalized recipe” per ingredient.
 - **Population:** Table entries can be added manually by the user or from LLM-suggested values after user confirmation; the registry does not care which.
 - **Out of scope for 2.3:** Where the UI or LLM flow runs (Alignment/Configuration/Structuring agents or notebooks); that stays in later tasks.
 
@@ -46,8 +46,11 @@ Create `core/normalization.py` with unit conversion and normalization using **In
 ## Normalized recipe (for inventory deduction on order)
 
 - **Concept:** The **normalized recipe** for a given recipe is the list of deduction lines: for each ingredient, (inventory_item_id, normalized_quantity, unit_id). Quantity is expressed in **that inventory item’s unit** (InventoryItem.unit_id), not a family-wide base. This allows items in the same family to use different units (e.g. kg for meat, pza for eggs). “Consumo teórico por platillo.”
-- **Implementation:** `normalize_recipe_for_deduction` takes a resolver that returns (inventory_item_id, family_id, item_unit_id). Use `make_resolver(get_item)` to build one from a lookup (Ingredient → InventoryItem). It uses the conversion table (recipe unit → quantity, base_unit_id) then converts to item_unit_id when needed, or falls back to converting the ingredient quantity to item_unit_id via the unit chain and optional equivalence_registry. When recipe unit and item unit are in **different dimensions** (e.g. 1 tortilla / pza vs kg), only the conversion table can bridge them; without an entry, the ingredient is skipped. To apply the result to inventory, use `apply_deduction_lines(lines, on_deduct)` with a callback that persists each deduction. `get_family_base_unit_id` is not used for deduction; it remains available for reporting/aggregation if desired.
-- **Out of scope for 2.3:** Persisting orders, applying deductions to inventory, or any UI for “customer ordered X”; 2.3 only produces the normalized recipe list. Those belong in persistence or a later task.
+- **Implementation:** `normalize_recipe_for_deduction` takes a resolver that returns (inventory_item_id, family_id, item_unit_id). It uses the conversion table (recipe unit → quantity, base_unit_id) then converts to item_unit_id when needed, or falls back to converting the ingredient quantity to item_unit_id via the unit chain and optional equivalence_registry. When recipe unit and item unit are in **different dimensions** (e.g. 1 tortilla / pza vs kg), only the conversion table can bridge them; without an entry, the ingredient is skipped. Output is a list of (inventory_item_id, normalized_quantity, unit_id) with unit_id = that item’s unit. `get_family_base_unit_id` is not used for deduction; it remains available for reporting/aggregation.
+- **Helpers:**
+  - **`make_resolver(get_item)`** — Builds the resolver expected by `normalize_recipe_for_deduction` from a lookup that returns `InventoryItem` per ingredient (e.g. by `Ingredient.inventory_item_id` or by name). Returns a callable that yields (inventory_item_id, family_id, item_unit_id); raises if `get_item(ing)` is None.
+  - **`apply_deduction_lines(lines, on_deduct)`** — Applies the list of deduction lines by calling `on_deduct(inventory_item_id, quantity, unit_id)` for each line. Persistence (e.g. subtract from stock) is the caller’s responsibility inside `on_deduct`.
+- **Out of scope for 2.3:** Persisting orders, applying deductions to inventory, or any UI for “customer ordered X”; 2.3 only produces the normalized recipe list and the helper to apply it. Actual persistence belongs in a later task.
 
 ---
 
@@ -97,7 +100,7 @@ Create `core/normalization.py` with unit conversion and normalization using **In
 
 - **Data (if not in 2.2):** Add `base_unit_id: Optional[int] = None` to `FamilyInventory`; ensure FamilyInventoryRegistry can resolve family by id. Templates set base_unit_id per family (Carnes → g, Líquidos → ml, Insumos unitarios → pza, etc.).
 - **Function:** `get_family_base_unit_id(family_id: int, family_registry: FamilyInventoryRegistry, unit_registry: InventoryUnitRegistry) -> Optional[int]`. Return the base_unit_id for the family, or None if not set. Validate that the id is in unit_registry.
-- **Usage:** When normalizing an ingredient for deduction, resolve the ingredient’s family (e.g. from InventoryItem.family_id), get family base_unit_id, then use to_base_quantity / from_base_quantity to express quantity in that base.
+- **Usage:** Family base is **not** used when producing deduction lines (each line uses the inventory item’s unit). `get_family_base_unit_id` is available for reporting/aggregation (e.g. express totals in family base). When used, callers resolve the ingredient’s family (e.g. from InventoryItem.family_id), get family base_unit_id, then use to_base_quantity / from_base_quantity to express quantity in that base.
 - **Tests:** Family with base_unit_id set returns that id; family with None returns None; invalid base_unit_id (not in registry) raises or returns None as documented.
 
 ### Step 2.3.7 — Recipe-unit conversion table (design + apply)
@@ -109,14 +112,14 @@ Create `core/normalization.py` with unit conversion and normalization using **In
 
 ### Step 2.3.8 — Normalized recipe (list per recipe for deduction on order)
 
-- **Function:** `normalize_recipe_for_deduction(recipe: Recipe, ..., family_registry, unit_registry, conversion_table, resolve_ingredient_to_inventory: Callable or similar) -> list[tuple[int, float, int]]` (or list of a small NamedTuple/dataclass with inventory_item_id, normalized_quantity, base_unit_id). Caller must supply a way to resolve each ingredient to its inventory_item_id and family_id (e.g. from Recipe + restaurant inventory or from Ingredient.inventory_item_id and item.family_id). For each ingredient, use the per-ingredient normalizer (normalize_recipe_unit_quantity + family base) to get (quantity, base_unit_id); append (inventory_item_id, quantity, base_unit_id) to the result list. Document behavior when an ingredient cannot be normalized (skip, raise, or partial result).
-- **Output:** The normalized recipe = “consumo teórico por platillo” — exactly what to deduct from inventory when one order of that recipe is placed.
-- **Tests:** Recipe with one or more ingredients yields correct list; ingredient without conversion or missing family/base is handled as documented; empty recipe yields empty list.
+- **Function:** `normalize_recipe_for_deduction(recipe: Recipe, ..., family_registry, unit_registry, conversion_table, resolve_ingredient_to_inventory: Callable) -> list[DeductionLine]` where `DeductionLine = tuple[int, float, int]` = (inventory_item_id, normalized_quantity, unit_id). Caller supplies a resolver (e.g. from `make_resolver(get_item)`). For each ingredient, the function uses the conversion table or fallback (unit chain + optional equivalence_registry) to get quantity in the **item’s unit**; appends (inventory_item_id, quantity, unit_id). Ingredients that cannot be normalized are skipped (partial result).
+- **Output:** The normalized recipe = “consumo teórico por platillo” — list of (inventory_item_id, normalized_quantity, unit_id) with unit_id = that item’s unit; exactly what to deduct when one order of that recipe is placed. Use `apply_deduction_lines(lines, on_deduct)` to apply each line (caller implements persistence in on_deduct).
+- **Tests:** Recipe with one or more ingredients yields correct list; ingredient without conversion or different dimension is skipped as documented; empty recipe yields empty list; `make_resolver` and `apply_deduction_lines` have unit tests.
 
 ### Step 2.3.9 — Exports and unit tests
 
-- Export from `core/__init__.py`: `to_base_quantity`, `from_base_quantity`, `to_base_quantity_by_id`, `from_base_quantity_by_id`, `convert_quantity`, `get_family_base_unit_id`, `normalize_recipe_unit_quantity`, `normalize_recipe_for_deduction` (and conversion table type/registry if public).
-- **Test file:** `tests/unit/test_normalization.py` with tests for all steps above (known values, round-trip, by_id, errors, convert_quantity, family base, recipe-unit conversion table, normalized recipe).
+- Export from `core/__init__.py`: `to_base_quantity`, `from_base_quantity`, `to_base_quantity_by_id`, `from_base_quantity_by_id`, `convert_quantity`, `get_family_base_unit_id`, `normalize_recipe_unit_quantity`, `normalize_recipe_for_deduction`, `make_resolver`, `apply_deduction_lines`, `DeductionLine`, and conversion table types (`RecipeUnitConversionKey`, `RecipeUnitConversionEntry`, `RecipeUnitConversionRegistry`) if public.
+- **Test file:** `tests/unit/test_normalization.py` with tests for all steps above (known values, round-trip, by_id, errors, convert_quantity, family base, recipe-unit conversion table, normalized recipe, make_resolver, apply_deduction_lines).
 
 ---
 
@@ -130,10 +133,22 @@ Create `core/normalization.py` with unit conversion and normalization using **In
 - [ ] convert_quantity(from_unit_id, to_unit_id, registry) works for same-family units; incompatible units raise.
 - [ ] FamilyInventory has base_unit_id (2.2 or 2.3); get_family_base_unit_id(family_id, family_registry, unit_registry) works.
 - [ ] Recipe-unit conversion table structure and normalize_recipe_unit_quantity implemented; tests for lookups and missing/invalid data.
-- [ ] normalize_recipe_for_deduction(recipe, ...) implemented; returns list of (inventory_item_id, normalized_quantity, base_unit_id) for deduction on order; tests for single/multiple ingredients and edge cases.
-- [ ] Exports added in core/__init__.py.
+- [ ] normalize_recipe_for_deduction(recipe, ...) implemented; returns list of (inventory_item_id, normalized_quantity, unit_id) with unit_id = item’s unit; tests for single/multiple ingredients and edge cases.
+- [ ] make_resolver(get_item) implemented and exported; tests for resolver returns (item_id, family_id, unit_id) and raises when get_item returns None.
+- [ ] apply_deduction_lines(lines, on_deduct) implemented and exported; tests that on_deduct is called once per line with correct args.
+- [ ] Exports added in core/__init__.py (including make_resolver, apply_deduction_lines, DeductionLine).
 - [ ] tests/unit/test_normalization.py added with good coverage.
 - [ ] Item-specific inventory unit equivalence (see below) implemented and tested.
+
+---
+
+## Implementation summary (current API)
+
+**Core normalization:** `to_base_quantity`, `from_base_quantity`, `to_base_quantity_by_id`, `from_base_quantity_by_id`, `convert_quantity`, `get_family_base_unit_id`, `normalize_recipe_unit_quantity`, `normalize_recipe_for_deduction`, `make_resolver`, `apply_deduction_lines`.
+
+**Types:** `DeductionLine` (tuple[int, float, int]), `RecipeUnitConversionKey`, `RecipeUnitConversionEntry`, `RecipeUnitConversionRegistry`.
+
+**Flow:** Build resolver with `make_resolver(get_item)` → call `normalize_recipe_for_deduction(recipe, ..., resolve_ingredient_to_inventory=resolve)` → get `list[DeductionLine]` → call `apply_deduction_lines(lines, on_deduct)` to persist each deduction.
 
 ---
 
@@ -147,7 +162,7 @@ Create `core/normalization.py` with unit conversion and normalization using **In
 
 **Normalization (`core/normalization.py`):**
 - **`to_base_quantity`** / **`from_base_quantity`** (and **`to_base_quantity_by_id`** / **`from_base_quantity_by_id`**): Optional kwargs `inventory_item_id` and `equivalence_registry`. When both are provided and an equivalence exists for (unit.id, inventory_item_id), use that row for the first conversion step; otherwise use the unit’s built-in `base_unit_id` / `factor_to_base` chain.
-- **`normalize_recipe_for_deduction`**: Optional parameter **`equivalence_registry`**. In the fallback path (inventory unit → family base), pass `inventory_item_id` and `equivalence_registry` into `to_base_quantity_by_id` so that “1 box strawberries” and “1 box oranges” yield different normalized quantities when equivalences are registered.
+- **`normalize_recipe_for_deduction`**: Optional parameter **`equivalence_registry`**. In the fallback path (recipe unit and item unit same dimension), pass `inventory_item_id` and `equivalence_registry` into `to_base_quantity_by_id` so that “1 box strawberries” and “1 box oranges” yield different normalized quantities when equivalences are registered.
 
 **Design choice:** `InventoryUnit` and `InventoryUnitRegistry` are unchanged. Global default (e.g. 1 Caja = 10 kg) remains on the unit; item-specific overrides live in `InventoryUnitEquivalenceRegistry`. Lookup order: item-specific first, then unit’s chain.
 
