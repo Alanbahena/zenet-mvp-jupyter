@@ -157,6 +157,29 @@ These are binary-ish “do we have the minimum scaffolding?” checks.
 - `setup.inventoryItemsPresent` (count): `InventoryItemRegistry.list_all()` size > 0
 - `setup.recipesPresent` (count): recipes count > 0
 
+#### Registry entity completeness (required vs enrichment)
+
+Even though registries validate on `add()`, it’s still useful to surface basic “configuration hygiene” KPIs:
+
+- `setup.recipeUnitsRequiredFieldsValidPct` (ratio): % of RecipeUnits in RecipeUnitRegistry where:
+  - `name` is non-empty
+  - `symbol` is non-empty
+  - (duplicates are already blocked by registry; this is primarily a sanity check / evidence generator)
+
+- `setup.inventoryUnitsRequiredFieldsValidPct` (ratio): % of InventoryUnits in InventoryUnitRegistry where:
+  - `name` is non-empty
+  - `symbol` is non-empty
+  - if `base_unit_id` is set, it exists in registry and `factor_to_base` is finite and > 0 (cycle prevention already enforced)
+
+- `setup.categoryRecipesRequiredFieldsValidPct` (ratio): % of CategoryRecipe entries in CategoryRecipeRegistry where:
+  - `name` is non-empty
+
+- `setup.familyInventoriesRequiredFieldsValidPct` (ratio): % of FamilyInventory entries in FamilyInventoryRegistry where:
+  - `name` is non-empty
+  - optional enrichment: `base_unit_id` is set and valid (more relevant to reporting than deduction)
+
+Note: **InventoryCategory** (Perecedero/No perecedero) is a fixed set (`DEFAULT_INVENTORY_CATEGORIES`), so we don’t score its “completeness”; we only score whether items reference valid category ids.
+
 ### Dimension B — Recipe standardization (`recipes`)
 
 - `recipes.recipeCount` (count)
@@ -165,12 +188,69 @@ These are binary-ish “do we have the minimum scaffolding?” checks.
 - `recipes.ingredientsLinkedToInventoryPct` (ratio): ingredient resolves to InventoryItem (id or name)
 - `recipes.stepsPresentPct` (ratio): recipe.steps non-empty (basic standardization)
 
+#### Recipe completeness KPIs (required vs enrichment)
+
+In `core/data_model.py`, `Recipe` has required fields: `id`, `name`, `description`, `steps`, `category_id`, `ingredients`.\nFor readiness, we should score **validity of required fields** and treat “richness” separately.
+
+- `recipes.recipesRequiredFieldsValidPct` (ratio): % of recipes where:
+  - `name` is non-empty
+  - `category_id` exists in CategoryRecipeRegistry
+  - `ingredients` list exists (always true if constructed normally; include mainly for evidence)
+  - (do **not** require `id != 0` in Phase A)
+  - evidence: sample invalid recipes with missing/invalid required fields
+
+- `recipes.recipesWithDescriptionPct` (ratio, enrichment): % where `description` is non-empty
+  - informational / low weight in Phase A
+
+- `recipes.recipesWithStepsPct` (ratio, enrichment): % where `steps` has at least 1 non-empty step
+  - this can either reuse `recipes.stepsPresentPct` or replace it (keep one KPI to avoid redundancy)
+
+#### Ingredient completeness KPIs (required vs enrichment)
+
+In `core/data_model.py`, `Ingredient` required fields: `name`, `quantity`, `unit_id` (and optional `inventory_item_id`).
+
+- `recipes.ingredientsRequiredFieldsValidPct` (ratio): % of ingredients where:
+  - `name` is non-empty
+  - `quantity` is finite and > 0
+  - `unit_id` exists in RecipeUnitRegistry
+  - evidence: sample invalid ingredients with reasons
+
+- `recipes.ingredientsInventoryItemIdSetPct` (ratio, enrichment): % of ingredients with `inventory_item_id is not None`
+  - keep **separate** from `recipes.ingredientsLinkedToInventoryPct` (which is readiness-critical) because:
+    - An ingredient can be linkable by **name match** even without an id set (still “ready”)
+    - Setting `inventory_item_id` improves robustness (enrichment)
+
 ### Dimension C — Inventory standardization (`inventory`)
 
 - `inventory.itemCategoryValidPct` (ratio): item.category_id is in fixed categories (Perecedero/No perecedero)
 - `inventory.itemUnitValidPct` (ratio): item.unit_id exists in InventoryUnitRegistry
 - `inventory.itemFamilyValidPctWhenSet` (ratio): for items with family_id not None, family_id exists in FamilyInventoryRegistry
 - `inventory.nonEmptyNamesPct` (ratio): item.name non-empty (should be 1.0 if using registry)
+
+#### Inventory completeness KPIs (required vs enrichment)
+
+We **should** measure whether `InventoryItem` instances have their **required** properties valid, but we should **not** penalize missing *optional* properties as “not ready”.
+
+In `core/data_model.py`, `InventoryItem` has:
+- **Required (readiness-critical):** `name`, `unit_id`, `category_id` (and `id`, but id may be `0` before persistence)
+- **Optional (enrichment):** `family_id`, `description`
+
+Add these KPIs:
+
+- `inventory.itemsRequiredFieldsValidPct` (ratio): % of inventory items where:
+  - `name` is non-empty (strip)
+  - `category_id` is one of the fixed InventoryCategory ids (Perecedero/No perecedero)
+  - `unit_id` exists in `InventoryUnitRegistry`
+  - (do **not** require `id != 0` in Phase A)
+  - evidence: sample invalid items with which required field failed
+
+- `inventory.itemsWithFamilyPct` (ratio, enrichment): % of inventory items where `family_id is not None`
+  - status: typically `na` or low-weight in Phase A (unless you decide families are required during onboarding)
+
+- `inventory.itemsWithDescriptionPct` (ratio, enrichment): % of inventory items where `description` is non-empty
+  - status: informational (`na`/low weight) in Phase A
+
+This gives the operator a clean split between **standardization readiness** (required fields) and **data richness** (optional fields that improve UX/search/reporting).
 
 ### Dimension D — Normalization readiness (`normalization`)
 
@@ -213,12 +293,49 @@ If taxonomies are empty/unpopulated, mark KPIs as `na` rather than failing the e
 3. Dimension score = weighted average of KPI scores in that dimension.
 4. Overall score = weighted average across dimensions (weights sum to 1.0).
 
-Suggested default dimension weights:
-- setup 0.20
-- recipes 0.25
-- inventory 0.20
-- normalization 0.30
-- taxonomy 0.05 (or 0.00 until taxonomy is used)
+---
+
+## Phase A defaults (locked)
+
+These rules keep the readiness score trustworthy and consistent. Implement and test against them.
+
+### Dimension weights (Phase A)
+
+- setup: **0.20**
+- recipes: **0.25**
+- inventory: **0.20**
+- normalization: **0.30**
+- taxonomy: **0.00** (agreed: excluded until taxonomies are actively populated)
+
+Weights sum to 1.0. Taxonomy dimension can still appear in the report with status `na`; it must not affect the overall score.
+
+### NA handling
+
+- **KPI with status `na`:** Excluded from that dimension’s score (do not count in weighted average for the dimension).
+- **Dimension with all KPIs `na` or weight 0:** Excluded from overall score (taxonomy in Phase A).
+- So overall = weighted average of setup, recipes, inventory, normalization only.
+
+### Targets for the two “truth” KPIs
+
+If these aren’t set, users will argue with the score. Lock these defaults:
+
+- **`recipes.ingredientsLinkedToInventoryPct`**
+  - ok: **≥ 0.95**
+  - warn: **≥ 0.80**
+  - fail: **< 0.80**
+
+- **`normalization.deductionCoveragePct`**
+  - ok: **≥ 0.90**
+  - warn: **≥ 0.70**
+  - fail: **< 0.70**
+
+(Tune later if needed; document any override in this section.)
+
+### Name-based linking (Phase A behavior)
+
+- **Readiness-critical:** “Linked to inventory” = ingredient resolves to an InventoryItem by **inventory_item_id OR by name** (get_by_name). So name-based linking counts as linked.
+- **Enrichment:** `recipes.ingredientsInventoryItemIdSetPct` = % of ingredients with `inventory_item_id` set. Setting ids is more robust (no name drift) but not required for Phase A readiness.
+- **Report copy:** Be explicit in the readiness report (or UI) that name-linking is “acceptable but less robust” so users understand why the enrichment KPI exists. See `.taskmaster/docs/readiness-scorecard-ux.md` for presentation.
 
 ---
 
