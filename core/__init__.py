@@ -8,6 +8,7 @@ from core.data_model import (
     DEFAULT_RESTAURANT_TYPES,
     FamilyInventory,
     FamilyInventoryRegistry,
+    InventoryItemRegistry,
     get_category_recipe_template,
     get_family_inventory_template,
     get_inventory_unit_template,
@@ -42,6 +43,15 @@ from core.normalization import (
     to_base_quantity,
     to_base_quantity_by_id,
 )
+from core.taxonomy import (
+    IS_A,
+    PART_OF,
+    find_related_items,
+    IngredientTaxonomy,
+    InventoryTaxonomy,
+    RecipeTaxonomy,
+    Taxonomy,
+)
 
 __all__ = [
     "ALLOWED_USER_ROLES",
@@ -55,6 +65,7 @@ __all__ = [
     "get_recipe_unit_template",
     "FamilyInventory",
     "FamilyInventoryRegistry",
+    "InventoryItemRegistry",
     "Ingredient",
     "InventoryCategory",
     "InventoryItem",
@@ -82,4 +93,11 @@ __all__ = [
     "RecipeUnitConversionRegistry",
     "to_base_quantity",
     "to_base_quantity_by_id",
+    "IS_A",
+    "PART_OF",
+    "find_related_items",
+    "IngredientTaxonomy",
+    "InventoryTaxonomy",
+    "RecipeTaxonomy",
+    "Taxonomy",
 ]
