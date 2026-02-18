@@ -9,6 +9,7 @@ from core.data_model import (
     FamilyInventory,
     FamilyInventoryRegistry,
     Ingredient,
+    InventoryItem,
     InventoryUnit,
     InventoryUnitEquivalence,
     InventoryUnitEquivalenceRegistry,
@@ -16,10 +17,12 @@ from core.data_model import (
     Recipe,
 )
 from core.normalization import (
+    apply_deduction_lines,
     convert_quantity,
     from_base_quantity,
     from_base_quantity_by_id,
     get_family_base_unit_id,
+    make_resolver,
     normalize_recipe_for_deduction,
     normalize_recipe_unit_quantity,
     RecipeUnitConversionEntry,
@@ -434,6 +437,42 @@ class TestNormalizeRecipeForDeduction(unittest.TestCase):
         self.assertEqual(by_item[202][0], 10.0)
         self.assertEqual(by_item[201][1], 1)
         self.assertEqual(by_item[202][1], 1)
+
+
+class TestMakeResolver(unittest.TestCase):
+    def test_resolver_returns_item_id_family_id_unit_id(self):
+        item = InventoryItem(id=10, name="Harina", unit_id=1, category_id=1, family_id=2)
+        def get_item(ing: Ingredient) -> InventoryItem | None:
+            return item
+        resolve = make_resolver(get_item)
+        ing = Ingredient("Harina", 100.0, 1, None)
+        self.assertEqual(resolve(ing), (10, 2, 1))
+
+    def test_resolver_raises_when_get_item_returns_none(self):
+        def get_item(ing: Ingredient) -> None:
+            return None
+        resolve = make_resolver(get_item)
+        ing = Ingredient("Mystery", 1.0, 1, None)
+        with self.assertRaises(ValueError) as ctx:
+            resolve(ing)
+        self.assertIn("no inventory item", str(ctx.exception).lower())
+
+
+class TestApplyDeductionLines(unittest.TestCase):
+    def test_calls_on_deduct_per_line(self):
+        seen: list[tuple[int, float, int]] = []
+        def on_deduct(item_id: int, qty: float, unit_id: int) -> None:
+            seen.append((item_id, qty, unit_id))
+        lines = [(1, 100.0, 1), (2, 0.5, 2)]
+        apply_deduction_lines(lines, on_deduct)
+        self.assertEqual(seen, [(1, 100.0, 1), (2, 0.5, 2)])
+
+    def test_empty_lines_no_calls(self):
+        seen: list[tuple[int, float, int]] = []
+        def on_deduct(item_id: int, qty: float, unit_id: int) -> None:
+            seen.append((item_id, qty, unit_id))
+        apply_deduction_lines([], on_deduct)
+        self.assertEqual(seen, [])
 
 
 if __name__ == "__main__":

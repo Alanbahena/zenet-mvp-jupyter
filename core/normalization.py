@@ -17,6 +17,7 @@ from typing import Callable, Optional
 from core.data_model import (
     FamilyInventoryRegistry,
     Ingredient,
+    InventoryItem,
     InventoryUnit,
     InventoryUnitEquivalenceRegistry,
     InventoryUnitRegistry,
@@ -281,6 +282,8 @@ class RecipeUnitConversionRegistry:
     (e.g. recipe "1 tortilla" in pza, item stored in kg). Add an entry such as
     "1 pza = 0.05 kg" for that inventory_item_id (or context) so normalize_recipe_for_deduction
     can output a deduction line in kg.
+
+    Entries can be added manually by the user or from LLM-suggested values after user confirmation.
     """
 
     def __init__(self) -> None:
@@ -430,3 +433,35 @@ def normalize_recipe_for_deduction(
             except ValueError:
                 continue
     return result
+
+
+def make_resolver(
+    get_item: Callable[[Ingredient], Optional[InventoryItem]],
+) -> Callable[[Ingredient], tuple[int, Optional[int], int]]:
+    """Build a resolver for normalize_recipe_for_deduction from a lookup that returns InventoryItem per ingredient.
+
+    get_item(ing) should return the InventoryItem for that ingredient (e.g. by ing.inventory_item_id
+    or by name lookup). If it returns None or the item has no unit_id, the resolver raises ValueError
+    and the ingredient will be skipped by normalize_recipe_for_deduction.
+
+    Returns a callable (inventory_item_id, family_id, item_unit_id) for each ingredient.
+    """
+    def resolve(ing: Ingredient) -> tuple[int, Optional[int], int]:
+        item = get_item(ing)
+        if item is None:
+            raise ValueError(f"no inventory item for ingredient {ing.name!r}")
+        return (item.id, item.family_id, item.unit_id)
+    return resolve
+
+
+def apply_deduction_lines(
+    lines: list[DeductionLine],
+    on_deduct: Callable[[int, float, int], None],
+) -> None:
+    """Apply a list of deduction lines (e.g. from normalize_recipe_for_deduction) by calling on_deduct for each line.
+
+    on_deduct(inventory_item_id, quantity, unit_id) is responsible for persisting the deduction
+    (e.g. subtract quantity from stock for that item in that unit). Called once per line.
+    """
+    for inventory_item_id, quantity, unit_id in lines:
+        on_deduct(inventory_item_id, quantity, unit_id)
