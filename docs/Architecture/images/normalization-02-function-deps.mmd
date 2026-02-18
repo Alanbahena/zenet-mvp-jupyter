@@ -1,0 +1,28 @@
+flowchart LR
+    subgraph internal["Internal helpers"]
+        _factor[_factor_product_to_base]
+        _root[_root_base_unit_id]
+    end
+
+    subgraph public_api["Public API"]
+        to_base_quantity
+        from_base_quantity
+        to_base_quantity_by_id
+        from_base_quantity_by_id
+        convert_quantity
+        get_family_base_unit_id
+        normalize_recipe_unit_quantity
+        normalize_recipe_for_deduction
+    end
+
+    from_base_quantity --> _factor
+    to_base_quantity_by_id --> to_base_quantity
+    from_base_quantity_by_id --> from_base_quantity
+    convert_quantity --> _root
+    convert_quantity --> to_base_quantity_by_id
+    convert_quantity --> from_base_quantity_by_id
+    normalize_recipe_for_deduction --> normalize_recipe_unit_quantity
+    normalize_recipe_for_deduction --> get_family_base_unit_id
+    normalize_recipe_for_deduction --> to_base_quantity_by_id
+    normalize_recipe_for_deduction --> from_base_quantity_by_id
+    normalize_recipe_for_deduction --> _root

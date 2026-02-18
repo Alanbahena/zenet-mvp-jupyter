@@ -1,0 +1,90 @@
+classDiagram
+    class RecipeUnit {
+        +int id
+        +str name
+        +str symbol
+        +str? description
+    }
+    class InventoryUnit {
+        +int id
+        +str name
+        +str symbol
+        +str? description
+        +int? base_unit_id
+        +float factor_to_base
+    }
+    class CategoryRecipe {
+        +int id
+        +str name
+        +str? description
+    }
+    class FamilyInventory {
+        +int id
+        +str name
+        +str? description
+        +int? base_unit_id
+    }
+    class InventoryCategory {
+        +int id
+        +str name
+        +str? description
+    }
+    class RestaurantType {
+        +int id
+        +str name
+        +str? description
+    }
+    class Restaurant {
+        +int id
+        +str name
+        +str? address
+        +int? restaurant_type_id
+        +str? notes
+        +update_address()
+        +update_restaurant_type_id()
+        +clear_*()
+    }
+    class User {
+        +int id
+        +str name
+        +str email
+        +str role
+    }
+    class InventoryItem {
+        +int id
+        +str name
+        +int unit_id
+        +int category_id
+        +int? family_id
+        +update_family_id()
+        +update_category_id()
+    }
+    class Ingredient {
+        +str name
+        +float quantity
+        +int unit_id
+        +int? inventory_item_id
+    }
+    class Recipe {
+        +int id
+        +str name
+        +str description
+        +list~str~ steps
+        +int category_id
+        +list~Ingredient~ ingredients
+        +add_ingredient()
+        +remove_ingredient()
+        +ingredient_count()
+        +has_ingredient()
+        +get_ingredient_by_name()
+        +update_category_id()
+    }
+
+    Recipe "1" --> "*" Ingredient : ingredients
+    Ingredient --> RecipeUnit : unit_id
+    Ingredient ..> InventoryItem : inventory_item_id
+    Recipe --> CategoryRecipe : category_id
+    Restaurant --> RestaurantType : restaurant_type_id
+    InventoryItem --> InventoryUnit : unit_id
+    InventoryItem --> InventoryCategory : category_id
+    InventoryItem ..> FamilyInventory : family_id
