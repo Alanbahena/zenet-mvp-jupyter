@@ -52,6 +52,19 @@ from core.taxonomy import (
     RecipeTaxonomy,
     Taxonomy,
 )
+from core.data_model_utils import (
+    build_ingredient,
+    create_inventory_item_from_ingredient,
+    format_deduction_line_for_display,
+    format_ingredient_for_display,
+    ingredients_to_display,
+    make_resolver_from_item_registry,
+    parse_quantity_and_unit,
+    resolve_ingredient_to_inventory_item,
+    units_used_by_recipe,
+    validate_ingredient_with_registries,
+    validate_recipe_for_deduction,
+)
 
 __all__ = [
     "ALLOWED_USER_ROLES",
@@ -100,4 +113,15 @@ __all__ = [
     "InventoryTaxonomy",
     "RecipeTaxonomy",
     "Taxonomy",
+    "build_ingredient",
+    "create_inventory_item_from_ingredient",
+    "format_deduction_line_for_display",
+    "format_ingredient_for_display",
+    "ingredients_to_display",
+    "make_resolver_from_item_registry",
+    "parse_quantity_and_unit",
+    "resolve_ingredient_to_inventory_item",
+    "units_used_by_recipe",
+    "validate_ingredient_with_registries",
+    "validate_recipe_for_deduction",
 ]
