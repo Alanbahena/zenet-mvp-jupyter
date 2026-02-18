@@ -39,7 +39,7 @@ Create `core/taxonomy.py` with a **Taxonomy** class and support for semantic rel
 
 ## Link to data model (core/data_model.py)
 
-The taxonomy is a **separate semantic layer**; it does not replace Ingredient, Recipe, InventoryItem, or their registries. Node ids may match data model ids (e.g. Recipe.id, InventoryItem.id) or names (e.g. ingredient name); the chosen convention per taxonomy should be documented. The **caller** is responsible for populating the taxonomy and keeping it in sync with the data model; 2.4 does not implement persistence or automatic sync.
+The taxonomy is a **separate semantic layer**; it does not replace Ingredient, Recipe, InventoryItem, or their registries. Node ids may match data model ids (e.g. Recipe.id, InventoryItem.id) or names (e.g. ingredient name); the chosen convention per taxonomy should be documented. The **caller** is responsible for populating the taxonomy and keeping it in sync with the data model; 2.4 does not implement persistence or automatic sync. Inventory items can be sourced from **InventoryItemRegistry** when populating InventoryTaxonomy.
 
 ---
 
