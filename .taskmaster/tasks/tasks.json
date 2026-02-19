@@ -214,7 +214,7 @@
             "title": "Readiness KPIs (onboarding completeness & standardization)",
             "description": "Define a readiness-only KPI schema and compute a readiness report after onboarding so the operator can see how complete/standardized the restaurant setup is.",
             "details": "Create a readiness KPI schema (JSON + dataclasses) and a computation function that inspects current registries (units, categories, families, inventory items), recipes/ingredients, conversion table coverage, and optional taxonomy coverage to output a readiness report.\n\nDeliverables:\n- Documented KPI schema (fields, required/optional, how to compute)\n- Readiness scoring model (0–100 + per-dimension breakdown)\n- Computation utilities returning a serializable report for UI/manual exploration\n- Unit tests for KPI computation on small fixtures\n\nDepends on: 2.2–2.5 (data model, normalization, taxonomy, integration utils).",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               2,
               3,
@@ -222,10 +222,11 @@
               5
             ],
             "parentTaskId": 2,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-19T03:21:08.531Z"
           }
         ],
-        "updatedAt": "2026-02-18T22:48:31.868Z"
+        "updatedAt": "2026-02-19T03:21:08.531Z"
       },
       {
         "id": "3",
@@ -497,7 +498,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-02-18T22:48:31.868Z",
+      "lastModified": "2026-02-19T03:21:08.531Z",
       "taskCount": 16,
       "completedCount": 1,
       "tags": [
