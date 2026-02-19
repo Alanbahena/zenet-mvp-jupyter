@@ -122,17 +122,17 @@ Document the data model, normalization rules, and taxonomy with examples and usa
 - Test example code to ensure it works as documented.
 - Review documentation for completeness and clarity.
 
-**Checklist before marking 2.6 done:**
+**Checklist before marking 2.6 done:** (see [subtask-2.6.6-verification.md](subtask-2.6.6-verification.md))
 
-- [ ] All public classes/functions in core modules have docstrings with type hints (or explicit `None` where applicable).
-- [ ] `docs/Architecture/architecture-data-model.md` diagrams match current registries/fields (incl. `InventoryItemRegistry`, `InventoryUnitEquivalenceRegistry`) and cross-links exist.
-- [ ] `docs/Architecture/architecture-normalization.md` diagrams match current conversion flows (incl. optional equivalence registry) and cross-links exist.
-- [ ] `docs/Architecture/architecture-taxonomy.md` exists with overview and diagram.
-- [ ] `docs/Architecture/architecture-data-model-utils.md` or equivalent exists (or content folded into data-model doc).
-- [ ] `docs/Architecture/architecture-readiness-kpis.md` exists with summary and links to full spec.
-- [ ] README has “Data model architecture” section and accurate project structure.
-- [ ] At least one runnable example (minimal setup, normalization, or readiness) exists and runs without error.
-- [ ] No broken internal links in docs.
+- [x] All public classes/functions in core modules have docstrings with type hints (or explicit `None` where applicable).
+- [x] `docs/Architecture/architecture-data-model.md` diagrams match current registries/fields (incl. `InventoryItemRegistry`, `InventoryUnitEquivalenceRegistry`) and cross-links exist.
+- [x] `docs/Architecture/architecture-normalization.md` diagrams match current conversion flows (incl. optional equivalence registry) and cross-links exist.
+- [x] `docs/Architecture/architecture-taxonomy.md` exists with overview and diagram.
+- [x] `docs/Architecture/architecture-data-model-utils.md` or equivalent exists (or content folded into data-model doc).
+- [x] `docs/Architecture/architecture-readiness-kpis.md` exists with summary and links to full spec.
+- [x] README has “Data model architecture” section and accurate project structure.
+- [x] At least one runnable example (minimal setup, normalization, or readiness) exists and runs without error.
+- [x] No broken internal links in docs.
 
 ---
 
