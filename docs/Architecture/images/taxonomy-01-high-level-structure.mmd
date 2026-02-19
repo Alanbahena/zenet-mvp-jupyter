@@ -1,0 +1,21 @@
+flowchart TB
+    subgraph domain["Domain wrappers (facades)"]
+        IT[IngredientTaxonomy]
+        InvT[InventoryTaxonomy]
+        RT[RecipeTaxonomy]
+    end
+
+    subgraph core["Core graph"]
+        T[Taxonomy]
+        Nodes["nodes: set[str]"]
+        E1["edges_by_source: source -> list[(target, type)]"]
+        E2["edges_by_target: target -> list[(source, type)]"]
+    end
+
+    IT --> T
+    InvT --> T
+    RT --> T
+
+    T --> Nodes
+    T --> E1
+    T --> E2

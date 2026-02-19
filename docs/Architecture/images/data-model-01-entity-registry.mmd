@@ -16,6 +16,7 @@ flowchart TB
         II[InventoryItem]
         RU[RecipeUnit]
         IU[InventoryUnit]
+        IUE[InventoryUnitEquivalence]
         CR[CategoryRecipe]
         FI[FamilyInventory]
     end
@@ -23,6 +24,8 @@ flowchart TB
     subgraph registries["Registries (add/remove/valid_ids/get)"]
         RUR[RecipeUnitRegistry]
         IUR[InventoryUnitRegistry]
+        IIR[InventoryItemRegistry]
+        IUE_R[InventoryUnitEquivalenceRegistry]
         CRR[CategoryRecipeRegistry]
         FIR[FamilyInventoryRegistry]
         UR[UserRegistry]
@@ -40,6 +43,12 @@ flowchart TB
 
     RUR -.->|stores| RU
     IUR -.->|stores| IU
+    IIR -.->|stores| II
+    IUE_R -.->|stores| IUE
     CRR -.->|stores| CR
     FIR -.->|stores| FI
     UR -.->|stores| U
+
+    %% Item-specific unit equivalence: (unit_id, inventory_item_id) -> (base_unit_id, factor_to_base)
+    IUE -->|unit_id / base_unit_id| IU
+    IUE -->|inventory_item_id| II

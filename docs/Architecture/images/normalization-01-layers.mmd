@@ -7,6 +7,9 @@ flowchart TB
         to_base --> from_base
         to_base_id --> to_base
         from_base_id --> from_base
+        eq_reg[InventoryUnitEquivalenceRegistry optional]
+        eq_reg -.-> to_base
+        eq_reg -.-> from_base
     end
 
     subgraph layer2["Same-family conversion (2.3.5)"]
@@ -39,6 +42,7 @@ flowchart TB
         to_base_id --> norm_recipe
         from_base_id --> norm_recipe
         root --> norm_recipe
+        eq_reg -.-> norm_recipe
         norm_recipe --> DeductionLine
     end
 

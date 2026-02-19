@@ -12,6 +12,7 @@ classDiagram
         +str? description
         +int? base_unit_id
         +float factor_to_base
+        +bool is_standard
     }
     class CategoryRecipe {
         +int id
@@ -56,8 +57,16 @@ classDiagram
         +int unit_id
         +int category_id
         +int? family_id
+        +str? description
         +update_family_id()
         +update_category_id()
+    }
+    class InventoryUnitEquivalence {
+        <<frozen dataclass>>
+        +int unit_id
+        +int inventory_item_id
+        +int base_unit_id
+        +float factor_to_base
     }
     class Ingredient {
         +str name
@@ -88,3 +97,6 @@ classDiagram
     InventoryItem --> InventoryUnit : unit_id
     InventoryItem --> InventoryCategory : category_id
     InventoryItem ..> FamilyInventory : family_id
+    InventoryUnitEquivalence --> InventoryUnit : unit_id
+    InventoryUnitEquivalence --> InventoryUnit : base_unit_id
+    InventoryUnitEquivalence --> InventoryItem : inventory_item_id
