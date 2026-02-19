@@ -177,6 +177,24 @@ The cognitive core is built around **entities**, **registries**, **templates**, 
 
 ---
 
+## 📋 Task Master docs (task plans and scope)
+
+Task and subtask plans live under `.taskmaster/docs/` in a **nested structure**:
+
+- **Top level:** Project-wide docs (e.g. `prd.txt`, `readiness-scorecard-ux.md`, `inventory-units-and-equivalences-plan.md`, `templates-recipe-and-inventory.md`).
+- **By task:** Task- and subtask-specific artifacts under `task-<id>/<subtask-id>/` (e.g. `task-2/2.1/plan.md`, `task-2/2.6/verification.md`).
+
+**Task 2 (data model and ontology)** has a single outline of all subtasks with description and scope:
+
+| Document | Purpose |
+|----------|---------|
+| [.taskmaster/docs/README.md](.taskmaster/docs/README.md) | Conventions: where to put project vs task-specific docs; for agents creating new files. |
+| [.taskmaster/docs/task-2/subtasks-outline.md](.taskmaster/docs/task-2/subtasks-outline.md) | Task 2 subtasks 2.1–2.7: short description and in/out scope; links to each subtask plan. |
+
+Full implementation details for each subtask are in `task-2/<subtask-id>/plan.md` (e.g. `task-2/2.3/plan.md` for normalization).
+
+---
+
 ## 📁 Project Structure
 
 ```txt
@@ -194,7 +212,7 @@ MVP Jupyter/
 │   └── Architecture/       # architecture-data-model, normalization, taxonomy, etc.
 │
 ├── .taskmaster/
-│   └── docs/               # Task plans, UX specs (e.g. subtask-2.6-plan, readiness-scorecard-ux)
+│   └── docs/               # Task plans: README (conventions), project-level docs, task-2/2.x/ (plans, outline)
 │
 ├── tests/
 │   └── unit/               # test_data_model, test_normalization, test_taxonomy, test_data_model_utils, test_readiness_kpis
