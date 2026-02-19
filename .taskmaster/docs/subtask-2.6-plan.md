@@ -12,8 +12,8 @@ Document the data model, normalization rules, and taxonomy with examples and usa
 
 | Asset | Location | Status |
 |-------|----------|--------|
-| Data model architecture | `docs/Architecture/architecture-data-model.md` | Exists: entity overview, class diagram, template flow, fixed data, registry summary. **Gaps:** `InventoryItemRegistry` not fully documented; no cross-link to normalization/taxonomy. |
-| Normalization architecture | `docs/Architecture/architecture-normalization.md` | Exists: layers, conversion flows, deduction pipeline. |
+| Data model architecture | `docs/Architecture/architecture-data-model.md` | Exists: entity overview, class diagram, template flow, fixed data, registry summary. Includes Mermaid + exported assets under `docs/Architecture/images/`. **Gaps:** diagrams don’t reflect `InventoryItemRegistry`, `InventoryUnitEquivalenceRegistry`, and newer fields (e.g. `InventoryUnit.is_standard`). Missing cross-links to normalization/taxonomy. |
+| Normalization architecture | `docs/Architecture/architecture-normalization.md` | Exists: layers, conversion flows, deduction pipeline. Includes Mermaid + exported assets under `docs/Architecture/images/`. **Gaps:** diagrams don’t reflect optional use of `InventoryUnitEquivalenceRegistry` in conversion flow and external deps. |
 | Taxonomy | `core/taxonomy.py` | Module docstring; no standalone `docs/Architecture/architecture-taxonomy.md`. |
 | Data model utils | `core/data_model_utils.py` | Module docstring; no standalone architecture doc. |
 | Readiness KPIs | `core/readiness_kpis.py` | Module docstring; schema in `.taskmaster/docs/subtask-2.7-plan.md`; UX in `readiness-scorecard-ux.md`. No `docs/Architecture` doc. |
@@ -41,14 +41,20 @@ Document the data model, normalization rules, and taxonomy with examples and usa
 
 ---
 
-### Step 2.6.2 — Update architecture docs (data model, normalization, taxonomy)
+### Step 2.6.2 — Update architecture docs + refresh existing visuals (data model, normalization, taxonomy)
 
-**Scope:** Keep `docs/Architecture/` accurate and cross-linked.
+**Scope:** Keep `docs/Architecture/` accurate and cross-linked, preserving the existing style: **Mermaid blocks in the `.md` files**, plus **source `.mmd` files and exported `.png` images** in `docs/Architecture/images/`.
+
+**Diagram workflow (for existing docs):**
+
+- Treat `docs/Architecture/images/*.mmd` as the **single source of truth** for diagrams that have exported PNGs.
+- Update `.mmd` first, then ensure the Mermaid blocks embedded in the `.md` match the `.mmd`.
+- Regenerate the corresponding `.png` exports so the visuals in docs stay current.
 
 | Doc | Actions |
 |-----|---------|
-| `docs/Architecture/architecture-data-model.md` | Add `InventoryItemRegistry` to registry overview and registry summary table. Add short “Related docs” section linking to architecture-normalization, architecture-taxonomy, and data-model-utils. Optionally add `InventoryUnitEquivalenceRegistry` if not documented. |
-| `docs/Architecture/architecture-normalization.md` | Add “Related docs” section linking to architecture-data-model and architecture-taxonomy. Ensure conversion examples (e.g. 1 caja = 10 kg) are present. |
+| `docs/Architecture/architecture-data-model.md` | Update visuals and text to match current `core/data_model.py`: include `InventoryItemRegistry` and `InventoryUnitEquivalenceRegistry` in the entity/registry overview and registry summary; update class diagram for newer fields (e.g. `InventoryUnit.is_standard`, `InventoryItem.description`). Add short “Related docs” section linking to architecture-normalization, architecture-taxonomy, and data-model-utils. |
+| `docs/Architecture/architecture-normalization.md` | Update visuals and text to match current `core/normalization.py`: reflect optional `equivalence_registry: InventoryUnitEquivalenceRegistry` inputs in relevant flows; add `InventoryUnitEquivalenceRegistry` to the “External dependencies” diagram. Add “Related docs” section linking to architecture-data-model and architecture-taxonomy. Ensure conversion examples (e.g. 1 caja = 10 kg) are present. |
 | `docs/Architecture/architecture-taxonomy.md` | **Create.** Explain Taxonomy, IngredientTaxonomy, InventoryTaxonomy, RecipeTaxonomy; is_a / part_of; find_related_items. Include a simple diagram (Mermaid) and usage snippet. |
 | `docs/Architecture/architecture-data-model-utils.md` | **Create** (or fold into architecture-data-model). Explain purpose: format/display, validation, resolution, factory helpers. Link to normalization and readiness KPIs where relevant. |
 | `docs/Architecture/architecture-readiness-kpis.md` | **Create.** Summary of readiness report schema, dimensions, scoring, and UX guidance. Link to `subtask-2.7-plan.md` and `readiness-scorecard-ux.md` for full spec. |
@@ -90,19 +96,21 @@ Document the data model, normalization rules, and taxonomy with examples and usa
 
 ---
 
-### Step 2.6.5 — Diagrams for entity relationships and taxonomy
+### Step 2.6.5 — New diagrams + final diagram QA (taxonomy and completeness)
 
-**Scope:** Diagrams already exist in `docs/Architecture/` (Mermaid). Ensure completeness and add taxonomy diagram if missing.
+**Scope:** Leave refresh/regeneration of **existing** data-model/normalization diagrams to **Step 2.6.2**. This step focuses on (a) **new diagrams** that don’t exist yet (taxonomy), and (b) a final pass to confirm all diagrams are consistent.
 
 | Diagram | Location | Content |
 |---------|----------|---------|
-| Entity/registry overview | `architecture-data-model.md` | Already exists (flowchart). |
-| Class diagram | `architecture-data-model.md` | Already exists (classDiagram). |
-| Template flow | `architecture-data-model.md` | Already exists. |
-| Normalization layers | `architecture-normalization.md` | Already exists. |
 | Taxonomy hierarchy | `architecture-taxonomy.md` (new) | Add Mermaid diagram: Taxonomy nodes, is_a / part_of edges, example hierarchy (e.g. tomate is_a verdura). |
 
-**Output:** All architecture docs have appropriate diagrams; taxonomy doc includes hierarchy example.
+**Diagram QA checklist:**
+
+- Mermaid blocks in `.md` match the corresponding `docs/Architecture/images/*.mmd` (when a `.mmd` exists).
+- All referenced `.png` files exist and are regenerated from the current `.mmd`.
+- No stale nodes/edges remain (e.g., missing `InventoryItemRegistry`, `InventoryUnitEquivalenceRegistry`).
+
+**Output:** Taxonomy doc includes hierarchy example; all architecture docs have consistent, up-to-date visuals.
 
 ---
 
@@ -117,7 +125,8 @@ Document the data model, normalization rules, and taxonomy with examples and usa
 **Checklist before marking 2.6 done:**
 
 - [ ] All public classes/functions in core modules have docstrings with type hints (or explicit `None` where applicable).
-- [ ] `docs/Architecture/architecture-data-model.md` includes InventoryItemRegistry and cross-links.
+- [ ] `docs/Architecture/architecture-data-model.md` diagrams match current registries/fields (incl. `InventoryItemRegistry`, `InventoryUnitEquivalenceRegistry`) and cross-links exist.
+- [ ] `docs/Architecture/architecture-normalization.md` diagrams match current conversion flows (incl. optional equivalence registry) and cross-links exist.
 - [ ] `docs/Architecture/architecture-taxonomy.md` exists with overview and diagram.
 - [ ] `docs/Architecture/architecture-data-model-utils.md` or equivalent exists (or content folded into data-model doc).
 - [ ] `docs/Architecture/architecture-readiness-kpis.md` exists with summary and links to full spec.
@@ -133,7 +142,7 @@ Document the data model, normalization rules, and taxonomy with examples and usa
 2. **2.6.2** — Update/create architecture docs.
 3. **2.6.3** — Update README.
 4. **2.6.4** — Create example code.
-5. **2.6.5** — Add/finalize diagrams (can be done as part of 2.6.2).
+5. **2.6.5** — New diagrams + final diagram QA (taxonomy + completeness).
 6. **2.6.6** — Verification and checklist.
 
 ---
@@ -157,6 +166,8 @@ Document the data model, normalization rules, and taxonomy with examples and usa
 | Modify | `core/readiness_kpis.py` (docstrings) |
 | Modify | `docs/Architecture/architecture-data-model.md` |
 | Modify | `docs/Architecture/architecture-normalization.md` |
+| Modify | `docs/Architecture/images/*.mmd` (diagram sources for existing exports) |
+| Regenerate | `docs/Architecture/images/*.png` (exports from `.mmd`) |
 | Modify | `README.md` |
 | Create | `docs/Architecture/architecture-taxonomy.md` |
 | Create | `docs/Architecture/architecture-data-model-utils.md` (or merge into data-model) |
