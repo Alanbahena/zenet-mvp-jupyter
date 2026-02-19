@@ -145,37 +145,63 @@ Build the **cognitive-operational core** of Zenet:
 
 ---
 
+## 📐 Data model overview
+
+The cognitive core is built around **entities**, **registries**, **templates**, and **fixed data**:
+
+- **Entities:** `Recipe`, `Ingredient`, `InventoryItem`, and related types (e.g. deduction items, conversion rules) are defined as dataclasses in `core/data_model.py`. They are validated and resolved via registries.
+- **Registries:** Central registries hold canonical entities (ingredients, inventory categories, recipes, restaurant types, equivalence rules). They support validation, lookup, and name-based linking used for Phase A readiness.
+- **Templates:** Recipe and inventory templates are provided **per restaurant type** (e.g. fast-casual, full-service), so operational models can be tailored by segment.
+- **Fixed data:** Enums and reference data such as `RestaurantType` and `InventoryCategory` anchor the model and appear in templates and validation.
+
+---
+
+## 🔧 Design decisions
+
+- **Dataclasses:** Entities are plain Python dataclasses for clarity, serialization, and type hints; no ORM.
+- **Registries for validation:** All entities that participate in readiness or normalization are registered; registries enforce uniqueness and support resolution by name.
+- **Template-by-restaurant-type:** Templates (recipes, inventory) are keyed by `RestaurantType` so the system can scale to multiple segments without mixing templates.
+- **Name-based linking (Phase A):** Readiness and deduction logic use **name-based** links (e.g. ingredient name, category name) rather than foreign keys, simplifying Phase A integration and file-based workflows.
+
+---
+
+## 📚 Where to read more
+
+| Topic | Document |
+|-------|----------|
+| Data model (entities, registries, templates, workflows) | [architecture-data-model.md](docs/Architecture/architecture-data-model.md) |
+| Normalization (equivalence, conversion, deduction) | [architecture-normalization.md](docs/Architecture/architecture-normalization.md) |
+| Taxonomy (ingredient, inventory, recipe hierarchies) | [architecture-taxonomy.md](docs/Architecture/architecture-taxonomy.md) |
+| Data model helpers (format, validation, resolution) | [architecture-data-model-utils.md](docs/Architecture/architecture-data-model-utils.md) |
+| Readiness report (schema, KPIs, recommendations) | [architecture-readiness-kpis.md](docs/Architecture/architecture-readiness-kpis.md) |
+
+---
+
 ## 📁 Project Structure
 
 ```txt
-zenet_mvp_0_1/
-│
-├── notebooks/
-│   ├── 00_context.ipynb
-│   ├── 01_ingestion.ipynb
-│   ├── 02_normalization.ipynb
-│   ├── 03_ontology_mapping.ipynb
-│   ├── 04_agents.ipynb
-│   ├── 05_workflows.ipynb
-│   ├── 06_reasoning.ipynb
-│   ├── 07_decisions.ipynb
-│   └── 08_gradio_interface.ipynb
-│
-├── gradio/
-│   └── app.py
+MVP Jupyter/
 │
 ├── core/
-│   ├── agents/
-│   ├── workflows/
-│   ├── models/
-│   ├── ontology/
-│   ├── engine/
-│   └── utils/
+│   ├── __init__.py
+│   ├── data_model.py        # Entities, registries, templates
+│   ├── normalization.py    # Equivalence, conversion, deduction
+│   ├── taxonomy.py         # Ingredient / inventory / recipe taxonomies
+│   ├── data_model_utils.py # Format, validation, resolution helpers
+│   └── readiness_kpis.py   # Readiness report and KPI computation
 │
-├── data/
-│   ├── raw/
-│   ├── processed/
-│   ├── normalized/
-│   └── outputs/
+├── docs/
+│   └── Architecture/       # architecture-data-model, normalization, taxonomy, etc.
 │
-└── main.py
+├── .taskmaster/
+│   └── docs/               # Task plans, UX specs (e.g. subtask-2.6-plan, readiness-scorecard-ux)
+│
+├── tests/
+│   └── unit/               # test_data_model, test_normalization, test_taxonomy, test_data_model_utils, test_readiness_kpis
+│
+├── notebooks/              # Jupyter notebooks (context, ingestion, normalization, etc.)
+├── gradio/                 # Gradio UI (e.g. app.py)
+├── data/                   # raw, processed, normalized, outputs
+├── main.py
+└── README.md
+```
