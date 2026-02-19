@@ -128,7 +128,33 @@ flowchart TB
 
 ---
 
-## 4. Traversal helper (example)
+## 4. Example hierarchy (is_a / part_of)
+
+A small ingredient-style hierarchy shows how nodes and directed edges look in practice. Edges are stored as `(source, target, type)`; for `is_a`, source = child and target = parent.
+
+Example:
+
+- **is_a**: `tomate` → `verdura`, `cebolla` → `verdura`, `verdura` → `ingrediente`
+- **part_of**: `hoja` → `lechuga` (leaf is part of lettuce)
+
+```mermaid
+flowchart TB
+    subgraph is_a["is_a (child → parent)"]
+        tomate --> verdura
+        cebolla --> verdura
+        verdura --> ingrediente
+    end
+
+    subgraph part_of["part_of (part → whole)"]
+        hoja --> lechuga
+    end
+```
+
+![Example hierarchy](images/taxonomy-02-hierarchy-example.png)
+
+---
+
+## 5. Traversal helper (example)
 
 `find_related_items(taxonomy, node_id, max_depth?, limit?)` performs a BFS traversal and returns:
 
@@ -138,7 +164,7 @@ flowchart TB
 
 ---
 
-## 5. Practical notes / gotchas
+## 6. Practical notes / gotchas
 
 - **Relationship direction matters** for `get_children` vs `get_parents`, but **`get_related` intentionally ignores direction** (it unions in+out for that type).
 - **Traversal ignores edge type**: `find_related_items` walks parents+children regardless of whether an edge is `is_a` or `part_of`.
@@ -146,7 +172,7 @@ flowchart TB
 
 ---
 
-## 6. Related docs
+## 7. Related docs
 
 - [`architecture-data-model.md`](architecture-data-model.md)
 - [`architecture-normalization.md`](architecture-normalization.md)
