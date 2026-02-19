@@ -6,14 +6,16 @@ Run from project root:
   python examples/tortilla_example.py
   # If core is not installed: PYTHONPATH=. python examples/tortilla_example.py
 
-Demonstrates the conversion table for different-dimension units:
+Demonstrates the conversion table for different-dimension units and readiness:
   - Recipe uses "3 tortillas" in piezas (pza).
   - Inventory stores "Tortilla" in kg.
   - A conversion entry (1 pza = 0.05 kg) lets normalize_recipe_for_deduction
     produce a deduction line in kg.
+  - compute_readiness_report shows overall status, grade, and KPIs.
 """
 
 from core import (
+    compute_readiness_report,
     format_deduction_line_for_display,
     ingredients_to_display,
     make_resolver_from_item_registry,
@@ -30,6 +32,7 @@ from core.data_model import (
     InventoryUnit,
     InventoryUnitRegistry,
     Recipe,
+    Restaurant,
     RecipeUnit,
     RecipeUnitRegistry,
 )
@@ -126,6 +129,28 @@ def main() -> None:
     for line in deduction_lines:
         display = format_deduction_line_for_display(line, inv_unit_reg, item_reg)
         print(f"  {display}")
+
+    # --- 3. Readiness report ---
+    restaurant = Restaurant(id=1, name="Taquería Demo", restaurant_type_id=4)
+    report = compute_readiness_report(
+        restaurant,
+        recipes=[recipe],
+        recipe_unit_registry=recipe_unit_reg,
+        inventory_unit_registry=inv_unit_reg,
+        category_recipe_registry=category_reg,
+        family_inventory_registry=family_reg,
+        inventory_item_registry=item_reg,
+        conversion_table=conversion_table,
+    )
+
+    print("\n=== 3. Readiness report ===\n")
+    overall = report["overall"]
+    print(f"  Status: {overall['status']}")
+    print(f"  Grade:  {overall['grade']}")
+    print(f"  Score:  {overall.get('score', 'N/A')}")
+    print("\n  Sample KPIs:")
+    for kpi in report.get("kpis", [])[:4]:
+        print(f"    - {kpi.get('kpi_id', '')}: {kpi.get('status', '')} ({kpi.get('value', '')})")
 
     print("\nDone.")
 

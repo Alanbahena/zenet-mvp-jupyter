@@ -43,4 +43,4 @@ python examples/tortilla_example.py
 # or: PYTHONPATH=. python examples/tortilla_example.py
 ```
 
-**Expected output:** Recipe ingredients (3 pza Tortilla, 100 g Salsa), then deduction lines (0.15 kg Tortilla, 100 g Salsa).
+**Expected output:** Recipe ingredients (3 pza Tortilla, 100 g Salsa), deduction lines (0.15 kg Tortilla, 100 g Salsa), and a readiness report (status, grade, sample KPIs).
