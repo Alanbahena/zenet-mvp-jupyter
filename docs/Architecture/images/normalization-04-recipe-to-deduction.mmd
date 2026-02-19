@@ -8,6 +8,7 @@ flowchart LR
     Table -->|No| FamilyBase[get_family_base_unit_id]
     FamilyBase --> SameRoot{Same root base?}
     SameRoot -->|Yes| ToBase[to_base_quantity_by_id]
+    EqReg[InventoryUnitEquivalenceRegistry optional] -.-> ToBase
     ToBase --> FromBase[from_base_quantity_by_id]
     FromBase --> Append2[Append DeductionLine]
     SameRoot -->|No| Skip[Skip ingredient]

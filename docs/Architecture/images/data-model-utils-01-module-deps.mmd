@@ -1,0 +1,42 @@
+flowchart TB
+    subgraph dm["core.data_model"]
+        Ingredient
+        Recipe
+        InventoryItemRegistry
+        InventoryUnitRegistry
+        RecipeUnitRegistry
+        FamilyInventoryRegistry
+    end
+
+    subgraph norm["core.normalization"]
+        DeductionLine
+        RecipeUnitConversionRegistry
+        normalize_recipe_for_deduction
+        make_resolver
+    end
+
+    subgraph utils["core.data_model_utils"]
+        format_deduction_line_for_display
+        format_ingredient_for_display
+        ingredients_to_display
+        parse_quantity_and_unit
+        validate_recipe_for_deduction
+        validate_ingredient_with_registries
+        resolve_ingredient_to_inventory_item
+        make_resolver_from_item_registry
+        units_used_by_recipe
+        create_inventory_item_from_ingredient
+        build_ingredient
+    end
+
+    Ingredient --> utils
+    Recipe --> utils
+    InventoryItemRegistry --> utils
+    InventoryUnitRegistry --> utils
+    RecipeUnitRegistry --> utils
+    FamilyInventoryRegistry --> utils
+
+    DeductionLine --> format_deduction_line_for_display
+    RecipeUnitConversionRegistry --> validate_recipe_for_deduction
+    make_resolver --> make_resolver_from_item_registry
+    make_resolver_from_item_registry --> normalize_recipe_for_deduction

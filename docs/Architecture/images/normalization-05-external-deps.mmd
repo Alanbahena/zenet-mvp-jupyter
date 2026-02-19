@@ -4,6 +4,7 @@ flowchart TB
         Ingredient
         InventoryUnit
         InventoryUnitRegistry
+        InventoryUnitEquivalenceRegistry
         FamilyInventoryRegistry
     end
 
@@ -21,6 +22,10 @@ flowchart TB
     InventoryUnitRegistry --> to_base_quantity
     InventoryUnitRegistry --> from_base_quantity
     InventoryUnitRegistry --> convert_quantity
+    InventoryUnitEquivalenceRegistry --> to_base_quantity
+    InventoryUnitEquivalenceRegistry --> from_base_quantity
+    InventoryUnitEquivalenceRegistry --> convert_quantity
+    InventoryUnitEquivalenceRegistry --> normalize_recipe_for_deduction
     FamilyInventoryRegistry --> get_family_base_unit_id
     InventoryUnitRegistry --> get_family_base_unit_id
     Recipe --> normalize_recipe_for_deduction

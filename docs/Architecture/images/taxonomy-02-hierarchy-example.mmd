@@ -1,0 +1,10 @@
+flowchart TB
+    subgraph is_a["is_a (child → parent)"]
+        tomate --> verdura
+        cebolla --> verdura
+        verdura --> ingrediente
+    end
+
+    subgraph part_of["part_of (part → whole)"]
+        hoja --> lechuga
+    end
