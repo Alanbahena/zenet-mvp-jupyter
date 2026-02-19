@@ -65,6 +65,7 @@ from core.data_model_utils import (
     validate_ingredient_with_registries,
     validate_recipe_for_deduction,
 )
+from core.readiness_kpis import compute_readiness_report
 
 __all__ = [
     "ALLOWED_USER_ROLES",
@@ -124,4 +125,5 @@ __all__ = [
     "units_used_by_recipe",
     "validate_ingredient_with_registries",
     "validate_recipe_for_deduction",
+    "compute_readiness_report",
 ]
