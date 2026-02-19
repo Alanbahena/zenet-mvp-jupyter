@@ -57,6 +57,7 @@ WARN_SCORE_MIN = 70.0
 
 @dataclass(frozen=True)
 class EvidenceRef:
+    """Pointer to an example entity used as evidence for a KPI."""
     entity_type: str
     ref: str
     reason: str

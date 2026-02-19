@@ -25,6 +25,7 @@ flowchart TB
         II[InventoryItem]
         RU[RecipeUnit]
         IU[InventoryUnit]
+        IUE[InventoryUnitEquivalence]
         CR[CategoryRecipe]
         FI[FamilyInventory]
     end
@@ -32,6 +33,8 @@ flowchart TB
     subgraph registries["Registries (add/remove/valid_ids/get)"]
         RUR[RecipeUnitRegistry]
         IUR[InventoryUnitRegistry]
+        IIR[InventoryItemRegistry]
+        IUE_R[InventoryUnitEquivalenceRegistry]
         CRR[CategoryRecipeRegistry]
         FIR[FamilyInventoryRegistry]
         UR[UserRegistry]
@@ -49,9 +52,15 @@ flowchart TB
 
     RUR -.->|stores| RU
     IUR -.->|stores| IU
+    IIR -.->|stores| II
+    IUE_R -.->|stores| IUE
     CRR -.->|stores| CR
     FIR -.->|stores| FI
     UR -.->|stores| U
+
+    %% Item-specific unit equivalence: (unit_id, inventory_item_id) -> (base_unit_id, factor_to_base)
+    IUE -->|unit_id / base_unit_id| IU
+    IUE -->|inventory_item_id| II
 ```
 
 ![Entity and registry overview](images/data-model-01-entity-registry.png)
@@ -75,6 +84,7 @@ classDiagram
         +str? description
         +int? base_unit_id
         +float factor_to_base
+        +bool is_standard
     }
     class CategoryRecipe {
         +int id
@@ -119,8 +129,16 @@ classDiagram
         +int unit_id
         +int category_id
         +int? family_id
+        +str? description
         +update_family_id()
         +update_category_id()
+    }
+    class InventoryUnitEquivalence {
+        <<frozen dataclass>>
+        +int unit_id
+        +int inventory_item_id
+        +int base_unit_id
+        +float factor_to_base
     }
     class Ingredient {
         +str name
@@ -151,6 +169,9 @@ classDiagram
     InventoryItem --> InventoryUnit : unit_id
     InventoryItem --> InventoryCategory : category_id
     InventoryItem ..> FamilyInventory : family_id
+    InventoryUnitEquivalence --> InventoryUnit : unit_id
+    InventoryUnitEquivalence --> InventoryUnit : base_unit_id
+    InventoryUnitEquivalence --> InventoryItem : inventory_item_id
 ```
 
 ![Class diagram](images/data-model-02-class-diagram.png)
@@ -182,7 +203,10 @@ flowchart LR
 - `get_recipe_unit_template(restaurant_type_id)` → `tuple[RecipeUnit, ...]`
 - `get_inventory_unit_template(restaurant_type_id)` → `tuple[InventoryUnit, ...]`
 
-Template items use `id=0`; assign real ids when adding to a registry.
+Template behavior:
+
+- Template items use `id=0`; assign real ids when adding to a registry.
+- If `restaurant_type_id` is invalid (not in `DEFAULT_RESTAURANT_TYPES`), each getter returns an **empty tuple**.
 
 ---
 
@@ -201,8 +225,84 @@ Validation helpers: `_valid_restaurant_type_ids()`, `_valid_inventory_category_i
 |----------|--------|--------------|
 | `RecipeUnitRegistry` | `RecipeUnit` | add/remove, `valid_ids()`, `get()`. Remove guarded by optional ingredient list. |
 | `InventoryUnitRegistry` | `InventoryUnit` | add/remove (cycle check on base_unit_id chain), `valid_ids()`, `get()`. Remove guarded by optional inventory items. |
+| `InventoryUnitEquivalenceRegistry` | `InventoryUnitEquivalence` | add/get/remove keyed by `(unit_id, inventory_item_id)`; validates referenced units using `InventoryUnitRegistry`. |
 | `CategoryRecipeRegistry` | `CategoryRecipe` | add/update/remove, `valid_ids()`, `get()`. Remove guarded by optional recipes. |
 | `FamilyInventoryRegistry` | `FamilyInventory` | add/remove, `valid_ids()`, `get()`. Remove guarded by optional inventory items. |
+| `InventoryItemRegistry` | `InventoryItem` | add/remove/get/get_by_name/list_all/valid_ids; enforces unique item name (case-insensitive). |
 | `UserRegistry` | `User` | add/update/delete require `current_user.role == "admin"`; `get()`. |
 
 Roles for `User`: `ALLOWED_USER_ROLES = {"admin", "mesero", "cocinero", "inventario"}`.
+
+---
+
+## 6. Key workflows & invariants (how the model is intended to be used)
+
+### Inventory units: `is_standard` and item-specific equivalences
+
+`InventoryUnit.is_standard` distinguishes:
+
+- **Standard units** (e.g. `kg`, `g`, `L`, `ml`, `pza`): conversions can be expressed via a unit chain (`base_unit_id` + `factor_to_base`) and are generally global.
+- **Non-standard / contextual units** (e.g. `caja`, `bolsa`, `bote`, `pkg`, `bot`): conversions can be **item-specific** (1 caja of strawberries ≠ 1 caja of oranges).
+
+For contextual units, the intended mechanism is `InventoryUnitEquivalenceRegistry`, keyed by:
+
+- `(unit_id, inventory_item_id) -> (base_unit_id, factor_to_base)`
+
+This enables normalization to convert quantities for a specific item when the unit is contextual.
+
+### Recipe → Ingredient → (optional) InventoryItem creation
+
+`Recipe.add_ingredient(...)` can be used in two ways:
+
+- **Ingredient-only:** add the ingredient to the recipe (no inventory item created).
+- **Ingredient + inventory creation:** if `category_id` is provided, `add_ingredient` returns a new `InventoryItem(id=0, ...)` for the caller to persist/add to `InventoryItemRegistry`.
+
+If the inventory unit is contextual and requires a conversion, callers set `unit_requires_equivalence=True` and then, **after persisting** the item and obtaining a real id, add an equivalence entry.
+
+```mermaid
+flowchart TB
+    subgraph recipe_flow["Recipe ingredient flow"]
+        UI[User adds Ingredient to Recipe]
+        AddIng["Recipe.add_ingredient (optional InventoryItem creation)"]
+        UI --> AddIng
+    end
+
+    subgraph outcomes["Outcomes"]
+        NoNewItem["Returns None (existing ingredient updated or no item requested)"]
+        NewItem["Returns InventoryItem(id=0, ...) for caller to persist"]
+    end
+
+    subgraph persistence["Persistence / registries"]
+        Persist["Persist InventoryItem: assign item_id"]
+        AddToReg["InventoryItemRegistry.add item"]
+    end
+
+    subgraph equivalence["Item-specific unit equivalence (optional)"]
+        AddEq["InventoryUnitEquivalenceRegistry.add: (unit_id, item_id) -> (base_unit_id, factor_to_base)"]
+    end
+
+    AddIng -->|existing ingredient name| NoNewItem
+    AddIng -->|category_id provided| NewItem
+    NewItem --> Persist --> AddToReg
+    Persist -->|if unit_requires_equivalence| AddEq
+```
+
+![Key workflows](images/data-model-04-keyworkflows.png)
+
+### Registry invariants (high-signal)
+
+- `InventoryUnitRegistry.add(...)`:
+  - if `base_unit_id` is set, it must already exist in the registry
+  - cycles in the `base_unit_id` chain are rejected
+- `InventoryItemRegistry.add(...)`:
+  - enforces unique item name (case-insensitive)
+  - `get_by_name(...)` supports name-based resolution in early onboarding flows
+
+---
+
+## Related docs
+
+- [`architecture-normalization.md`](architecture-normalization.md)
+- [`architecture-taxonomy.md`](architecture-taxonomy.md)
+- [`architecture-data-model-utils.md`](architecture-data-model-utils.md)
+- [`architecture-readiness-kpis.md`](architecture-readiness-kpis.md)

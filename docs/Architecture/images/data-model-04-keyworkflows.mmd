@@ -1,0 +1,25 @@
+flowchart TB
+    subgraph recipe_flow["Recipe ingredient flow"]
+        UI[User adds Ingredient to Recipe]
+        AddIng["Recipe.add_ingredient (optional InventoryItem creation)"]
+        UI --> AddIng
+    end
+
+    subgraph outcomes["Outcomes"]
+        NoNewItem["Returns None (existing ingredient updated or no item requested)"]
+        NewItem["Returns InventoryItem(id=0, ...) for caller to persist"]
+    end
+
+    subgraph persistence["Persistence / registries"]
+        Persist["Persist InventoryItem: assign item_id"]
+        AddToReg["InventoryItemRegistry.add item"]
+    end
+
+    subgraph equivalence["Item-specific unit equivalence optional"]
+        AddEq["InventoryUnitEquivalenceRegistry.add: (unit_id, item_id) -> (base_unit_id, factor_to_base)"]
+    end
+
+    AddIng -->|existing ingredient name| NoNewItem
+    AddIng -->|category_id provided| NewItem
+    NewItem --> Persist --> AddToReg
+    Persist -->|if unit_requires_equivalence| AddEq

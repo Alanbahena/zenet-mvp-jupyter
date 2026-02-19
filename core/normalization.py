@@ -298,6 +298,12 @@ class RecipeUnitConversionRegistry:
         family_id: Optional[int] = None,
         inventory_item_id: Optional[int] = None,
     ) -> None:
+        """Add a conversion entry scoped by recipe unit and optional family/item context.
+
+        Semantics: the entry represents the conversion for **1 recipe unit** into a base unit.
+        Example: if recipe_unit_id is "tortilla" and base_unit_id is "kg", then
+        `quantity=0.05` means **1 tortilla = 0.05 kg** (so 3 tortillas normalize to 0.15 kg).
+        """
         if not math.isfinite(quantity) or quantity <= 0:
             raise ValueError("quantity must be finite and > 0")
         key = (recipe_unit_id, family_id, inventory_item_id)

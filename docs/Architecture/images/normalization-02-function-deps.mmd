@@ -15,6 +15,8 @@ flowchart LR
         normalize_recipe_for_deduction
     end
 
+    equiv[InventoryUnitEquivalenceRegistry optional]
+
     from_base_quantity --> _factor
     to_base_quantity_by_id --> to_base_quantity
     from_base_quantity_by_id --> from_base_quantity
@@ -26,3 +28,9 @@ flowchart LR
     normalize_recipe_for_deduction --> to_base_quantity_by_id
     normalize_recipe_for_deduction --> from_base_quantity_by_id
     normalize_recipe_for_deduction --> _root
+
+    equiv -.-> to_base_quantity
+    equiv -.-> from_base_quantity
+    equiv -.-> to_base_quantity_by_id
+    equiv -.-> convert_quantity
+    equiv -.-> normalize_recipe_for_deduction

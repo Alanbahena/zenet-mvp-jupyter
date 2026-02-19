@@ -9,7 +9,7 @@ helpers across entity types, and factory methods for related entities.
 from __future__ import annotations
 
 import math
-from typing import Optional
+from typing import Callable, Optional
 
 from core.data_model import (
     FamilyInventoryRegistry,
@@ -183,10 +183,14 @@ def resolve_ingredient_to_inventory_item(
 
 def make_resolver_from_item_registry(
     item_registry: InventoryItemRegistry,
-):
-    """Return a resolver for normalize_recipe_for_deduction using the given item registry.
+) -> Callable[[Ingredient], tuple[int, Optional[int], int]]:
+    """Return a resolver for `normalize_recipe_for_deduction` using the given item registry.
 
-    Usage: normalize_recipe_for_deduction(..., resolve_ingredient_to_inventory=make_resolver_from_item_registry(reg))
+    Usage:
+
+    - `normalize_recipe_for_deduction(..., resolve_ingredient_to_inventory=make_resolver_from_item_registry(reg))`
+
+    The returned callable maps an Ingredient to `(inventory_item_id, family_id, item_unit_id)`.
     """
     return make_resolver(lambda ing: resolve_ingredient_to_inventory_item(ing, item_registry))
 

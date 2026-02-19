@@ -1,11 +1,14 @@
-# core/taxonomy.py — Semantic relations and taxonomies for ingredients, recipes, inventory.
-#
-# Taxonomy is a separate semantic layer; node ids may match data model ids or names.
-# Caller is responsible for populating and syncing with the data model.
-#
-# Edge direction:
-# - is_a: (child, parent) so source=child, target=parent (e.g. tomate is_a verdura).
-# - part_of: (part, whole) so source=part, target=whole.
+"""
+Semantic relations and taxonomies for ingredients, recipes, and inventory.
+
+This module is a separate semantic layer from the core data model. Node ids are strings
+and may be names (e.g. "tomate") or stringified ids (e.g. "123"). The caller is
+responsible for populating the taxonomy and keeping it in sync with the data model.
+
+Edge direction:
+- is_a: (child, parent) so source=child, target=parent (e.g. tomate is_a verdura)
+- part_of: (part, whole) so source=part, target=whole
+"""
 
 from __future__ import annotations
 
@@ -92,6 +95,7 @@ class Taxonomy:
         return False
 
     def has_node(self, node_id: str) -> bool:
+        """Return True if node_id is present in the taxonomy."""
         return node_id in self._nodes
 
 
@@ -143,12 +147,15 @@ class IngredientTaxonomy:
         self._taxonomy = Taxonomy()
 
     def add_ingredient(self, ingredient_id: str) -> None:
+        """Add an ingredient node to the taxonomy."""
         self._taxonomy.add_node(ingredient_id)
 
     def add_is_a(self, child: str, parent: str) -> None:
+        """Add an is_a relationship: child is_a parent."""
         self._taxonomy.add_relationship(child, parent, IS_A)
 
     def add_part_of(self, part: str, whole: str) -> None:
+        """Add a part_of relationship: part part_of whole."""
         self._taxonomy.add_relationship(part, whole, PART_OF)
 
     def get_ingredient_ancestors(self, ingredient_id: str) -> list[str]:
@@ -168,6 +175,7 @@ class IngredientTaxonomy:
         return out
 
     def get_ingredient_related(self, ingredient_id: str, relationship_type: str) -> list[str]:
+        """Return nodes related to ingredient_id by the given relationship type."""
         return self._taxonomy.get_related(ingredient_id, relationship_type)
 
     @property
@@ -185,12 +193,15 @@ class RecipeTaxonomy:
         self._taxonomy = Taxonomy()
 
     def add_recipe(self, recipe_id: str) -> None:
+        """Add a recipe node to the taxonomy."""
         self._taxonomy.add_node(recipe_id)
 
     def add_is_a(self, child: str, parent: str) -> None:
+        """Add an is_a relationship: child is_a parent."""
         self._taxonomy.add_relationship(child, parent, IS_A)
 
     def add_part_of(self, part: str, whole: str) -> None:
+        """Add a part_of relationship: part part_of whole."""
         self._taxonomy.add_relationship(part, whole, PART_OF)
 
     def get_recipe_categories(self, recipe_id: str) -> list[str]:
@@ -198,6 +209,7 @@ class RecipeTaxonomy:
         return self._taxonomy.get_parents(recipe_id)
 
     def get_related_recipes(self, recipe_id: str, relationship_type: str) -> list[str]:
+        """Return nodes related to recipe_id by the given relationship type."""
         return self._taxonomy.get_related(recipe_id, relationship_type)
 
     @property
@@ -215,12 +227,15 @@ class InventoryTaxonomy:
         self._taxonomy = Taxonomy()
 
     def add_item(self, item_id: str) -> None:
+        """Add an inventory item node to the taxonomy."""
         self._taxonomy.add_node(item_id)
 
     def add_is_a(self, child: str, parent: str) -> None:
+        """Add an is_a relationship: child is_a parent."""
         self._taxonomy.add_relationship(child, parent, IS_A)
 
     def add_part_of(self, part: str, whole: str) -> None:
+        """Add a part_of relationship: part part_of whole."""
         self._taxonomy.add_relationship(part, whole, PART_OF)
 
     def get_inventory_ancestors(self, item_id: str) -> list[str]:
@@ -240,6 +255,7 @@ class InventoryTaxonomy:
         return out
 
     def get_related_inventory_items(self, item_id: str, relationship_type: str) -> list[str]:
+        """Return nodes related to item_id by the given relationship type."""
         return self._taxonomy.get_related(item_id, relationship_type)
 
     @property

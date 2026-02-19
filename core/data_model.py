@@ -352,9 +352,11 @@ class Restaurant:
     notes: Optional[str] = None
 
     def update_address(self, value: Optional[str]) -> None:
+        """Update the restaurant address (nullable)."""
         self.address = value
 
     def update_restaurant_type_id(self, value: Optional[int]) -> None:
+        """Update restaurant_type_id (nullable), validating against fixed restaurant types."""
         if value is not None and value not in _valid_restaurant_type_ids():
             raise ValueError(
                 f"restaurant_type_id must be one of {sorted(_valid_restaurant_type_ids())}"
@@ -362,15 +364,19 @@ class Restaurant:
         self.restaurant_type_id = value
 
     def update_notes(self, value: Optional[str]) -> None:
+        """Update free-form notes (nullable)."""
         self.notes = value
 
     def clear_address(self) -> None:
+        """Clear the address (set to None)."""
         self.address = None
 
     def clear_restaurant_type_id(self) -> None:
+        """Clear the restaurant type (set to None)."""
         self.restaurant_type_id = None
 
     def clear_notes(self) -> None:
+        """Clear notes (set to None)."""
         self.notes = None
 
 
@@ -412,6 +418,7 @@ class InventoryItem:
     def update_family_id(
         self, family_id: Optional[int], valid_ids: Optional[set[int]] = None
     ) -> None:
+        """Update family_id (nullable), optionally validating against a provided id set."""
         if family_id is not None and valid_ids is not None and family_id not in valid_ids:
             raise ValueError(f"family_id must be in valid_ids, got {family_id}")
         self.family_id = family_id
@@ -419,6 +426,7 @@ class InventoryItem:
     def update_category_id(
         self, category_id: int, valid_ids: Optional[set[int]] = None
     ) -> None:
+        """Update category_id, validating against fixed inventory categories by default."""
         ids = valid_ids if valid_ids is not None else _valid_inventory_category_ids()
         if category_id not in ids:
             raise ValueError(f"category_id must be in valid_ids, got {category_id}")
@@ -539,6 +547,7 @@ class Recipe:
     def remove_ingredient(
         self, ingredient: Ingredient | int | str
     ) -> Optional[Ingredient]:
+        """Remove an ingredient by instance, index, or name; returns removed Ingredient or None."""
         if isinstance(ingredient, int):
             if ingredient < 0 or ingredient >= len(self.ingredients):
                 raise IndexError(
@@ -559,13 +568,16 @@ class Recipe:
         return None
 
     def ingredient_count(self) -> int:
+        """Return the number of ingredients in this recipe."""
         return len(self.ingredients)
 
     def has_ingredient(self, name: str) -> bool:
+        """Return True if an ingredient with this name exists (case-insensitive)."""
         name_lower = name.casefold()
         return any(ing.name.casefold() == name_lower for ing in self.ingredients)
 
     def get_ingredient_by_name(self, name: str) -> Optional[Ingredient]:
+        """Return the first ingredient matching name (case-insensitive), or None."""
         name_lower = name.casefold()
         for ing in self.ingredients:
             if ing.name.casefold() == name_lower:
@@ -575,6 +587,7 @@ class Recipe:
     def update_category_id(
         self, category_id: int, valid_ids: Optional[set[int]] = None
     ) -> None:
+        """Update category_id, optionally validating against a provided id set."""
         if valid_ids is not None and category_id not in valid_ids:
             raise ValueError(f"category_id must be in valid_ids, got {category_id}")
         self.category_id = category_id
@@ -592,6 +605,7 @@ class RecipeUnitRegistry:
         self._units: list[RecipeUnit] = []
 
     def add(self, unit: RecipeUnit) -> None:
+        """Add a RecipeUnit after validating name/symbol uniqueness."""
         if not (unit.name or "").strip():
             raise ValueError("unit.name must be non-empty")
         if not (unit.symbol or "").strip():
@@ -606,6 +620,7 @@ class RecipeUnitRegistry:
     def remove(
         self, unit_id: int, ingredients: Optional[list[Ingredient]] = None
     ) -> Optional[RecipeUnit]:
+        """Remove a RecipeUnit by id; optionally guard if any Ingredient uses this unit_id."""
         if ingredients is not None:
             for ing in ingredients:
                 if ing.unit_id == unit_id:
@@ -616,9 +631,11 @@ class RecipeUnitRegistry:
         return None
 
     def valid_ids(self) -> set[int]:
+        """Return the set of unit ids currently stored in the registry."""
         return {u.id for u in self._units}
 
     def get(self, unit_id: int) -> Optional[RecipeUnit]:
+        """Return a RecipeUnit by id, or None if not found."""
         for u in self._units:
             if u.id == unit_id:
                 return u
@@ -647,6 +664,7 @@ class InventoryUnitRegistry:
         self._units: list[InventoryUnit] = []
 
     def add(self, unit: InventoryUnit) -> None:
+        """Add an InventoryUnit after validating uniqueness and base_unit_id chain constraints."""
         if not (unit.name or "").strip():
             raise ValueError("unit.name must be non-empty")
         if not (unit.symbol or "").strip():
@@ -675,6 +693,7 @@ class InventoryUnitRegistry:
     def remove(
         self, unit_id: int, inventory_items: Optional[list[InventoryItem]] = None
     ) -> Optional[InventoryUnit]:
+        """Remove an InventoryUnit by id; optionally guard if any InventoryItem uses this unit_id."""
         if inventory_items is not None:
             for item in inventory_items:
                 if item.unit_id == unit_id:
@@ -687,9 +706,11 @@ class InventoryUnitRegistry:
         return None
 
     def valid_ids(self) -> set[int]:
+        """Return the set of unit ids currently stored in the registry."""
         return {u.id for u in self._units}
 
     def get(self, unit_id: int) -> Optional[InventoryUnit]:
+        """Return an InventoryUnit by id, or None if not found."""
         for u in self._units:
             if u.id == unit_id:
                 return u
@@ -728,6 +749,7 @@ class InventoryUnitEquivalenceRegistry:
         equivalence: InventoryUnitEquivalence,
         unit_registry: InventoryUnitRegistry,
     ) -> None:
+        """Add a per-item equivalence after validating referenced units and uniqueness."""
         if equivalence.factor_to_base <= 0:
             raise ValueError("factor_to_base must be > 0")
         if unit_registry.get(equivalence.unit_id) is None:
@@ -755,9 +777,11 @@ class InventoryUnitEquivalenceRegistry:
         unit_id: int,
         inventory_item_id: int,
     ) -> Optional[InventoryUnitEquivalence]:
+        """Return an equivalence by (unit_id, inventory_item_id), or None if not found."""
         return self._entries.get((unit_id, inventory_item_id))
 
     def remove(self, unit_id: int, inventory_item_id: int) -> Optional[InventoryUnitEquivalence]:
+        """Remove and return an equivalence by key, or None if it did not exist."""
         return self._entries.pop((unit_id, inventory_item_id), None)
 
 
@@ -768,6 +792,7 @@ class CategoryRecipeRegistry:
         self._categories: list[CategoryRecipe] = []
 
     def add(self, category: CategoryRecipe) -> None:
+        """Add a CategoryRecipe after validating uniqueness (id and name)."""
         if not (category.name or "").strip():
             raise ValueError("category.name must be non-empty")
         for c in self._categories:
@@ -797,6 +822,7 @@ class CategoryRecipeRegistry:
     def remove(
         self, category_id: int, recipes: Optional[list[Recipe]] = None
     ) -> Optional[CategoryRecipe]:
+        """Remove a CategoryRecipe by id; optionally guard if any Recipe uses this category_id."""
         if recipes is not None:
             for r in recipes:
                 if r.category_id == category_id:
@@ -807,9 +833,11 @@ class CategoryRecipeRegistry:
         return None
 
     def valid_ids(self) -> set[int]:
+        """Return the set of category ids currently stored in the registry."""
         return {c.id for c in self._categories}
 
     def get(self, category_id: int) -> Optional[CategoryRecipe]:
+        """Return a CategoryRecipe by id, or None if not found."""
         for c in self._categories:
             if c.id == category_id:
                 return c
@@ -823,6 +851,7 @@ class FamilyInventoryRegistry:
         self._families: list[FamilyInventory] = []
 
     def add(self, family: FamilyInventory) -> None:
+        """Add a FamilyInventory after validating uniqueness (id and name)."""
         if not (family.name or "").strip():
             raise ValueError("family.name must be non-empty")
         for f in self._families:
@@ -835,6 +864,7 @@ class FamilyInventoryRegistry:
     def remove(
         self, family_id: int, inventory_items: Optional[list[InventoryItem]] = None
     ) -> Optional[FamilyInventory]:
+        """Remove a FamilyInventory by id; optionally guard if any InventoryItem uses this family_id."""
         if inventory_items is not None:
             for item in inventory_items:
                 if item.family_id == family_id:
@@ -845,9 +875,11 @@ class FamilyInventoryRegistry:
         return None
 
     def valid_ids(self) -> set[int]:
+        """Return the set of family ids currently stored in the registry."""
         return {f.id for f in self._families}
 
     def get(self, family_id: int) -> Optional[FamilyInventory]:
+        """Return a FamilyInventory by id, or None if not found."""
         for f in self._families:
             if f.id == family_id:
                 return f
@@ -866,6 +898,7 @@ class InventoryItemRegistry:
         self._items: list[InventoryItem] = []
 
     def add(self, item: InventoryItem) -> None:
+        """Add an InventoryItem after validating uniqueness (id and name) and category_id validity."""
         if not (item.name or "").strip():
             raise ValueError("inventory item name must be non-empty")
         if item.category_id not in _valid_inventory_category_ids():
@@ -885,6 +918,7 @@ class InventoryItemRegistry:
     def remove(
         self, item_id: int, recipes: Optional[list[Recipe]] = None
     ) -> Optional[InventoryItem]:
+        """Remove an InventoryItem by id; optionally guard if any Recipe uses it by ingredient name."""
         if recipes is not None:
             item = self.get(item_id)
             if item is not None:
@@ -901,12 +935,14 @@ class InventoryItemRegistry:
         return None
 
     def get(self, item_id: int) -> Optional[InventoryItem]:
+        """Return an InventoryItem by id, or None if not found."""
         for i in self._items:
             if i.id == item_id:
                 return i
         return None
 
     def get_by_name(self, name: str) -> Optional[InventoryItem]:
+        """Return an InventoryItem by name (case-insensitive), or None if not found."""
         name_norm = (name or "").strip().lower()
         for i in self._items:
             if i.name.strip().lower() == name_norm:
@@ -914,9 +950,11 @@ class InventoryItemRegistry:
         return None
 
     def valid_ids(self) -> set[int]:
+        """Return the set of inventory item ids currently stored in the registry."""
         return {i.id for i in self._items}
 
     def list_all(self) -> list[InventoryItem]:
+        """Return a shallow copy of the items list (read-only snapshot)."""
         return list(self._items)
 
 
@@ -927,6 +965,7 @@ class UserRegistry:
         self._users: list[User] = []
 
     def add(self, user: User, current_user: User) -> None:
+        """Add a user (admin-only). Validates role, name, and email."""
         if current_user.role != "admin":
             raise PermissionError("Only admin can add users")
         if user.role not in ALLOWED_USER_ROLES:
@@ -942,6 +981,7 @@ class UserRegistry:
     def update(
         self, user_id: int, updates: dict, current_user: User
     ) -> None:
+        """Update an existing user (admin-only). Supports name/email/role updates."""
         if current_user.role != "admin":
             raise PermissionError("Only admin can update users")
         for u in self._users:
@@ -966,6 +1006,7 @@ class UserRegistry:
         raise ValueError(f"user id {user_id} not found")
 
     def delete(self, user_id: int, current_user: User) -> None:
+        """Delete a user by id (admin-only)."""
         if current_user.role != "admin":
             raise PermissionError("Only admin can delete users")
         for i, u in enumerate(self._users):
@@ -975,6 +1016,7 @@ class UserRegistry:
         raise ValueError(f"user id {user_id} not found")
 
     def get(self, user_id: int) -> Optional[User]:
+        """Return a User by id, or None if not found."""
         for u in self._users:
             if u.id == user_id:
                 return u
