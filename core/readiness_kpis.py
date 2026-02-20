@@ -874,9 +874,9 @@ def compute_readiness_report(
         single = Recipe(
             r.id,
             r.name,
+            r.category_id,
             r.description,
             r.steps,
-            r.category_id,
             ingredients=[ing],
         )
         lines = normalize_recipe_for_deduction(

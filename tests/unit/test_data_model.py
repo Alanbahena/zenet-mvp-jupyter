@@ -217,8 +217,8 @@ class TestRecipe(unittest.TestCase):
 
     def test_recipe_ingredients_default_factory(self):
         """Each recipe gets its own list; mutating one does not affect another."""
-        r1 = Recipe(0, "A", "Desc A", [], 1)
-        r2 = Recipe(0, "B", "Desc B", [], 1)
+        r1 = Recipe(0, "A", 1, "Desc A", [])
+        r2 = Recipe(0, "B", 1, "Desc B", [])
         r1.ingredients.append(Ingredient("X", 1.0, 1))
         self.assertEqual(len(r1.ingredients), 1)
         self.assertEqual(len(r2.ingredients), 0)
@@ -260,7 +260,7 @@ class TestRecipeIngredientRelationship(unittest.TestCase):
 
 class TestRecipeAddIngredient(unittest.TestCase):
     def test_add_ingredient_success(self):
-        recipe = Recipe(0, "R", "D", [], 1)
+        recipe = Recipe(0, "R", 1, "D", [])
         valid = {1, 2}
         ing = Ingredient("Harina", 250.0, 1)
         out = recipe.add_ingredient(ing, valid)
@@ -269,34 +269,34 @@ class TestRecipeAddIngredient(unittest.TestCase):
         self.assertEqual(recipe.ingredients[0].name, "Harina")
 
     def test_add_ingredient_empty_name_raises(self):
-        recipe = Recipe(0, "R", "D", [], 1)
+        recipe = Recipe(0, "R", 1, "D", [])
         ing = Ingredient("  ", 1.0, 1)
         with self.assertRaises(ValueError) as ctx:
             recipe.add_ingredient(ing, {1})
         self.assertIn("non-empty", str(ctx.exception))
 
     def test_add_ingredient_quantity_zero_raises(self):
-        recipe = Recipe(0, "R", "D", [], 1)
+        recipe = Recipe(0, "R", 1, "D", [])
         ing = Ingredient("Sal", 0.0, 1)
         with self.assertRaises(ValueError) as ctx:
             recipe.add_ingredient(ing, {1})
         self.assertIn("finite and > 0", str(ctx.exception))
 
     def test_add_ingredient_nan_raises(self):
-        recipe = Recipe(0, "R", "D", [], 1)
+        recipe = Recipe(0, "R", 1, "D", [])
         ing = Ingredient("X", float("nan"), 1)
         with self.assertRaises(ValueError):
             recipe.add_ingredient(ing, {1})
 
     def test_add_ingredient_invalid_unit_id_raises(self):
-        recipe = Recipe(0, "R", "D", [], 1)
+        recipe = Recipe(0, "R", 1, "D", [])
         ing = Ingredient("Harina", 1.0, 99)
         with self.assertRaises(ValueError) as ctx:
             recipe.add_ingredient(ing, {1, 2})
         self.assertIn("valid_unit_ids", str(ctx.exception))
 
     def test_add_ingredient_creates_inventory_item_when_category_provided(self):
-        recipe = Recipe(0, "R", "D", [], 1)
+        recipe = Recipe(0, "R", 1, "D", [])
         ing = Ingredient("Leche", 100.0, 1)
         valid_units = {1}
         valid_inv_units = {1, 2}
@@ -315,14 +315,14 @@ class TestRecipeAddIngredient(unittest.TestCase):
         self.assertEqual(len(recipe.ingredients), 1)
 
     def test_add_ingredient_category_without_valid_inventory_unit_ids_raises(self):
-        recipe = Recipe(0, "R", "D", [], 1)
+        recipe = Recipe(0, "R", 1, "D", [])
         ing = Ingredient("Leche", 1.0, 1)
         with self.assertRaises(ValueError) as ctx:
             recipe.add_ingredient(ing, {1}, category_id=1, unit_id_for_inventory=1)
         self.assertIn("valid_inventory_unit_ids", str(ctx.exception))
 
     def test_add_ingredient_family_id_requires_valid_family_ids(self):
-        recipe = Recipe(0, "R", "D", [], 1)
+        recipe = Recipe(0, "R", 1, "D", [])
         ing = Ingredient("Queso", 50.0, 1)
         with self.assertRaises(ValueError) as ctx:
             recipe.add_ingredient(
@@ -335,7 +335,7 @@ class TestRecipeAddIngredient(unittest.TestCase):
         self.assertIn("valid_family_inventory_ids", str(ctx.exception))
 
     def test_add_ingredient_invalid_category_id_raises(self):
-        recipe = Recipe(0, "R", "D", [], 1)
+        recipe = Recipe(0, "R", 1, "D", [])
         ing = Ingredient("Leche", 100.0, 1)
         with self.assertRaises(ValueError) as ctx:
             recipe.add_ingredient(
@@ -349,7 +349,7 @@ class TestRecipeAddIngredient(unittest.TestCase):
 
     def test_add_ingredient_new_item_standard_unit_no_equivalence(self):
         """Creating new item with standard unit does not require equivalence args."""
-        recipe = Recipe(0, "R", "D", [], 1)
+        recipe = Recipe(0, "R", 1, "D", [])
         ing = Ingredient("Harina", 500.0, 1)
         valid_units = {1}
         valid_inv_units = {1, 2}
@@ -367,7 +367,7 @@ class TestRecipeAddIngredient(unittest.TestCase):
 
     def test_add_ingredient_new_item_non_standard_unit_without_equivalence_raises(self):
         """Creating new item with unit_requires_equivalence=True but no equivalence args raises."""
-        recipe = Recipe(0, "R", "D", [], 1)
+        recipe = Recipe(0, "R", 1, "D", [])
         ing = Ingredient("Fresas", 2.0, 1)
         valid_units = {1}
         valid_inv_units = {1, 2}  # 1=kg, 2=caja
@@ -385,7 +385,7 @@ class TestRecipeAddIngredient(unittest.TestCase):
 
     def test_add_ingredient_new_item_non_standard_unit_with_valid_equivalence_succeeds(self):
         """Creating new item with unit_requires_equivalence=True and valid equivalence args succeeds."""
-        recipe = Recipe(0, "R", "D", [], 1)
+        recipe = Recipe(0, "R", 1, "D", [])
         ing = Ingredient("Fresas", 2.0, 1)
         valid_units = {1}
         valid_inv_units = {1, 2}  # 1=kg (base), 2=caja
@@ -404,7 +404,7 @@ class TestRecipeAddIngredient(unittest.TestCase):
         self.assertEqual(len(recipe.ingredients), 1)
 
     def test_add_ingredient_equivalence_base_unit_id_not_in_valid_raises(self):
-        recipe = Recipe(0, "R", "D", [], 1)
+        recipe = Recipe(0, "R", 1, "D", [])
         ing = Ingredient("Fresas", 1.0, 1)
         with self.assertRaises(ValueError) as ctx:
             recipe.add_ingredient(
@@ -420,7 +420,7 @@ class TestRecipeAddIngredient(unittest.TestCase):
         self.assertIn("valid_inventory_unit_ids", str(ctx.exception))
 
     def test_add_ingredient_equivalence_factor_invalid_raises(self):
-        recipe = Recipe(0, "R", "D", [], 1)
+        recipe = Recipe(0, "R", 1, "D", [])
         ing = Ingredient("Fresas", 1.0, 1)
         with self.assertRaises(ValueError) as ctx:
             recipe.add_ingredient(
@@ -436,7 +436,7 @@ class TestRecipeAddIngredient(unittest.TestCase):
 
     def test_add_ingredient_duplicate_name_replaces_and_returns_none(self):
         """Adding an ingredient with same name (case-insensitive) updates existing and returns None."""
-        recipe = Recipe(0, "R", "D", [], 1)
+        recipe = Recipe(0, "R", 1, "D", [])
         valid = {1, 2}
         recipe.add_ingredient(Ingredient("Queso Oaxaca", 100.0, 1), valid)
         self.assertEqual(len(recipe.ingredients), 1)
@@ -453,7 +453,7 @@ class TestRecipeAddIngredient(unittest.TestCase):
 
     def test_add_ingredient_different_names_both_present(self):
         """Adding ingredients with different names keeps both."""
-        recipe = Recipe(0, "R", "D", [], 1)
+        recipe = Recipe(0, "R", 1, "D", [])
         valid = {1}
         recipe.add_ingredient(Ingredient("Harina", 200.0, 1), valid)
         recipe.add_ingredient(Ingredient("Azúcar", 50.0, 1), valid)
@@ -465,7 +465,7 @@ class TestRecipeAddIngredient(unittest.TestCase):
 class TestRecipeRemoveIngredient(unittest.TestCase):
     def test_remove_by_index(self):
         recipe = Recipe(
-            0, "R", "D", [], 1,
+            0, "R", 1, "D", [],
             ingredients=[
                 Ingredient("A", 1.0, 1),
                 Ingredient("B", 2.0, 1),
@@ -478,7 +478,7 @@ class TestRecipeRemoveIngredient(unittest.TestCase):
         self.assertEqual(recipe.ingredients[0].name, "B")
 
     def test_remove_by_index_out_of_range_raises(self):
-        recipe = Recipe(0, "R", "D", [], 1, ingredients=[Ingredient("A", 1.0, 1)])
+        recipe = Recipe(0, "R", 1, "D", [], ingredients=[Ingredient("A", 1.0, 1)])
         with self.assertRaises(IndexError):
             recipe.remove_ingredient(1)
         with self.assertRaises(IndexError):
@@ -486,7 +486,7 @@ class TestRecipeRemoveIngredient(unittest.TestCase):
 
     def test_remove_by_name(self):
         recipe = Recipe(
-            0, "R", "D", [], 1,
+            0, "R", 1, "D", [],
             ingredients=[Ingredient("Sal", 10.0, 1), Ingredient("Pimienta", 1.0, 1)],
         )
         removed = recipe.remove_ingredient("sal")
@@ -495,12 +495,12 @@ class TestRecipeRemoveIngredient(unittest.TestCase):
         self.assertEqual(len(recipe.ingredients), 1)
 
     def test_remove_by_name_missing_returns_none(self):
-        recipe = Recipe(0, "R", "D", [], 1, ingredients=[Ingredient("A", 1.0, 1)])
+        recipe = Recipe(0, "R", 1, "D", [], ingredients=[Ingredient("A", 1.0, 1)])
         self.assertIsNone(recipe.remove_ingredient("NoExiste"))
 
     def test_remove_by_ingredient_object(self):
         a = Ingredient("A", 1.0, 1)
-        recipe = Recipe(0, "R", "D", [], 1, ingredients=[a, Ingredient("B", 2.0, 1)])
+        recipe = Recipe(0, "R", 1, "D", [], ingredients=[a, Ingredient("B", 2.0, 1)])
         removed = recipe.remove_ingredient(a)
         self.assertIsNotNone(removed)
         self.assertEqual(removed.name, "A")
@@ -510,31 +510,31 @@ class TestRecipeRemoveIngredient(unittest.TestCase):
 class TestRecipeIngredientHelpers(unittest.TestCase):
     def test_ingredient_count(self):
         recipe = Recipe(
-            0, "R", "D", [], 1,
+            0, "R", 1, "D", [],
             ingredients=[Ingredient("A", 1.0, 1), Ingredient("B", 1.0, 1)],
         )
         self.assertEqual(recipe.ingredient_count(), 2)
 
     def test_has_ingredient(self):
-        recipe = Recipe(0, "R", "D", [], 1, ingredients=[Ingredient("Harina", 1.0, 1)])
+        recipe = Recipe(0, "R", 1, "D", [], ingredients=[Ingredient("Harina", 1.0, 1)])
         self.assertTrue(recipe.has_ingredient("harina"))
         self.assertTrue(recipe.has_ingredient("HARINA"))
         self.assertFalse(recipe.has_ingredient("Sal"))
 
     def test_get_ingredient_by_name(self):
-        recipe = Recipe(0, "R", "D", [], 1, ingredients=[Ingredient("Sal", 10.0, 1)])
+        recipe = Recipe(0, "R", 1, "D", [], ingredients=[Ingredient("Sal", 10.0, 1)])
         ing = recipe.get_ingredient_by_name("sal")
         self.assertIsNotNone(ing)
         self.assertEqual(ing.quantity, 10.0)
         self.assertIsNone(recipe.get_ingredient_by_name("NoExiste"))
 
     def test_update_category_id(self):
-        recipe = Recipe(0, "R", "D", [], 1)
+        recipe = Recipe(0, "R", 1, "D", [])
         recipe.update_category_id(2, valid_ids={1, 2, 3})
         self.assertEqual(recipe.category_id, 2)
 
     def test_update_category_id_invalid_raises(self):
-        recipe = Recipe(0, "R", "D", [], 1)
+        recipe = Recipe(0, "R", 1, "D", [])
         with self.assertRaises(ValueError) as ctx:
             recipe.update_category_id(99, valid_ids={1, 2})
         self.assertIn("valid_ids", str(ctx.exception))
@@ -841,7 +841,7 @@ class TestCategoryRecipeRegistry(unittest.TestCase):
     def test_remove_in_use_raises(self):
         reg = CategoryRecipeRegistry()
         reg.add(CategoryRecipe(1, "D"))
-        recipes = [Recipe(0, "R", "D", [], 1)]
+        recipes = [Recipe(0, "R", 1, "D", [])]
         with self.assertRaises(ValueError):
             reg.remove(1, recipes=recipes)
 
@@ -952,7 +952,7 @@ class TestInventoryItemRegistry(unittest.TestCase):
         reg = InventoryItemRegistry()
         item = InventoryItem(1, "Leche", 1, 1)
         reg.add(item)
-        recipe = Recipe(0, "R", "D", [], 1, ingredients=[Ingredient("Leche", 100.0, 1)])
+        recipe = Recipe(0, "R", 1, "D", [], ingredients=[Ingredient("Leche", 100.0, 1)])
         with self.assertRaises(ValueError) as ctx:
             reg.remove(1, recipes=[recipe])
         self.assertIn("in use", str(ctx.exception))

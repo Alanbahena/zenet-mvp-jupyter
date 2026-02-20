@@ -446,15 +446,16 @@ class Ingredient:
 @dataclass
 class Recipe:
     """
-    Recipe with name, description, steps, category, and list of ingredients.
+    Recipe with name, optional description and steps, category, and list of ingredients.
     id is required; use 0 for a new recipe not yet persisted (persistence layer assigns a real id on save).
+    description and steps may be added later by the user.
     """
 
     id: int
     name: str
-    description: str
-    steps: list[str]
     category_id: int
+    description: Optional[str] = None
+    steps: Optional[list[str]] = None
     ingredients: list[Ingredient] = field(default_factory=list)
 
     def add_ingredient(
