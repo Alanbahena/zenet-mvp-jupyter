@@ -1,13 +1,38 @@
-"""Unit tests for entity ↔ dict serialization (Task 3.3)."""
+"""Unit tests for entity ↔ dict serialization (Task 3.3, Task 3.7 complete coverage)."""
 
 import unittest
 
-from core.data_model import Ingredient, Recipe, Restaurant
+from core.data_model import (
+    CategoryRecipe,
+    FamilyInventory,
+    Ingredient,
+    InventoryItem,
+    InventoryUnit,
+    InventoryUnitEquivalence,
+    Recipe,
+    RecipeUnit,
+    Restaurant,
+    User,
+)
 from core.serialization import (
+    category_recipe_from_dict,
+    category_recipe_to_dict,
+    family_inventory_from_dict,
+    family_inventory_to_dict,
+    inventory_item_from_dict,
+    inventory_item_to_dict,
+    inventory_unit_equivalence_from_dict,
+    inventory_unit_equivalence_to_dict,
+    inventory_unit_from_dict,
+    inventory_unit_to_dict,
     recipe_from_dict,
     recipe_to_dict,
+    recipe_unit_from_dict,
+    recipe_unit_to_dict,
     restaurant_from_dict,
     restaurant_to_dict,
+    user_from_dict,
+    user_to_dict,
 )
 
 
@@ -93,3 +118,156 @@ class TestRestaurantRoundTrip(unittest.TestCase):
         self.assertIsNone(restored.address)
         self.assertIsNone(restored.restaurant_type_id)
         self.assertIsNone(restored.notes)
+
+
+class TestUserRoundTrip(unittest.TestCase):
+    """Round-trip tests for User (Task 3.7)."""
+
+    def test_user_round_trip(self) -> None:
+        user = User(id=1, name="Alice", email="alice@example.com", role="admin")
+        d = user_to_dict(user)
+        restored = user_from_dict(d)
+        self.assertEqual(restored.id, user.id)
+        self.assertEqual(restored.name, user.name)
+        self.assertEqual(restored.email, user.email)
+        self.assertEqual(restored.role, user.role)
+
+
+class TestRecipeUnitRoundTrip(unittest.TestCase):
+    """Round-trip tests for RecipeUnit (Task 3.7)."""
+
+    def test_recipe_unit_round_trip(self) -> None:
+        unit = RecipeUnit(id=1, name="gramo", symbol="g", description="Unidad de masa")
+        d = recipe_unit_to_dict(unit)
+        restored = recipe_unit_from_dict(d)
+        self.assertEqual(restored.id, unit.id)
+        self.assertEqual(restored.name, unit.name)
+        self.assertEqual(restored.symbol, unit.symbol)
+        self.assertEqual(restored.description, unit.description)
+
+    def test_recipe_unit_with_null_description_round_trip(self) -> None:
+        unit = RecipeUnit(id=2, name="pieza", symbol="pza", description=None)
+        d = recipe_unit_to_dict(unit)
+        restored = recipe_unit_from_dict(d)
+        self.assertEqual(restored.id, unit.id)
+        self.assertIsNone(restored.description)
+
+
+class TestInventoryUnitRoundTrip(unittest.TestCase):
+    """Round-trip tests for InventoryUnit (Task 3.7)."""
+
+    def test_inventory_unit_standard_round_trip(self) -> None:
+        unit = InventoryUnit(
+            id=1,
+            name="kilogramo",
+            symbol="kg",
+            description="Unidad estándar",
+            base_unit_id=None,
+            factor_to_base=1.0,
+            is_standard=True,
+        )
+        d = inventory_unit_to_dict(unit)
+        restored = inventory_unit_from_dict(d)
+        self.assertEqual(restored.id, unit.id)
+        self.assertEqual(restored.name, unit.name)
+        self.assertEqual(restored.is_standard, True)
+        self.assertIsNone(restored.base_unit_id)
+
+    def test_inventory_unit_non_standard_round_trip(self) -> None:
+        unit = InventoryUnit(
+            id=10,
+            name="caja",
+            symbol="caja",
+            description=None,
+            base_unit_id=1,
+            factor_to_base=10.0,
+            is_standard=False,
+        )
+        d = inventory_unit_to_dict(unit)
+        restored = inventory_unit_from_dict(d)
+        self.assertEqual(restored.id, unit.id)
+        self.assertEqual(restored.is_standard, False)
+        self.assertEqual(restored.base_unit_id, 1)
+        self.assertEqual(restored.factor_to_base, 10.0)
+
+
+class TestCategoryRecipeRoundTrip(unittest.TestCase):
+    """Round-trip tests for CategoryRecipe (Task 3.7)."""
+
+    def test_category_recipe_round_trip(self) -> None:
+        cat = CategoryRecipe(id=1, name="Entradas", description="Platillos de entrada")
+        d = category_recipe_to_dict(cat)
+        restored = category_recipe_from_dict(d)
+        self.assertEqual(restored.id, cat.id)
+        self.assertEqual(restored.name, cat.name)
+        self.assertEqual(restored.description, cat.description)
+
+    def test_category_recipe_with_null_description_round_trip(self) -> None:
+        cat = CategoryRecipe(id=2, name="Postres", description=None)
+        d = category_recipe_to_dict(cat)
+        restored = category_recipe_from_dict(d)
+        self.assertEqual(restored.id, cat.id)
+        self.assertIsNone(restored.description)
+
+
+class TestFamilyInventoryRoundTrip(unittest.TestCase):
+    """Round-trip tests for FamilyInventory (Task 3.7)."""
+
+    def test_family_inventory_round_trip(self) -> None:
+        fam = FamilyInventory(id=1, name="Lácteos", description="Productos lácteos", base_unit_id=1)
+        d = family_inventory_to_dict(fam)
+        restored = family_inventory_from_dict(d)
+        self.assertEqual(restored.id, fam.id)
+        self.assertEqual(restored.name, fam.name)
+        self.assertEqual(restored.description, fam.description)
+        self.assertEqual(restored.base_unit_id, fam.base_unit_id)
+
+    def test_family_inventory_with_nulls_round_trip(self) -> None:
+        fam = FamilyInventory(id=2, name="Carnes", description=None, base_unit_id=None)
+        d = family_inventory_to_dict(fam)
+        restored = family_inventory_from_dict(d)
+        self.assertEqual(restored.id, fam.id)
+        self.assertIsNone(restored.description)
+        self.assertIsNone(restored.base_unit_id)
+
+
+class TestInventoryItemRoundTrip(unittest.TestCase):
+    """Round-trip tests for InventoryItem (Task 3.7)."""
+
+    def test_inventory_item_round_trip(self) -> None:
+        item = InventoryItem(
+            id=15,
+            name="Leche",
+            unit_id=2,
+            category_id=1,
+            family_id=1,
+            description="Leche entera",
+        )
+        d = inventory_item_to_dict(item)
+        restored = inventory_item_from_dict(d)
+        self.assertEqual(restored.id, item.id)
+        self.assertEqual(restored.name, item.name)
+        self.assertEqual(restored.unit_id, item.unit_id)
+        self.assertEqual(restored.category_id, item.category_id)
+        self.assertEqual(restored.family_id, item.family_id)
+        self.assertEqual(restored.description, item.description)
+
+    def test_inventory_item_with_null_description_round_trip(self) -> None:
+        item = InventoryItem(id=20, name="Arroz", unit_id=1, category_id=2, family_id=3, description=None)
+        d = inventory_item_to_dict(item)
+        restored = inventory_item_from_dict(d)
+        self.assertEqual(restored.id, item.id)
+        self.assertIsNone(restored.description)
+
+
+class TestInventoryUnitEquivalenceRoundTrip(unittest.TestCase):
+    """Round-trip tests for InventoryUnitEquivalence (Task 3.7)."""
+
+    def test_inventory_unit_equivalence_round_trip(self) -> None:
+        eq = InventoryUnitEquivalence(unit_id=10, inventory_item_id=15, base_unit_id=1, factor_to_base=2.5)
+        d = inventory_unit_equivalence_to_dict(eq)
+        restored = inventory_unit_equivalence_from_dict(d)
+        self.assertEqual(restored.unit_id, eq.unit_id)
+        self.assertEqual(restored.inventory_item_id, eq.inventory_item_id)
+        self.assertEqual(restored.base_unit_id, eq.base_unit_id)
+        self.assertEqual(restored.factor_to_base, eq.factor_to_base)

@@ -56,7 +56,8 @@ class JsonStorage:
         Read JSON from the entity file; return the dict.
 
         Returns None if the file does not exist. Raises json.JSONDecodeError
-        if the file exists but is invalid JSON; OSError on other IO errors.
+        if the file exists but contains invalid/corrupt JSON; OSError on other
+        IO errors (permissions, disk full, etc.).
         """
         path = _file_path(self._data_dir, entity_type, entity_id)
         try:

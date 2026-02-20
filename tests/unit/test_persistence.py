@@ -1,5 +1,6 @@
-"""Unit tests for persistence layer (Task 3.2 JsonStorage, Task 3.4 schema, Task 3.5 SqliteStorage, Task 3.6 DataLake)."""
+"""Unit tests for persistence layer (Task 3.2 JsonStorage, Task 3.4 schema, Task 3.5 SqliteStorage, Task 3.6 DataLake, Task 3.7 integration)."""
 
+import json
 import os
 import tempfile
 import unittest
@@ -62,6 +63,14 @@ class TestJsonStorage(unittest.TestCase):
         self.storage.save("inventory_unit_equivalence", "10_15", {"unit_id": 10, "inventory_item_id": 15})
         ids = self.storage.list_ids("inventory_unit_equivalence")
         self.assertIn("10_15", ids)
+
+    def test_corrupt_json_raises(self) -> None:
+        """Corrupt JSON file raises JSONDecodeError (not None like missing file)."""
+        path = os.path.join(self.tmpdir, "recipe_1.json")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("{invalid json")
+        with self.assertRaises(json.JSONDecodeError):
+            self.storage.load("recipe", 1)
 
 
 class TestSqliteStorageSchema(unittest.TestCase):

@@ -165,7 +165,9 @@ The cognitive core is built around **entities**, **registries**, **templates**, 
 
 ---
 
-## 📚 Where to read more
+## 📚 Architecture Documentation
+
+See `docs/Architecture/` for detailed documentation:
 
 | Topic | Document |
 |-------|----------|
@@ -174,6 +176,7 @@ The cognitive core is built around **entities**, **registries**, **templates**, 
 | Taxonomy (ingredient, inventory, recipe hierarchies) | [architecture-taxonomy.md](docs/Architecture/architecture-taxonomy.md) |
 | Data model helpers (format, validation, resolution) | [architecture-data-model-utils.md](docs/Architecture/architecture-data-model-utils.md) |
 | Readiness report (schema, KPIs, recommendations) | [architecture-readiness-kpis.md](docs/Architecture/architecture-readiness-kpis.md) |
+| **Persistence (storage layer, JSON/SQLite, DataLake API)** | **[architecture-persistence.md](docs/Architecture/architecture-persistence.md)** |
 
 ---
 
