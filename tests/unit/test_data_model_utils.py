@@ -91,7 +91,7 @@ class TestFormatIngredientForDisplay(unittest.TestCase):
 
 class TestIngredientsToDisplay(unittest.TestCase):
     def test_one_ingredient_without_item_registry(self):
-        recipe = Recipe(0, "R", "D", [], 1, ingredients=[Ingredient("Harina", 250.0, 1)])
+        recipe = Recipe(0, "R", 1, "D", [], ingredients=[Ingredient("Harina", 250.0, 1)])
         ru_reg = _make_recipe_unit_registry()
         out = ingredients_to_display(recipe, ru_reg)
         self.assertEqual(len(out), 1)
@@ -102,7 +102,7 @@ class TestIngredientsToDisplay(unittest.TestCase):
         self.assertNotIn("inventory_item_name", out[0])
 
     def test_with_inventory_item_registry(self):
-        recipe = Recipe(0, "R", "D", [], 1, ingredients=[Ingredient("Leche", 100.0, 1)])
+        recipe = Recipe(0, "R", 1, "D", [], ingredients=[Ingredient("Leche", 100.0, 1)])
         ru_reg = _make_recipe_unit_registry()
         item_reg = InventoryItemRegistry()
         item_reg.add(InventoryItem(1, "Leche", 1, 1))
@@ -111,7 +111,7 @@ class TestIngredientsToDisplay(unittest.TestCase):
         self.assertEqual(out[0]["inventory_item_name"], "Leche")
 
     def test_missing_unit_uses_id_fallback(self):
-        recipe = Recipe(0, "R", "D", [], 1, ingredients=[Ingredient("X", 1.0, 99)])
+        recipe = Recipe(0, "R", 1, "D", [], ingredients=[Ingredient("X", 1.0, 99)])
         ru_reg = RecipeUnitRegistry()
         out = ingredients_to_display(recipe, ru_reg)
         self.assertEqual(out[0]["unit_symbol"], "99")
@@ -141,7 +141,7 @@ class TestValidateRecipeForDeduction(unittest.TestCase):
     def test_valid_recipe_empty_issues(self):
         item_reg = InventoryItemRegistry()
         item_reg.add(InventoryItem(1, "Leche", 1, 1))
-        recipe = Recipe(0, "R", "D", [], 1, ingredients=[Ingredient("Leche", 100.0, 1)])
+        recipe = Recipe(0, "R", 1, "D", [], ingredients=[Ingredient("Leche", 100.0, 1)])
         unit_reg = _make_inventory_unit_registry()
         conv = RecipeUnitConversionRegistry()
         fam_reg = FamilyInventoryRegistry()
@@ -152,7 +152,7 @@ class TestValidateRecipeForDeduction(unittest.TestCase):
 
     def test_unresolved_ingredient_issue(self):
         item_reg = InventoryItemRegistry()
-        recipe = Recipe(0, "R", "D", [], 1, ingredients=[Ingredient("Unknown", 1.0, 1)])
+        recipe = Recipe(0, "R", 1, "D", [], ingredients=[Ingredient("Unknown", 1.0, 1)])
         unit_reg = _make_inventory_unit_registry()
         conv = RecipeUnitConversionRegistry()
         fam_reg = FamilyInventoryRegistry()
@@ -213,7 +213,7 @@ class TestMakeResolverFromItemRegistry(unittest.TestCase):
     def test_use_with_normalize_recipe_for_deduction(self):
         item_reg = InventoryItemRegistry()
         item_reg.add(InventoryItem(1, "Harina", 1, 1))
-        recipe = Recipe(0, "R", "D", [], 1, ingredients=[Ingredient("Harina", 500.0, 1)])
+        recipe = Recipe(0, "R", 1, "D", [], ingredients=[Ingredient("Harina", 500.0, 1)])
         ru_reg = _make_recipe_unit_registry()
         iu_reg = _make_inventory_unit_registry()
         conv = RecipeUnitConversionRegistry()
@@ -232,7 +232,7 @@ class TestUnitsUsedByRecipe(unittest.TestCase):
     def test_one_ingredient(self):
         item_reg = InventoryItemRegistry()
         item_reg.add(InventoryItem(1, "Leche", 2, 1))
-        recipe = Recipe(0, "R", "D", [], 1, ingredients=[Ingredient("Leche", 100.0, 1)])
+        recipe = Recipe(0, "R", 1, "D", [], ingredients=[Ingredient("Leche", 100.0, 1)])
         ru_reg = _make_recipe_unit_registry()
         iu_reg = _make_inventory_unit_registry()
         recipe_ids, inv_ids = units_used_by_recipe(
@@ -243,7 +243,7 @@ class TestUnitsUsedByRecipe(unittest.TestCase):
 
     def test_unresolved_ingredient_omitted_from_inventory_ids(self):
         item_reg = InventoryItemRegistry()
-        recipe = Recipe(0, "R", "D", [], 1, ingredients=[Ingredient("Missing", 1.0, 1)])
+        recipe = Recipe(0, "R", 1, "D", [], ingredients=[Ingredient("Missing", 1.0, 1)])
         ru_reg = _make_recipe_unit_registry()
         iu_reg = _make_inventory_unit_registry()
         recipe_ids, inv_ids = units_used_by_recipe(

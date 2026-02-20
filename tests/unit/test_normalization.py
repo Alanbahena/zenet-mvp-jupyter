@@ -335,7 +335,7 @@ class TestNormalizeRecipeUnitQuantity(unittest.TestCase):
 
 class TestNormalizeRecipeForDeduction(unittest.TestCase):
     def test_empty_recipe_returns_empty_list(self):
-        recipe = Recipe(1, "Empty", "", [], 1)
+        recipe = Recipe(1, "Empty", 1, "", [])
         fam_reg = FamilyInventoryRegistry()
         unit_reg = _make_registry_kg_g()
         tbl = RecipeUnitConversionRegistry()
@@ -354,7 +354,7 @@ class TestNormalizeRecipeForDeduction(unittest.TestCase):
         tbl.add(1, 30.0, 1)
         fam_reg = FamilyInventoryRegistry()
         fam_reg.add(FamilyInventory(1, "Granos", None, None))
-        recipe = Recipe(1, "Test", "", [], 1, ingredients=[
+        recipe = Recipe(1, "Test", 1, "", [], ingredients=[
             Ingredient("quinoa", 2.0, 1, None),
         ])
 
@@ -373,7 +373,7 @@ class TestNormalizeRecipeForDeduction(unittest.TestCase):
         unit_reg = _make_registry_kg_g()
         tbl = RecipeUnitConversionRegistry()
         fam_reg = FamilyInventoryRegistry()
-        recipe = Recipe(1, "Test", "", [], 1, ingredients=[
+        recipe = Recipe(1, "Test", 1, "", [], ingredients=[
             Ingredient("mystery", 1.0, 99, None),
         ])
 
@@ -389,7 +389,7 @@ class TestNormalizeRecipeForDeduction(unittest.TestCase):
         unit_reg = _make_registry_kg_g()
         tbl = RecipeUnitConversionRegistry()
         fam_reg = FamilyInventoryRegistry()
-        recipe = Recipe(1, "Test", "", [], 1, ingredients=[
+        recipe = Recipe(1, "Test", 1, "", [], ingredients=[
             Ingredient("pollo", 150.0, 1, 201),
         ])
         # item 201 has unit_id 1 (g); 150 g -> 150 g in item's unit
@@ -419,7 +419,7 @@ class TestNormalizeRecipeForDeduction(unittest.TestCase):
         tbl = RecipeUnitConversionRegistry()
         fam_reg = FamilyInventoryRegistry()
         fam_reg = FamilyInventoryRegistry()
-        recipe = Recipe(1, "Test", "", [], 1, ingredients=[
+        recipe = Recipe(1, "Test", 1, "", [], ingredients=[
             Ingredient("fresas", 1.0, 3, 201),
             Ingredient("naranjas", 1.0, 3, 202),
         ])
