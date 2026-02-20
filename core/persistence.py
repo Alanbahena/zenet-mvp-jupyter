@@ -2,13 +2,17 @@
 Persistence layer: JSON and (later) SQLite backends for entity data.
 
 JsonStorage saves and loads plain dicts as JSON files (one file per entity).
+SqliteStorage (3.4) initializes the SQLite schema; save/load in 3.5.
 Operates on dicts only; entity serialization is in 3.3 / DataLake in 3.6.
 """
 
 import json
 import os
+import sqlite3
 from pathlib import Path
 from typing import Any
+
+from core.schema import _create_tables
 
 
 def _entity_id_to_str(entity_id: int | str) -> str:
@@ -91,3 +95,17 @@ class JsonStorage:
         except OSError:
             raise
         return result
+
+
+class SqliteStorage:
+    """
+    SQLite-backed storage (Task 3.4 schema; save/load in 3.5).
+
+    On init, connects to db_path and runs _create_tables() to ensure
+    all tables and indexes exist. No save/load implementation yet.
+    """
+
+    def __init__(self, db_path: str) -> None:
+        self._db_path = db_path
+        self._conn = sqlite3.connect(db_path)
+        _create_tables(self._conn)

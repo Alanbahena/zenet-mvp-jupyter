@@ -1,10 +1,10 @@
-"""Unit tests for persistence layer (Task 3.2 — JsonStorage)."""
+"""Unit tests for persistence layer (Task 3.2 JsonStorage, Task 3.4 SqliteStorage schema)."""
 
 import os
 import tempfile
 import unittest
 
-from core.persistence import JsonStorage
+from core.persistence import JsonStorage, SqliteStorage
 
 
 class TestJsonStorage(unittest.TestCase):
@@ -61,3 +61,65 @@ class TestJsonStorage(unittest.TestCase):
         self.storage.save("inventory_unit_equivalence", "10_15", {"unit_id": 10, "inventory_item_id": 15})
         ids = self.storage.list_ids("inventory_unit_equivalence")
         self.assertIn("10_15", ids)
+
+
+class TestSqliteStorageSchema(unittest.TestCase):
+    """Smoke tests for SQLite schema (Task 3.4): tables and schema_version exist."""
+
+    def setUp(self) -> None:
+        self.tmpdir = tempfile.mkdtemp()
+        self.db_path = os.path.join(self.tmpdir, "test_schema.db")
+
+    def tearDown(self) -> None:
+        try:
+            if os.path.exists(self.db_path):
+                os.remove(self.db_path)
+            os.rmdir(self.tmpdir)
+        except OSError:
+            pass
+
+    def test_create_tables_creates_all_expected_tables(self) -> None:
+        """SqliteStorage init runs _create_tables(); all 11 tables exist."""
+        storage = SqliteStorage(self.db_path)
+        cursor = storage._conn.cursor()
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name"
+        )
+        tables = {row[0] for row in cursor.fetchall()}
+        expected = {
+            "restaurant",
+            "user",
+            "recipe_unit",
+            "inventory_unit",
+            "category_recipe",
+            "family_inventory",
+            "inventory_item",
+            "recipe",
+            "recipe_ingredient",
+            "inventory_unit_equivalence",
+            "schema_version",
+        }
+        # sqlite_sequence is auto-created by SQLite for AUTOINCREMENT; allow it
+        self.assertTrue(
+            expected.issubset(tables),
+            f"Missing tables: {expected - tables}. Got: {tables}",
+        )
+
+    def test_schema_version_initialized_to_one(self) -> None:
+        """schema_version table has a single row with version = 1."""
+        storage = SqliteStorage(self.db_path)
+        cursor = storage._conn.cursor()
+        cursor.execute("SELECT version, applied_at FROM schema_version WHERE version = 1")
+        row = cursor.fetchone()
+        self.assertIsNotNone(row, "schema_version should have version 1")
+        self.assertEqual(row[0], 1)
+        self.assertIsNotNone(row[1], "applied_at should be set")
+
+    def test_create_tables_idempotent(self) -> None:
+        """Calling _create_tables twice (second init) does not fail."""
+        storage1 = SqliteStorage(self.db_path)
+        storage1._conn.close()
+        storage2 = SqliteStorage(self.db_path)
+        cursor = storage2._conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM schema_version")
+        self.assertEqual(cursor.fetchone()[0], 1, "Still exactly one schema version row")
