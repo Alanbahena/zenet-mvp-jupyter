@@ -1,10 +1,11 @@
-"""Unit tests for persistence layer (Task 3.2 JsonStorage, Task 3.4 schema, Task 3.5 SqliteStorage save/load)."""
+"""Unit tests for persistence layer (Task 3.2 JsonStorage, Task 3.4 schema, Task 3.5 SqliteStorage, Task 3.6 DataLake)."""
 
 import os
 import tempfile
 import unittest
 
-from core.persistence import JsonStorage, SqliteStorage
+from core.data_model import Ingredient, InventoryUnitEquivalence, Recipe, Restaurant
+from core.persistence import DataLake, JsonStorage, SqliteStorage
 
 
 class TestJsonStorage(unittest.TestCase):
@@ -285,3 +286,171 @@ class TestSqliteStorageSaveLoad(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             self.storage.load("unknown_type", 1)
         self.assertIn("Unknown entity_type", str(ctx.exception))
+
+
+class TestDataLake(unittest.TestCase):
+    """DataLake unified API (Task 3.6): JSON and SQLite backends, dict-level and optional obj-level."""
+
+    def test_constructor_both_paths_raises(self) -> None:
+        with self.assertRaises(ValueError) as ctx:
+            DataLake(data_dir="/tmp/x", db_path="/tmp/y.db")
+        self.assertIn("exactly one", str(ctx.exception).lower())
+
+    def test_constructor_neither_path_raises(self) -> None:
+        with self.assertRaises(ValueError) as ctx:
+            DataLake()
+        self.assertIn("exactly one", str(ctx.exception).lower())
+
+    def test_json_backend_save_load_round_trip(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            lake = DataLake(data_dir=tmpdir)
+            data = {"id": 1, "name": "La Pizzeria", "address": "Calle 1", "restaurant_type_id": None, "notes": None}
+            lake.save_entity("restaurant", 1, data)
+            loaded = lake.load_entity("restaurant", 1)
+            self.assertIsNotNone(loaded)
+            self.assertEqual(loaded, data)
+
+    def test_json_backend_load_missing_returns_none(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            lake = DataLake(data_dir=tmpdir)
+            self.assertIsNone(lake.load_entity("restaurant", 99))
+
+    def test_json_backend_delete_removes_entity(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            lake = DataLake(data_dir=tmpdir)
+            lake.save_entity("restaurant", 1, {"id": 1, "name": "X", "address": None, "restaurant_type_id": None, "notes": None})
+            lake.delete_entity("restaurant", 1)
+            self.assertIsNone(lake.load_entity("restaurant", 1))
+
+    def test_json_backend_list_entity_ids(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            lake = DataLake(data_dir=tmpdir)
+            lake.save_entity("restaurant", 1, {"id": 1, "name": "A", "address": None, "restaurant_type_id": None, "notes": None})
+            lake.save_entity("restaurant", 2, {"id": 2, "name": "B", "address": None, "restaurant_type_id": None, "notes": None})
+            ids = lake.list_entity_ids("restaurant")
+            self.assertEqual(set(ids), {"1", "2"})
+
+    def test_sqlite_backend_save_load_round_trip(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, "lake.db")
+            lake = DataLake(db_path=db_path)
+            data = {"id": 1, "name": "La Pizzeria", "address": "Calle 1", "restaurant_type_id": None, "notes": None}
+            lake.save_entity("restaurant", 1, data)
+            loaded = lake.load_entity("restaurant", 1)
+            self.assertIsNotNone(loaded)
+            self.assertEqual(loaded["name"], data["name"])
+            lake.close()
+
+    def test_sqlite_backend_recipe_round_trip(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, "lake.db")
+            lake = DataLake(db_path=db_path)
+            lake.save_entity("category_recipe", 1, {"id": 1, "name": "Cat", "description": None})
+            lake.save_entity("recipe_unit", 1, {"id": 1, "name": "g", "symbol": "g", "description": None})
+            recipe_data = {
+                "id": 1,
+                "name": "Pasta",
+                "category_id": 1,
+                "description": None,
+                "steps": ["Step 1"],
+                "ingredients": [
+                    {"name": "Flour", "quantity": 200.0, "unit_id": 1, "inventory_item_id": None},
+                ],
+            }
+            lake.save_entity("recipe", 1, recipe_data)
+            loaded = lake.load_entity("recipe", 1)
+            self.assertIsNotNone(loaded)
+            self.assertEqual(loaded["name"], "Pasta")
+            self.assertEqual(len(loaded["ingredients"]), 1)
+            lake.close()
+
+    def test_sqlite_backend_delete_and_list_ids(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, "lake.db")
+            lake = DataLake(db_path=db_path)
+            lake.save_entity("restaurant", 1, {"id": 1, "name": "A", "address": None, "restaurant_type_id": None, "notes": None})
+            lake.delete_entity("restaurant", 1)
+            self.assertIsNone(lake.load_entity("restaurant", 1))
+            ids = lake.list_entity_ids("restaurant")
+            self.assertEqual(ids, [])
+            lake.close()
+
+    def test_sqlite_backend_close(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, "lake.db")
+            lake = DataLake(db_path=db_path)
+            lake.save_entity("restaurant", 1, {"id": 1, "name": "X", "address": None, "restaurant_type_id": None, "notes": None})
+            lake.close()
+            # After close, load should still work if we had kept conn open; here we just ensure close() doesn't raise
+            # Re-open to verify DB is intact
+            lake2 = DataLake(db_path=db_path)
+            loaded = lake2.load_entity("restaurant", 1)
+            self.assertIsNotNone(loaded)
+            lake2.close()
+
+    def test_context_manager_closes_sqlite(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, "lake.db")
+            with DataLake(db_path=db_path) as lake:
+                lake.save_entity("restaurant", 1, {"id": 1, "name": "X", "address": None, "restaurant_type_id": None, "notes": None})
+            # After exit, close was called; open again and verify data
+            lake2 = DataLake(db_path=db_path)
+            self.assertIsNotNone(lake2.load_entity("restaurant", 1))
+            lake2.close()
+
+    def test_save_entity_obj_restaurant_round_trip(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            lake = DataLake(data_dir=tmpdir)
+            restaurant = Restaurant(id=1, name="La Pizzeria", address="Calle 1", restaurant_type_id=None, notes=None)
+            lake.save_entity_obj(restaurant)
+            loaded = lake.load_entity_obj("restaurant", 1)
+            self.assertIsInstance(loaded, Restaurant)
+            self.assertEqual(loaded.name, restaurant.name)
+            self.assertEqual(loaded.id, restaurant.id)
+
+    def test_save_entity_obj_recipe_round_trip(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            lake = DataLake(data_dir=tmpdir)
+            recipe = Recipe(
+                id=1,
+                name="Pasta",
+                category_id=1,
+                description=None,
+                steps=["Step 1"],
+                ingredients=[Ingredient(name="Flour", quantity=200.0, unit_id=1, inventory_item_id=None)],
+            )
+            lake.save_entity_obj(recipe)
+            loaded = lake.load_entity_obj("recipe", 1)
+            self.assertIsInstance(loaded, Recipe)
+            self.assertEqual(loaded.name, recipe.name)
+            self.assertEqual(len(loaded.ingredients), 1)
+            self.assertEqual(loaded.ingredients[0].name, "Flour")
+
+    def test_save_entity_obj_inventory_unit_equivalence_round_trip(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            lake = DataLake(data_dir=tmpdir)
+            eq = InventoryUnitEquivalence(unit_id=10, inventory_item_id=15, base_unit_id=1, factor_to_base=2.5)
+            lake.save_entity_obj(eq)
+            loaded = lake.load_entity_obj("inventory_unit_equivalence", "10_15")
+            self.assertIsInstance(loaded, InventoryUnitEquivalence)
+            self.assertEqual(loaded.unit_id, 10)
+            self.assertEqual(loaded.inventory_item_id, 15)
+
+    def test_load_entity_obj_missing_returns_none(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            lake = DataLake(data_dir=tmpdir)
+            self.assertIsNone(lake.load_entity_obj("restaurant", 999))
+
+    def test_save_entity_obj_unknown_type_raises(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            lake = DataLake(data_dir=tmpdir)
+            with self.assertRaises(ValueError) as ctx:
+                lake.save_entity_obj("not an entity")
+            self.assertIn("Unknown entity type", str(ctx.exception))
+
+    def test_load_entity_obj_unknown_entity_type_raises(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            lake = DataLake(data_dir=tmpdir)
+            with self.assertRaises(ValueError) as ctx:
+                lake.load_entity_obj("unknown_type", 1)
+            self.assertIn("Unknown entity_type", str(ctx.exception))

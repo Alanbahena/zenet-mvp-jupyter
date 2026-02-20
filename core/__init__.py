@@ -66,7 +66,7 @@ from core.data_model_utils import (
     validate_recipe_for_deduction,
 )
 from core.readiness_kpis import compute_readiness_report
-from core.persistence import JsonStorage, SqliteStorage
+from core.persistence import DataLake, JsonStorage, SqliteStorage
 from core.serialization import (
     category_recipe_from_dict,
     category_recipe_to_dict,
@@ -149,6 +149,7 @@ __all__ = [
     "validate_ingredient_with_registries",
     "validate_recipe_for_deduction",
     "compute_readiness_report",
+    "DataLake",
     "JsonStorage",
     "SqliteStorage",
     "category_recipe_from_dict",

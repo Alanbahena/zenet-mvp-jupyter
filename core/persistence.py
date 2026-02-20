@@ -3,7 +3,7 @@ Persistence layer: JSON and (later) SQLite backends for entity data.
 
 JsonStorage saves and loads plain dicts as JSON files (one file per entity).
 SqliteStorage (3.4 schema, 3.5 save/load) persists dicts to SQLite.
-Operates on dicts only; entity serialization is in 3.3 / DataLake in 3.6.
+DataLake (3.6) exposes a unified API over either backend; optional obj-level save/load via 3.3.
 """
 
 import json
@@ -446,3 +446,127 @@ class SqliteStorage:
             return [str(row[0]) for row in cursor.fetchall()]
         except sqlite3.OperationalError as e:
             raise OSError(f"Database error listing {entity_type}: {e}") from e
+
+
+# --- DataLake (Task 3.6) ---
+
+# Lazy imports for entity types and serialization (avoid circular import)
+def _get_entity_registries() -> tuple[dict[type, str], dict[str, Any], dict[str, Any]]:
+    from core import data_model as dm
+    from core import serialization as ser
+    class_to_type: dict[type, str] = {
+        dm.Restaurant: "restaurant",
+        dm.User: "user",
+        dm.RecipeUnit: "recipe_unit",
+        dm.InventoryUnit: "inventory_unit",
+        dm.CategoryRecipe: "category_recipe",
+        dm.FamilyInventory: "family_inventory",
+        dm.InventoryItem: "inventory_item",
+        dm.Recipe: "recipe",
+        dm.InventoryUnitEquivalence: "inventory_unit_equivalence",
+    }
+    type_to_from_dict: dict[str, Any] = {
+        "restaurant": ser.restaurant_from_dict,
+        "user": ser.user_from_dict,
+        "recipe_unit": ser.recipe_unit_from_dict,
+        "inventory_unit": ser.inventory_unit_from_dict,
+        "category_recipe": ser.category_recipe_from_dict,
+        "family_inventory": ser.family_inventory_from_dict,
+        "inventory_item": ser.inventory_item_from_dict,
+        "recipe": ser.recipe_from_dict,
+        "inventory_unit_equivalence": ser.inventory_unit_equivalence_from_dict,
+    }
+    type_to_to_dict: dict[str, Any] = {
+        "restaurant": ser.restaurant_to_dict,
+        "user": ser.user_to_dict,
+        "recipe_unit": ser.recipe_unit_to_dict,
+        "inventory_unit": ser.inventory_unit_to_dict,
+        "category_recipe": ser.category_recipe_to_dict,
+        "family_inventory": ser.family_inventory_to_dict,
+        "inventory_item": ser.inventory_item_to_dict,
+        "recipe": ser.recipe_to_dict,
+        "inventory_unit_equivalence": ser.inventory_unit_equivalence_to_dict,
+    }
+    return class_to_type, type_to_from_dict, type_to_to_dict
+
+
+def _datalake_entity_id(entity: Any, entity_type: str) -> str | int:
+    """Extract entity_id from entity for save_entity_obj. Composite key for inventory_unit_equivalence."""
+    if entity_type == "inventory_unit_equivalence":
+        return f"{entity.unit_id}_{entity.inventory_item_id}"
+    return entity.id
+
+
+class DataLake:
+    """
+    Unified persistence API over JSON or SQLite backend (Task 3.6).
+
+    One backend per instance: provide exactly one of data_dir (JSON) or db_path (SQLite).
+    Dict-level: save_entity / load_entity / delete_entity / list_entity_ids.
+    Optional object-level: save_entity_obj / load_entity_obj use 3.3 serialization.
+    Resource cleanup: close() (no-op for JSON; closes DB for SQLite).
+    Concurrency: inherits backend limitations (single-process for JSON; limited for SQLite).
+    """
+
+    def __init__(
+        self,
+        *,
+        data_dir: str | None = None,
+        db_path: str | None = None,
+    ) -> None:
+        if (data_dir is None) == (db_path is None):
+            raise ValueError("Provide exactly one of data_dir or db_path")
+        if db_path is not None:
+            self._storage = SqliteStorage(db_path)
+            self._backend_type = "sqlite"
+        else:
+            self._storage = JsonStorage(data_dir)
+            self._backend_type = "json"
+
+    def save_entity(self, entity_type: str, entity_id: str | int, data: dict[str, Any]) -> None:
+        """Save a plain dict by entity_type and entity_id."""
+        self._storage.save(entity_type, entity_id, data)
+
+    def load_entity(self, entity_type: str, entity_id: str | int) -> dict[str, Any] | None:
+        """Load entity dict; return None if missing."""
+        return self._storage.load(entity_type, entity_id)
+
+    def delete_entity(self, entity_type: str, entity_id: str | int) -> None:
+        """Remove the entity from storage."""
+        self._storage.delete(entity_type, entity_id)
+
+    def list_entity_ids(self, entity_type: str) -> list[str]:
+        """Return list of entity_id strings for this entity_type."""
+        return self._storage.list_ids(entity_type)
+
+    def close(self) -> None:
+        """Close backend resources; no-op for JSON, closes DB for SQLite."""
+        if hasattr(self._storage, "close"):
+            self._storage.close()
+
+    def __enter__(self) -> "DataLake":
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        self.close()
+        return None
+
+    def save_entity_obj(self, entity: Any) -> None:
+        """Serialize entity with 3.3 to_dict and save via underlying storage. Raises ValueError if type unknown."""
+        class_to_type, _type_to_from, type_to_to_dict = _get_entity_registries()
+        entity_type = class_to_type.get(type(entity))
+        if entity_type is None:
+            raise ValueError(f"Unknown entity type for save_entity_obj: {type(entity).__name__}")
+        to_dict_fn = type_to_to_dict[entity_type]
+        entity_id = _datalake_entity_id(entity, entity_type)
+        self.save_entity(entity_type, entity_id, to_dict_fn(entity))
+
+    def load_entity_obj(self, entity_type: str, entity_id: str | int) -> Any | None:
+        """Load entity dict and deserialize with 3.3 from_dict. Return None if missing."""
+        _, type_to_from_dict, _ = _get_entity_registries()
+        if entity_type not in type_to_from_dict:
+            raise ValueError(f"Unknown entity_type for load_entity_obj: {entity_type}")
+        data = self.load_entity(entity_type, entity_id)
+        if data is None:
+            return None
+        return type_to_from_dict[entity_type](data)
