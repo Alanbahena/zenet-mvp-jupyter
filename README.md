@@ -206,23 +206,26 @@ MVP Jupyter/
 ├── core/
 │   ├── __init__.py
 │   ├── data_model.py        # Entities, registries, templates
-│   ├── normalization.py    # Equivalence, conversion, deduction
-│   ├── taxonomy.py         # Ingredient / inventory / recipe taxonomies
-│   ├── data_model_utils.py # Format, validation, resolution helpers
-│   └── readiness_kpis.py   # Readiness report and KPI computation
+│   ├── data_model_utils.py  # Format, validation, resolution helpers
+│   ├── normalization.py     # Equivalence, conversion, deduction
+│   ├── taxonomy.py          # Ingredient / inventory / recipe taxonomies
+│   ├── readiness_kpis.py    # Readiness report and KPI computation
+│   ├── persistence.py       # JsonStorage, SqliteStorage, DataLake (save/load)
+│   ├── schema.py            # SQLite schema (tables, FKs)
+│   └── serialization.py     # Entity ↔ dict (to_dict / from_dict)
 │
 ├── docs/
-│   └── Architecture/       # architecture-data-model, normalization, taxonomy, etc.
+│   └── Architecture/        # architecture-data-model, normalization, taxonomy, persistence, etc.
 │
 ├── .taskmaster/
-│   └── docs/               # Task plans: README (conventions), project-level docs, task-2/2.x/ (plans, outline)
+│   └── docs/                # Task plans: README (conventions), project-level docs, task-2/2.x/, task-3/3.x/
 │
 ├── tests/
-│   └── unit/               # test_data_model, test_normalization, test_taxonomy, test_data_model_utils, test_readiness_kpis
+│   └── unit/                # test_data_model, test_normalization, test_taxonomy, test_persistence, test_serialization, etc.
 │
-├── notebooks/              # Jupyter notebooks (context, ingestion, normalization, etc.)
-├── gradio/                 # Gradio UI (e.g. app.py)
-├── data/                   # raw, processed, normalized, outputs
+├── notebooks/               # Jupyter notebooks (context, ingestion, normalization, etc.)
+├── gradio/                  # Gradio UI (e.g. app.py)
+├── data/                    # raw, processed, normalized, outputs
 ├── main.py
 └── README.md
 ```
