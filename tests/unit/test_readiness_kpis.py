@@ -74,9 +74,9 @@ class TestReadinessKpis(unittest.TestCase):
             Recipe(
                 10,
                 "Pan",
+                1,
                 "Desc",
-                steps=["mezclar"],
-                category_id=1,
+                ["mezclar"],
                 ingredients=[Ingredient("Harina", 100.0, 1, inventory_item_id=1)],
             )
         ]
@@ -115,9 +115,9 @@ class TestReadinessKpis(unittest.TestCase):
             Recipe(
                 10,
                 "Test",
+                1,
                 "Desc",
-                steps=["x"],
-                category_id=1,
+                ["x"],
                 ingredients=[
                     Ingredient("Harina", 100.0, 1, inventory_item_id=1),
                     Ingredient("Sal", 10.0, 1, inventory_item_id=None),
@@ -159,9 +159,9 @@ class TestReadinessKpis(unittest.TestCase):
             Recipe(
                 10,
                 "Test",
+                1,
                 "Desc",
-                steps=["x"],
-                category_id=1,
+                ["x"],
                 ingredients=[Ingredient("Leche", 100.0, 10, inventory_item_id=1)],
             )
         ]

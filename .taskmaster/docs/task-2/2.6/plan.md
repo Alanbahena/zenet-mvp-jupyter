@@ -16,7 +16,7 @@ Document the data model, normalization rules, and taxonomy with examples and usa
 | Normalization architecture | `docs/Architecture/architecture-normalization.md` | Exists: layers, conversion flows, deduction pipeline. Includes Mermaid + exported assets under `docs/Architecture/images/`. **Gaps:** diagrams don’t reflect optional use of `InventoryUnitEquivalenceRegistry` in conversion flow and external deps. |
 | Taxonomy | `core/taxonomy.py` | Module docstring; no standalone `docs/Architecture/architecture-taxonomy.md`. |
 | Data model utils | `core/data_model_utils.py` | Module docstring; no standalone architecture doc. |
-| Readiness KPIs | `core/readiness_kpis.py` | Module docstring; schema in `.taskmaster/docs/subtask-2.7-plan.md`; UX in `readiness-scorecard-ux.md`. No `docs/Architecture` doc. |
+| Readiness KPIs | `core/readiness_kpis.py` | Module docstring; schema in [task-2/2.7/plan.md](../2.7/plan.md); UX in `readiness-scorecard-ux.md`. No `docs/Architecture` doc. |
 | README | `README.md` | Exists: purpose, principles, tech stack, getting started. **Gaps:** project structure is outdated (shows nested core/agents, core/workflows; actual structure is flat core/*.py). No dedicated “data model architecture” section. |
 | Example code | — | No dedicated runnable examples showing end-to-end usage. |
 | Docstrings | `core/*.py` | Module-level docstrings present; class/function docstrings vary. Needs audit. |
@@ -57,7 +57,7 @@ Document the data model, normalization rules, and taxonomy with examples and usa
 | `docs/Architecture/architecture-normalization.md` | Update visuals and text to match current `core/normalization.py`: reflect optional `equivalence_registry: InventoryUnitEquivalenceRegistry` inputs in relevant flows; add `InventoryUnitEquivalenceRegistry` to the “External dependencies” diagram. Add “Related docs” section linking to architecture-data-model and architecture-taxonomy. Ensure conversion examples (e.g. 1 caja = 10 kg) are present. |
 | `docs/Architecture/architecture-taxonomy.md` | **Create.** Explain Taxonomy, IngredientTaxonomy, InventoryTaxonomy, RecipeTaxonomy; is_a / part_of; find_related_items. Include a simple diagram (Mermaid) and usage snippet. |
 | `docs/Architecture/architecture-data-model-utils.md` | **Create** (or fold into architecture-data-model). Explain purpose: format/display, validation, resolution, factory helpers. Link to normalization and readiness KPIs where relevant. |
-| `docs/Architecture/architecture-readiness-kpis.md` | **Create.** Summary of readiness report schema, dimensions, scoring, and UX guidance. Link to `subtask-2.7-plan.md` and `readiness-scorecard-ux.md` for full spec. |
+| `docs/Architecture/architecture-readiness-kpis.md` | **Create.** Summary of readiness report schema, dimensions, scoring, and UX guidance. Link to [task-2/2.7/plan.md](../2.7/plan.md) and `readiness-scorecard-ux.md` for full spec. |
 
 **Output:** Architecture docs up to date; new docs created where missing.
 
@@ -122,7 +122,7 @@ Document the data model, normalization rules, and taxonomy with examples and usa
 - Test example code to ensure it works as documented.
 - Review documentation for completeness and clarity.
 
-**Checklist before marking 2.6 done:** (see [subtask-2.6.6-verification.md](subtask-2.6.6-verification.md))
+**Checklist before marking 2.6 done:** (see [verification.md](verification.md))
 
 - [x] All public classes/functions in core modules have docstrings with type hints (or explicit `None` where applicable).
 - [x] `docs/Architecture/architecture-data-model.md` diagrams match current registries/fields (incl. `InventoryItemRegistry`, `InventoryUnitEquivalenceRegistry`) and cross-links exist.
