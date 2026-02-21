@@ -66,7 +66,7 @@ from core.data_model_utils import (
     validate_recipe_for_deduction,
 )
 from core.readiness_kpis import compute_readiness_report
-from core.llm_framework import ClaudeProvider, LlmProvider, OpenAiProvider
+from core.llm_framework import ClaudeProvider, LlmProvider, OpenAiProvider, ToolRegistry
 from core.persistence import DataLake, JsonStorage, SqliteStorage
 from core.serialization import (
     category_recipe_from_dict,
@@ -153,6 +153,7 @@ __all__ = [
     "ClaudeProvider",
     "LlmProvider",
     "OpenAiProvider",
+    "ToolRegistry",
     "DataLake",
     "JsonStorage",
     "SqliteStorage",

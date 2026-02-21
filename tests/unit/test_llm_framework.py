@@ -1,11 +1,11 @@
-"""Unit tests for LLM framework (Task 4.1 OpenAiProvider, Task 4.2 ClaudeProvider)."""
+"""Unit tests for LLM framework (Task 4.1–4.3: OpenAiProvider, ClaudeProvider, ToolRegistry)."""
 
 import os
 import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from core.llm_framework import ClaudeProvider, LlmProvider, OpenAiProvider
+from core.llm_framework import ClaudeProvider, LlmProvider, OpenAiProvider, ToolRegistry
 
 
 class TestOpenAiProvider(unittest.TestCase):
@@ -293,6 +293,129 @@ class TestClaudeProvider(unittest.TestCase):
         result = provider.generate(prompt="Hi")
 
         self.assertEqual(result, "")
+
+
+class TestToolRegistry(unittest.TestCase):
+    """Tests for ToolRegistry (Task 4.3)."""
+
+    def test_register_and_to_openai_tools(self) -> None:
+        """register + to_openai_tools returns correct structure."""
+        def get_recipe(recipe_id: int) -> str:
+            return f"recipe_{recipe_id}"
+
+        registry = ToolRegistry()
+        schema = {"type": "object", "properties": {"recipe_id": {"type": "integer"}}}
+        registry.register("get_recipe", get_recipe, "Fetch a recipe by ID", schema)
+
+        tools = registry.to_openai_tools()
+        self.assertEqual(len(tools), 1)
+        self.assertEqual(tools[0]["type"], "function")
+        self.assertEqual(tools[0]["function"]["name"], "get_recipe")
+        self.assertEqual(tools[0]["function"]["description"], "Fetch a recipe by ID")
+        self.assertEqual(tools[0]["function"]["parameters"], schema)
+
+    def test_to_openai_tools_default_schema(self) -> None:
+        """register with parameters_schema=None uses default schema."""
+        registry = ToolRegistry()
+        registry.register("no_params", lambda: 42, "No params")
+
+        tools = registry.to_openai_tools()
+        self.assertEqual(len(tools), 1)
+        self.assertEqual(
+            tools[0]["function"]["parameters"],
+            {"type": "object", "properties": {}},
+        )
+
+    def test_to_anthropic_tools(self) -> None:
+        """to_anthropic_tools returns Anthropic format (no type wrapper)."""
+        registry = ToolRegistry()
+        registry.register("get_weather", lambda city: "sunny", "Get weather")
+
+        tools = registry.to_anthropic_tools()
+        self.assertEqual(len(tools), 1)
+        self.assertEqual(tools[0]["name"], "get_weather")
+        self.assertEqual(tools[0]["description"], "Get weather")
+        self.assertEqual(
+            tools[0]["input_schema"],
+            {"type": "object", "properties": {}},
+        )
+        self.assertNotIn("type", tools[0])
+
+    def test_execute_returns_value(self) -> None:
+        """execute(name, arguments) returns function result."""
+        mock_func = MagicMock(return_value="result")
+        registry = ToolRegistry()
+        registry.register("my_tool", mock_func, "My tool")
+
+        result = registry.execute("my_tool", {"key": "value"})
+        self.assertEqual(result, "result")
+        mock_func.assert_called_once_with(key="value")
+
+    def test_execute_with_none_arguments_defaults_to_empty(self) -> None:
+        """execute(name, None) defaults to {} and calls func with no kwargs."""
+        mock_func = MagicMock(return_value=0)
+        registry = ToolRegistry()
+        registry.register("no_args", mock_func, "No args")
+
+        result = registry.execute("no_args", None)
+        self.assertEqual(result, 0)
+        mock_func.assert_called_once_with()
+
+    def test_execute_unknown_name_raises(self) -> None:
+        """execute(unknown_name) raises ValueError."""
+        registry = ToolRegistry()
+        with self.assertRaises(ValueError) as ctx:
+            registry.execute("nonexistent", {})
+        self.assertIn("Unknown tool", str(ctx.exception))
+        self.assertIn("nonexistent", str(ctx.exception))
+
+    def test_register_empty_name_raises(self) -> None:
+        """register(name='', ...) raises ValueError."""
+        registry = ToolRegistry()
+        with self.assertRaises(ValueError) as ctx:
+            registry.register("", lambda: None, "desc")
+        self.assertIn("empty", str(ctx.exception).lower())
+
+    def test_register_empty_description_raises(self) -> None:
+        """register(..., description='') raises ValueError."""
+        registry = ToolRegistry()
+        with self.assertRaises(ValueError) as ctx:
+            registry.register("tool", lambda: None, "")
+        self.assertIn("empty", str(ctx.exception).lower())
+
+    def test_multiple_tools_order_preserved(self) -> None:
+        """Multiple tools: order preserved, both formats return length 2."""
+        registry = ToolRegistry()
+        registry.register("first", lambda: 1, "First")
+        registry.register("second", lambda: 2, "Second")
+
+        openai_tools = registry.to_openai_tools()
+        anthropic_tools = registry.to_anthropic_tools()
+        self.assertEqual(len(openai_tools), 2)
+        self.assertEqual(len(anthropic_tools), 2)
+        self.assertEqual(openai_tools[0]["function"]["name"], "first")
+        self.assertEqual(openai_tools[1]["function"]["name"], "second")
+        self.assertEqual(anthropic_tools[0]["name"], "first")
+        self.assertEqual(anthropic_tools[1]["name"], "second")
+
+    def test_duplicate_register_overwrites(self) -> None:
+        """Register same name twice; second overwrites; execute calls second func."""
+        first_func = MagicMock(return_value="first")
+        second_func = MagicMock(return_value="second")
+        registry = ToolRegistry()
+        registry.register("tool", first_func, "First")
+        registry.register("tool", second_func, "Second")
+
+        result = registry.execute("tool", {})
+        self.assertEqual(result, "second")
+        first_func.assert_not_called()
+        second_func.assert_called_once_with()
+
+    def test_empty_registry_returns_empty_list(self) -> None:
+        """Empty registry: to_openai_tools and to_anthropic_tools return []."""
+        registry = ToolRegistry()
+        self.assertEqual(registry.to_openai_tools(), [])
+        self.assertEqual(registry.to_anthropic_tools(), [])
 
 
 class TestLiveProviders(unittest.TestCase):

@@ -1,13 +1,17 @@
 """
 LLM provider abstraction for Zenet MVP 0.1.
 
-Provides: LlmProvider (abstract base), OpenAiProvider, ClaudeProvider (concrete).
+Provides: LlmProvider (abstract base), OpenAiProvider, ClaudeProvider (concrete),
+ToolRegistry for function calling.
 Pattern mirrors core/persistence.py: abstract interface + concrete implementations.
 """
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 from dotenv import load_dotenv
 
@@ -162,3 +166,78 @@ class ClaudeProvider(LlmProvider):
             if text:
                 return text
         return ""
+
+
+@dataclass
+class _ToolEntry:
+    name: str
+    func: Callable[..., Any]
+    description: str
+    parameters_schema: dict[str, Any] | None
+
+
+_DEFAULT_PARAMETERS_SCHEMA: dict[str, Any] = {"type": "object", "properties": {}}
+
+
+class ToolRegistry:
+    """Provider-agnostic registry for LLM tools (function calling)."""
+
+    def __init__(self) -> None:
+        self._tools: dict[str, _ToolEntry] = {}
+
+    def register(
+        self,
+        name: str,
+        func: Callable[..., Any],
+        description: str,
+        parameters_schema: dict[str, Any] | None = None,
+    ) -> None:
+        """Register a tool. Duplicate name overwrites. Empty name/description raises ValueError."""
+        if not name or not name.strip():
+            raise ValueError("Tool name cannot be empty")
+        if not description or not description.strip():
+            raise ValueError("Tool description cannot be empty")
+        self._tools[name] = _ToolEntry(
+            name=name,
+            func=func,
+            description=description,
+            parameters_schema=parameters_schema,
+        )
+
+    def to_openai_tools(self) -> list[dict[str, Any]]:
+        """Return tools in OpenAI format."""
+        result: list[dict[str, Any]] = []
+        for entry in self._tools.values():
+            schema = entry.parameters_schema or _DEFAULT_PARAMETERS_SCHEMA
+            result.append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": entry.name,
+                        "description": entry.description,
+                        "parameters": schema,
+                    },
+                }
+            )
+        return result
+
+    def to_anthropic_tools(self) -> list[dict[str, Any]]:
+        """Return tools in Anthropic format."""
+        result: list[dict[str, Any]] = []
+        for entry in self._tools.values():
+            schema = entry.parameters_schema or _DEFAULT_PARAMETERS_SCHEMA
+            result.append(
+                {
+                    "name": entry.name,
+                    "description": entry.description,
+                    "input_schema": schema,
+                }
+            )
+        return result
+
+    def execute(self, name: str, arguments: dict[str, Any] | None = None) -> Any:
+        """Execute a registered tool by name. Unknown name raises ValueError."""
+        arguments = arguments or {}
+        if name not in self._tools:
+            raise ValueError(f"Unknown tool: {name}")
+        return self._tools[name].func(**arguments)
