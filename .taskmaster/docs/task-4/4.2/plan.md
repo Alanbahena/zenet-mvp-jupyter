@@ -241,16 +241,16 @@ def test_claude_provider_live_call(self) -> None:
 
 ## Deliverable checklist
 
-- [ ] Add `anthropic` to pyproject.toml and run `uv sync`
-- [ ] Regenerate `requirements.txt` via `uv export --no-dev -o requirements.txt`
-- [ ] Implement `ClaudeProvider` in `core/llm_framework.py`
-- [ ] Use dedicated `system=` param (do not inject system into messages)
-- [ ] When `structured_output=True`, append JSON instruction to system
-- [ ] Extract text from first text block in `response.content`; return `""` if none
-- [ ] Filter system role from messages if present
-- [ ] Add `ClaudeProvider` to `core/__init__.py` exports
-- [ ] Add unit tests in `tests/unit/test_llm_framework.py` (mocked + optional live)
-- [ ] Run `python -m pytest tests/unit/test_llm_framework.py -v`
+- [x] Add `anthropic` to pyproject.toml and run `uv sync`
+- [x] Regenerate `requirements.txt` via `uv export --no-dev -o requirements.txt`
+- [x] Implement `ClaudeProvider` in `core/llm_framework.py`
+- [x] Use dedicated `system=` param (do not inject system into messages)
+- [x] When `structured_output=True`, append JSON instruction to system
+- [x] Extract text from first text block in `response.content`; return `""` if none
+- [x] Filter system role from messages if present
+- [x] Add `ClaudeProvider` to `core/__init__.py` exports
+- [x] Add unit tests in `tests/unit/test_llm_framework.py` (mocked + optional live)
+- [x] Run `python -m pytest tests/unit/test_llm_framework.py -v`
 
 ---
 

@@ -1,7 +1,7 @@
 """
 LLM provider abstraction for Zenet MVP 0.1.
 
-Provides: LlmProvider (abstract base), OpenAiProvider (concrete).
+Provides: LlmProvider (abstract base), OpenAiProvider, ClaudeProvider (concrete).
 Pattern mirrors core/persistence.py: abstract interface + concrete implementations.
 """
 
@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from anthropic import Anthropic
 from openai import OpenAI
 
 
@@ -108,3 +109,56 @@ class OpenAiProvider(LlmProvider):
         response = self.client.chat.completions.create(**kwargs)
         content = response.choices[0].message.content
         return content if content is not None else ""
+
+
+class ClaudeProvider(LlmProvider):
+    """Anthropic Claude provider. Uses ANTHROPIC_API_KEY from environment."""
+
+    def __init__(self, model_name: str = "claude-sonnet-4-6") -> None:
+        super().__init__(model_name)
+        self.client = Anthropic()
+
+    def _do_generate(
+        self,
+        *,
+        prompt: str | None,
+        system: str | None,
+        tools: list | None,
+        structured_output: bool,
+        messages: list | None,
+        max_tokens: int,
+        temperature: float,
+    ) -> str:
+        if messages is not None:
+            api_messages = [m for m in messages if m.get("role") != "system"]
+        else:
+            api_messages = [{"role": "user", "content": prompt or ""}]
+
+        effective_system = system or ""
+        if structured_output:
+            json_instruction = " Respond with valid JSON only. Do not include markdown code fences."
+            effective_system = (
+                (effective_system + json_instruction).strip()
+                if effective_system
+                else "Respond with valid JSON only. Do not include markdown code fences."
+            )
+
+        kwargs: dict = {
+            "model": self.model_name,
+            "max_tokens": max_tokens,
+            "messages": api_messages,
+        }
+        if effective_system:
+            kwargs["system"] = effective_system
+        kwargs["temperature"] = temperature
+        if tools:
+            kwargs["tools"] = tools
+
+        response = self.client.messages.create(**kwargs)
+        if not response.content:
+            return ""
+        for block in response.content:
+            text = getattr(block, "text", None)
+            if text:
+                return text
+        return ""
