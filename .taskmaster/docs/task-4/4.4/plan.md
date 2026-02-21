@@ -303,25 +303,27 @@ Unit tests in `tests/unit/test_llm_utils.py` (or add to `test_llm_framework.py`)
 
 ## Deliverable Checklist
 
-- [ ] Create `core/llm_utils.py` with module docstring
-- [ ] Implement `parse_structured_output(raw: str) -> dict`
-  - [ ] Strip whitespace
-  - [ ] Handle markdown code fences (` ```json `, ` ``` `)
-  - [ ] Extract first code block if multiple fences present
-  - [ ] Parse JSON with `json.loads()`
-  - [ ] Validate return is dict (raise if list/primitive)
-  - [ ] Raise `ValueError` with descriptive message and input snippet on failure
-- [ ] Implement `validate_structured_output(data: dict, required_keys: list[str]) -> bool`
-  - [ ] Check all required keys present (top-level only)
-  - [ ] Return `True`/`False` (do not raise)
-- [ ] Add comprehensive docstrings with type hints
-- [ ] Export from `core/__init__.py`
-- [ ] Create `tests/unit/test_llm_utils.py` (or add to `test_llm_framework.py`)
-  - [ ] Test all valid input formats
-  - [ ] Test all invalid inputs raise ValueError
-  - [ ] Test edge cases (multiple fences, incomplete fences, etc.)
-  - [ ] Test validate_structured_output with various key combinations
-- [ ] Run tests: `python -m pytest tests/unit/test_llm_utils.py -v`
+- [x] Create `core/llm_utils.py` with module docstring
+- [x] Implement `parse_structured_output(raw: str) -> dict`
+  - [x] Strip whitespace
+  - [x] Handle markdown code fences (` ```json `, ` ``` `) anywhere in response
+  - [x] Extract first code block if multiple fences present
+  - [x] Parse JSON with `json.loads()`
+  - [x] Validate return is dict (raise if list/primitive)
+  - [x] Raise `ValueError` with descriptive message and input snippet on failure
+- [x] Implement `validate_structured_output(data: dict, required_keys: list[str]) -> bool`
+  - [x] Check all required keys present (top-level only)
+  - [x] Return `True`/`False` (do not raise)
+- [x] Add comprehensive docstrings with type hints
+- [x] Export from `core/__init__.py`
+- [x] Create `tests/unit/test_llm_utils.py` (or add to `test_llm_framework.py`)
+  - [x] Test all valid input formats (19 tests for parse_structured_output)
+  - [x] Test all invalid inputs raise ValueError
+  - [x] Test edge cases (multiple fences, incomplete fences, text before fence, etc.)
+  - [x] Test validate_structured_output with various key combinations (12 tests)
+  - [x] Test integration scenarios (5 tests)
+- [x] Run tests: `python -m pytest tests/unit/test_llm_utils.py -v` (36/36 passed)
+- [x] Run full test suite: `python -m pytest tests/unit/ -v` (324/324 passed)
 
 ---
 

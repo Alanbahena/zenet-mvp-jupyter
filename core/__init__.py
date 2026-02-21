@@ -67,6 +67,7 @@ from core.data_model_utils import (
 )
 from core.readiness_kpis import compute_readiness_report
 from core.llm_framework import ClaudeProvider, LlmProvider, OpenAiProvider, ToolRegistry
+from core.llm_utils import parse_structured_output, validate_structured_output
 from core.persistence import DataLake, JsonStorage, SqliteStorage
 from core.serialization import (
     category_recipe_from_dict,
@@ -154,6 +155,8 @@ __all__ = [
     "LlmProvider",
     "OpenAiProvider",
     "ToolRegistry",
+    "parse_structured_output",
+    "validate_structured_output",
     "DataLake",
     "JsonStorage",
     "SqliteStorage",
