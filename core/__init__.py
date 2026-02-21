@@ -68,6 +68,14 @@ from core.data_model_utils import (
 from core.readiness_kpis import compute_readiness_report
 from core.llm_framework import ClaudeProvider, LlmProvider, OpenAiProvider, ToolRegistry
 from core.llm_utils import parse_structured_output, validate_structured_output
+from core.prompts import (
+    format_system_prompt,
+    format_user_prompt,
+    INGREDIENT_EXTRACTION_PROMPT,
+    INVENTORY_ITEM_SUGGESTION_PROMPT,
+    PromptTemplate,
+    RECIPE_CLASSIFICATION_PROMPT,
+)
 from core.persistence import DataLake, JsonStorage, SqliteStorage
 from core.serialization import (
     category_recipe_from_dict,
@@ -157,6 +165,12 @@ __all__ = [
     "ToolRegistry",
     "parse_structured_output",
     "validate_structured_output",
+    "PromptTemplate",
+    "format_system_prompt",
+    "format_user_prompt",
+    "INGREDIENT_EXTRACTION_PROMPT",
+    "RECIPE_CLASSIFICATION_PROMPT",
+    "INVENTORY_ITEM_SUGGESTION_PROMPT",
     "DataLake",
     "JsonStorage",
     "SqliteStorage",
