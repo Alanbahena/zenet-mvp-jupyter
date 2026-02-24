@@ -76,6 +76,7 @@ from core.prompts import (
     PromptTemplate,
     RECIPE_CLASSIFICATION_PROMPT,
 )
+from core.memory import ConversationMemory
 from core.persistence import DataLake, JsonStorage, SqliteStorage
 from core.serialization import (
     category_recipe_from_dict,
@@ -171,6 +172,7 @@ __all__ = [
     "INGREDIENT_EXTRACTION_PROMPT",
     "RECIPE_CLASSIFICATION_PROMPT",
     "INVENTORY_ITEM_SUGGESTION_PROMPT",
+    "ConversationMemory",
     "DataLake",
     "JsonStorage",
     "SqliteStorage",
