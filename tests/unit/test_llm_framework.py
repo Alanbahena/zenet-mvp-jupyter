@@ -442,3 +442,379 @@ class TestLiveProviders(unittest.TestCase):
         result = provider.generate(prompt="Say hello in one word.")
         self.assertIsInstance(result, str)
         self.assertGreater(len(result), 0)
+
+
+# =============================================================================
+# Live Integration Tests (Subtask 4.7)
+# =============================================================================
+# These tests make REAL API calls to OpenAI and Anthropic.
+# They are skipped if API keys are not set in the environment.
+#
+# Cost per full run: ~$0.01 with default lightweight models
+#
+# Run with: pytest tests/unit/ -k Live -v
+
+from core.ai.utils import parse_structured_output
+
+
+class TestLiveOpenAiProvider(unittest.TestCase):
+    """
+    Live integration tests with real OpenAI API.
+
+    These tests make REAL API calls to OpenAI. They are skipped if
+    OPENAI_API_KEY is not set in the environment.
+
+    Model: Controlled by TEST_OPENAI_MODEL env var (default: gpt-4o-mini).
+    Cost: ~$0.005 per full test run with default model.
+
+    Override model for one-time testing:
+        TEST_OPENAI_MODEL=gpt-4o pytest tests/unit/ -k LiveOpenAi
+    """
+
+    def setUp(self):
+        """Set up provider with test model from environment."""
+        if os.getenv("OPENAI_API_KEY"):
+            # Default to mini for cost savings, allow override
+            test_model = os.getenv("TEST_OPENAI_MODEL", "gpt-4o-mini")
+            self.provider = OpenAiProvider(model_name=test_model)
+
+    @unittest.skipIf(not os.getenv("OPENAI_API_KEY"), "No OpenAI API key")
+    def test_live_generate_simple_prompt(self):
+        """
+        Verify OpenAiProvider can make a real API call and return a response.
+
+        This test makes ONE real API call to OpenAI.
+        Expected cost: ~$0.0002 with gpt-4o-mini.
+        """
+        response = self.provider.generate(prompt=
+            "What is 2+2? Answer with just the number.",
+            temperature=0  # Deterministic
+        )
+
+        # Assertions (robust, non-deterministic friendly)
+        self.assertIsNotNone(response)
+        self.assertIsInstance(response, str)
+        self.assertGreater(len(response), 0)
+        self.assertIn("4", response)
+
+    @unittest.skipIf(not os.getenv("OPENAI_API_KEY"), "No OpenAI API key")
+    def test_live_generate_with_system(self):
+        """
+        Verify system message is properly injected into OpenAI API call.
+
+        OpenAI expects system as a message with role="system".
+        """
+        response = self.provider.generate(prompt=
+            "What is 5+3?",
+            system="You are a helpful math tutor. Always explain your answers.",
+            temperature=0
+        )
+
+        self.assertIsNotNone(response)
+        self.assertIn("8", response)
+        # System prompt should make response more verbose/explanatory
+        self.assertGreater(len(response), 5)
+
+    @unittest.skipIf(not os.getenv("OPENAI_API_KEY"), "No OpenAI API key")
+    def test_live_generate_structured_output(self):
+        """
+        Verify JSON mode (structured_output=True) works with real API.
+
+        OpenAI uses response_format={"type": "json_object"} for JSON mode.
+        """
+        prompt = (
+            "Return a JSON object with these exact keys: "
+            "'name' (set to 'test'), 'value' (set to 42), 'active' (set to true)."
+        )
+
+        response = self.provider.generate(prompt=
+            prompt,
+            structured_output=True,
+            temperature=0
+        )
+
+        # Parse and validate
+        data = parse_structured_output(response)
+        self.assertIsInstance(data, dict)
+        self.assertEqual(data.get("name"), "test")
+        self.assertEqual(data.get("value"), 42)
+        self.assertEqual(data.get("active"), True)
+
+    @unittest.skipIf(not os.getenv("OPENAI_API_KEY"), "No OpenAI API key")
+    def test_live_generate_with_tools(self):
+        """
+        Verify tool calling (function calling) works with real API.
+
+        Tests that OpenAI properly receives and invokes tools.
+        """
+        # Simple calculator tool
+        registry = ToolRegistry()
+
+        def add(a: int, b: int) -> int:
+            return a + b
+
+        registry.register(
+            "add",
+            add,
+            description="Add two numbers",
+            parameters_schema={
+                "type": "object",
+                "properties": {
+                    "a": {"type": "integer"},
+                    "b": {"type": "integer"}
+                },
+                "required": ["a", "b"]
+            }
+        )
+
+        response = self.provider.generate(prompt=
+            "Use the add tool to calculate 10 + 15",
+            tools=registry.to_openai_tools(),
+            temperature=0
+        )
+
+        # Response should be non-empty (tool usage or result)
+        self.assertIsNotNone(response)
+        self.assertIsInstance(response, str)
+
+    @unittest.skipIf(not os.getenv("OPENAI_API_KEY"), "No OpenAI API key")
+    def test_live_multi_turn_with_messages(self):
+        """
+        Verify multi-turn conversation with messages parameter.
+
+        Tests that the provider correctly handles the messages list
+        for context preservation.
+        """
+        messages = [
+            {"role": "user", "content": "My name is Alice."},
+            {"role": "assistant", "content": "Nice to meet you, Alice!"},
+            {"role": "user", "content": "What is my name?"}
+        ]
+
+        response = self.provider.generate(
+            prompt=None,  # Not used when messages provided
+            messages=messages,
+            temperature=0
+        )
+
+        # Should remember name from earlier message
+        self.assertIn("Alice", response)
+
+
+class TestLiveClaudeProvider(unittest.TestCase):
+    """
+    Live integration tests with real Anthropic API.
+
+    These tests make REAL API calls to Anthropic. They are skipped if
+    ANTHROPIC_API_KEY is not set in the environment.
+
+    Model: Controlled by TEST_ANTHROPIC_MODEL env var (default: claude-haiku-4-5-20251001).
+    Cost: ~$0.008 per full test run with default model.
+
+    Override model for one-time testing:
+        TEST_ANTHROPIC_MODEL=claude-sonnet-4-5 pytest tests/unit/ -k LiveClaude
+    """
+
+    def setUp(self):
+        """Set up provider with test model from environment."""
+        if os.getenv("ANTHROPIC_API_KEY"):
+            test_model = os.getenv("TEST_ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
+            self.provider = ClaudeProvider(model_name=test_model)
+
+    @unittest.skipIf(not os.getenv("ANTHROPIC_API_KEY"), "No Anthropic API key")
+    def test_live_generate_simple_prompt(self):
+        """
+        Verify ClaudeProvider can make a real API call and return a response.
+
+        This test makes ONE real API call to Anthropic.
+        Expected cost: ~$0.0004 with claude-haiku.
+        """
+        response = self.provider.generate(prompt=
+            "What is 2+2? Answer with just the number.",
+            temperature=0
+        )
+
+        self.assertIsNotNone(response)
+        self.assertIsInstance(response, str)
+        self.assertGreater(len(response), 0)
+        self.assertIn("4", response)
+
+    @unittest.skipIf(not os.getenv("ANTHROPIC_API_KEY"), "No Anthropic API key")
+    def test_live_generate_with_system(self):
+        """
+        Verify system message is properly passed to Anthropic API.
+
+        Anthropic expects system as a dedicated 'system' parameter,
+        not injected into messages list.
+        """
+        response = self.provider.generate(prompt=
+            "What is 5+3?",
+            system="You are a helpful math tutor. Always explain your answers.",
+            temperature=0
+        )
+
+        self.assertIsNotNone(response)
+        self.assertIn("8", response)
+        self.assertGreater(len(response), 5)
+
+    @unittest.skipIf(not os.getenv("ANTHROPIC_API_KEY"), "No Anthropic API key")
+    def test_live_generate_structured_output(self):
+        """
+        Verify JSON instruction works with real Anthropic API.
+
+        Anthropic doesn't have native JSON mode, so structured_output=True
+        appends JSON instruction to the system prompt.
+        """
+        prompt = (
+            "Return a JSON object with these exact keys: "
+            "'name' (set to 'test'), 'value' (set to 42), 'active' (set to true)."
+        )
+
+        response = self.provider.generate(prompt=
+            prompt,
+            structured_output=True,
+            temperature=0
+        )
+
+        # Parse and validate
+        data = parse_structured_output(response)
+        self.assertIsInstance(data, dict)
+        self.assertEqual(data.get("name"), "test")
+        self.assertEqual(data.get("value"), 42)
+        self.assertEqual(data.get("active"), True)
+
+    @unittest.skipIf(not os.getenv("ANTHROPIC_API_KEY"), "No Anthropic API key")
+    def test_live_generate_with_tools(self):
+        """
+        Verify tool use works with real Anthropic API.
+
+        Anthropic has its own tool format (different from OpenAI).
+        """
+        registry = ToolRegistry()
+
+        def add(a: int, b: int) -> int:
+            return a + b
+
+        registry.register(
+            "add",
+            add,
+            description="Add two numbers",
+            parameters_schema={
+                "type": "object",
+                "properties": {
+                    "a": {"type": "integer"},
+                    "b": {"type": "integer"}
+                },
+                "required": ["a", "b"]
+            }
+        )
+
+        response = self.provider.generate(prompt=
+            "Use the add tool to calculate 10 + 15",
+            tools=registry.to_anthropic_tools(),
+            temperature=0
+        )
+
+        self.assertIsNotNone(response)
+        self.assertIsInstance(response, str)
+
+    @unittest.skipIf(not os.getenv("ANTHROPIC_API_KEY"), "No Anthropic API key")
+    def test_live_multi_turn_with_messages(self):
+        """
+        Verify multi-turn conversation with messages parameter.
+        """
+        messages = [
+            {"role": "user", "content": "My name is Alice."},
+            {"role": "assistant", "content": "Nice to meet you, Alice!"},
+            {"role": "user", "content": "What is my name?"}
+        ]
+
+        response = self.provider.generate(
+            prompt=None,
+            messages=messages,
+            temperature=0
+        )
+
+        self.assertIn("Alice", response)
+
+
+class TestLiveProviderComparison(unittest.TestCase):
+    """
+    Cross-provider tests comparing OpenAI and Claude behavior.
+
+    These tests require BOTH API keys. They verify that both providers
+    handle the same inputs correctly, validating provider abstraction.
+
+    Cost: ~$0.001 per test with lightweight models.
+    """
+
+    def setUp(self):
+        """Set up both providers with test models."""
+        if os.getenv("OPENAI_API_KEY"):
+            openai_model = os.getenv("TEST_OPENAI_MODEL", "gpt-4o-mini")
+            self.openai = OpenAiProvider(model_name=openai_model)
+
+        if os.getenv("ANTHROPIC_API_KEY"):
+            claude_model = os.getenv("TEST_ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
+            self.claude = ClaudeProvider(model_name=claude_model)
+
+    @unittest.skipIf(
+        not (os.getenv("OPENAI_API_KEY") and os.getenv("ANTHROPIC_API_KEY")),
+        "Need both API keys"
+    )
+    def test_live_same_prompt_both_providers(self):
+        """
+        Verify both providers can handle the same simple prompt.
+
+        This validates the unified LlmProvider interface.
+        """
+        prompt = "What is 2+2? Answer with just the number."
+
+        openai_response = self.openai.generate(prompt=prompt, temperature=0)
+        claude_response = self.claude.generate(prompt=prompt, temperature=0)
+
+        # Both should return valid responses
+        self.assertIsNotNone(openai_response)
+        self.assertIsNotNone(claude_response)
+
+        # Both should contain "4"
+        self.assertIn("4", openai_response)
+        self.assertIn("4", claude_response)
+
+    @unittest.skipIf(
+        not (os.getenv("OPENAI_API_KEY") and os.getenv("ANTHROPIC_API_KEY")),
+        "Need both API keys"
+    )
+    def test_live_structured_output_both_providers(self):
+        """
+        Verify structured output parity across providers.
+
+        OpenAI uses response_format, Claude uses JSON instruction.
+        Both should produce valid JSON.
+        """
+        prompt = "Return a JSON object with key 'result' set to 42."
+
+        openai_response = self.openai.generate(prompt=
+            prompt,
+            structured_output=True,
+            temperature=0
+        )
+        claude_response = self.claude.generate(prompt=
+            prompt,
+            structured_output=True,
+            temperature=0
+        )
+
+        # Both should return parseable JSON
+        openai_data = parse_structured_output(openai_response)
+        claude_data = parse_structured_output(claude_response)
+
+        self.assertIsInstance(openai_data, dict)
+        self.assertIsInstance(claude_data, dict)
+
+        self.assertEqual(openai_data.get("result"), 42)
+        self.assertEqual(claude_data.get("result"), 42)
+
+
+if __name__ == "__main__":
+    unittest.main()

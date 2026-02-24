@@ -513,3 +513,73 @@ class TestConversationMemoryConvenienceMethods(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# =============================================================================
+# Live Integration Test (Subtask 4.7)
+# =============================================================================
+
+import os
+from core.ai.providers import OpenAiProvider
+
+
+class TestLiveMemoryWithProvider(unittest.TestCase):
+    """
+    Live test of ConversationMemory with a real LLM provider.
+
+    Verifies that memory correctly preserves context across multiple
+    turns when used with actual API calls.
+
+    Uses OpenAI by default (cheaper than Claude for this test).
+    Cost: ~$0.001 per test with gpt-4o-mini.
+    """
+
+    def setUp(self):
+        """Set up provider and memory for live tests."""
+        if os.getenv("OPENAI_API_KEY"):
+            test_model = os.getenv("TEST_OPENAI_MODEL", "gpt-4o-mini")
+            self.provider = OpenAiProvider(model_name=test_model)
+            self.memory = ConversationMemory(max_turns=10)
+
+    @unittest.skipIf(not os.getenv("OPENAI_API_KEY"), "No OpenAI API key")
+    def test_live_memory_context_preservation(self):
+        """
+        Verify memory preserves context across multiple API calls.
+
+        Turn 1: User provides information
+        Turn 2: User asks question requiring context from Turn 1
+
+        Expected: Provider uses memory to answer correctly.
+        """
+        # Turn 1: Provide information
+        user_msg_1 = "My favorite color is blue."
+        self.memory.add_user(user_msg_1)
+
+        response_1 = self.provider.generate(prompt=
+            user_msg_1,
+            messages=self.memory.get_messages(),
+            temperature=0
+        )
+        self.memory.add_assistant(response_1)
+
+        # Turn 2: Ask question requiring context
+        user_msg_2 = "What is my favorite color?"
+        self.memory.add_user(user_msg_2)
+
+        response_2 = self.provider.generate(
+            prompt=None,  # Not used when messages provided
+            messages=self.memory.get_messages(),
+            temperature=0
+        )
+        self.memory.add_assistant(response_2)
+
+        # Verify context was preserved
+        self.assertIn("blue", response_2.lower())
+
+        # Verify memory contains all messages
+        messages = self.memory.get_messages()
+        self.assertEqual(len(messages), 4)  # 2 user + 2 assistant
+        self.assertEqual(messages[0]["role"], "user")
+        self.assertEqual(messages[1]["role"], "assistant")
+        self.assertEqual(messages[2]["role"], "user")
+        self.assertEqual(messages[3]["role"], "assistant")
