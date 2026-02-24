@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from core.taxonomy import (
+from core.domain.taxonomy import (
     IS_A,
     PART_OF,
     find_related_items,

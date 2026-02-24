@@ -2,7 +2,7 @@
 
 import unittest
 
-from core.data_model import (
+from core.domain.data_model import (
     FamilyInventory,
     FamilyInventoryRegistry,
     Ingredient,
@@ -14,7 +14,7 @@ from core.data_model import (
     RecipeUnit,
     RecipeUnitRegistry,
 )
-from core.data_model_utils import (
+from core.domain.data_model_utils import (
     build_ingredient,
     create_inventory_item_from_ingredient,
     format_deduction_line_for_display,
@@ -27,7 +27,7 @@ from core.data_model_utils import (
     validate_ingredient_with_registries,
     validate_recipe_for_deduction,
 )
-from core.normalization import (
+from core.operations.normalization import (
     RecipeUnitConversionRegistry,
     normalize_recipe_for_deduction,
 )

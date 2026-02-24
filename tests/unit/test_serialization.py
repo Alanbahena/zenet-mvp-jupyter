@@ -2,7 +2,7 @@
 
 import unittest
 
-from core.data_model import (
+from core.domain.data_model import (
     CategoryRecipe,
     FamilyInventory,
     Ingredient,
@@ -14,7 +14,7 @@ from core.data_model import (
     Restaurant,
     User,
 )
-from core.serialization import (
+from core.domain.serialization import (
     category_recipe_from_dict,
     category_recipe_to_dict,
     family_inventory_from_dict,

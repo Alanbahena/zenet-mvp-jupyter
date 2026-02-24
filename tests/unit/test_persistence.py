@@ -5,8 +5,8 @@ import os
 import tempfile
 import unittest
 
-from core.data_model import Ingredient, InventoryUnitEquivalence, Recipe, Restaurant
-from core.persistence import DataLake, JsonStorage, SqliteStorage
+from core.domain.data_model import Ingredient, InventoryUnitEquivalence, Recipe, Restaurant
+from core.storage.persistence import DataLake, JsonStorage, SqliteStorage
 
 
 class TestJsonStorage(unittest.TestCase):

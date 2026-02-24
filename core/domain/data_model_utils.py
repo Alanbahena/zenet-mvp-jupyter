@@ -11,7 +11,7 @@ from __future__ import annotations
 import math
 from typing import Callable, Optional
 
-from core.data_model import (
+from core.domain.data_model import (
     FamilyInventoryRegistry,
     Ingredient,
     InventoryItem,
@@ -20,7 +20,7 @@ from core.data_model import (
     Recipe,
     RecipeUnitRegistry,
 )
-from core.normalization import (
+from core.operations.normalization import (
     DeductionLine,
     RecipeUnitConversionRegistry,
     make_resolver,

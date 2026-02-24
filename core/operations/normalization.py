@@ -14,7 +14,7 @@ import math
 from dataclasses import dataclass
 from typing import Callable, Optional
 
-from core.data_model import (
+from core.domain.data_model import (
     FamilyInventoryRegistry,
     Ingredient,
     InventoryItem,
