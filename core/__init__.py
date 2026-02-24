@@ -1,6 +1,12 @@
 # Zenet MVP 0.1 — core package
+#
+# Restructured into logical subdirectories:
+# - domain/      : Domain models and business entities
+# - operations/  : Business operations (normalization, readiness)
+# - storage/     : Persistence layer
+# - ai/          : AI/LLM infrastructure
 
-from core.data_model import (
+from core.domain.data_model import (
     ALLOWED_USER_ROLES,
     CategoryRecipe,
     CategoryRecipeRegistry,
@@ -8,7 +14,6 @@ from core.data_model import (
     DEFAULT_RESTAURANT_TYPES,
     FamilyInventory,
     FamilyInventoryRegistry,
-    InventoryItemRegistry,
     get_category_recipe_template,
     get_family_inventory_template,
     get_inventory_unit_template,
@@ -16,6 +21,7 @@ from core.data_model import (
     Ingredient,
     InventoryCategory,
     InventoryItem,
+    InventoryItemRegistry,
     InventoryUnit,
     InventoryUnitEquivalence,
     InventoryUnitEquivalenceRegistry,
@@ -28,31 +34,7 @@ from core.data_model import (
     User,
     UserRegistry,
 )
-from core.normalization import (
-    apply_deduction_lines,
-    convert_quantity,
-    DeductionLine,
-    from_base_quantity,
-    from_base_quantity_by_id,
-    get_family_base_unit_id,
-    make_resolver,
-    normalize_recipe_for_deduction,
-    normalize_recipe_unit_quantity,
-    RecipeUnitConversionEntry,
-    RecipeUnitConversionRegistry,
-    to_base_quantity,
-    to_base_quantity_by_id,
-)
-from core.taxonomy import (
-    IS_A,
-    PART_OF,
-    find_related_items,
-    IngredientTaxonomy,
-    InventoryTaxonomy,
-    RecipeTaxonomy,
-    Taxonomy,
-)
-from core.data_model_utils import (
+from core.domain.data_model_utils import (
     build_ingredient,
     create_inventory_item_from_ingredient,
     format_deduction_line_for_display,
@@ -65,20 +47,7 @@ from core.data_model_utils import (
     validate_ingredient_with_registries,
     validate_recipe_for_deduction,
 )
-from core.readiness_kpis import compute_readiness_report
-from core.llm_framework import ClaudeProvider, LlmProvider, OpenAiProvider, ToolRegistry
-from core.llm_utils import parse_structured_output, validate_structured_output
-from core.prompts import (
-    format_system_prompt,
-    format_user_prompt,
-    INGREDIENT_EXTRACTION_PROMPT,
-    INVENTORY_ITEM_SUGGESTION_PROMPT,
-    PromptTemplate,
-    RECIPE_CLASSIFICATION_PROMPT,
-)
-from core.memory import ConversationMemory
-from core.persistence import DataLake, JsonStorage, SqliteStorage
-from core.serialization import (
+from core.domain.serialization import (
     category_recipe_from_dict,
     category_recipe_to_dict,
     family_inventory_from_dict,
@@ -93,30 +62,68 @@ from core.serialization import (
     inventory_unit_to_dict,
     recipe_from_dict,
     recipe_to_dict,
-    restaurant_from_dict,
-    restaurant_to_dict,
     recipe_unit_from_dict,
     recipe_unit_to_dict,
+    restaurant_from_dict,
+    restaurant_to_dict,
     user_from_dict,
     user_to_dict,
 )
+from core.domain.taxonomy import (
+    find_related_items,
+    IngredientTaxonomy,
+    InventoryTaxonomy,
+    IS_A,
+    PART_OF,
+    RecipeTaxonomy,
+    Taxonomy,
+)
+from core.operations.normalization import (
+    apply_deduction_lines,
+    convert_quantity,
+    DeductionLine,
+    from_base_quantity,
+    from_base_quantity_by_id,
+    get_family_base_unit_id,
+    make_resolver,
+    normalize_recipe_for_deduction,
+    normalize_recipe_unit_quantity,
+    RecipeUnitConversionEntry,
+    RecipeUnitConversionRegistry,
+    to_base_quantity,
+    to_base_quantity_by_id,
+)
+from core.operations.readiness_kpis import compute_readiness_report
+from core.storage.persistence import DataLake, JsonStorage, SqliteStorage
+from core.ai.providers import ClaudeProvider, LlmProvider, OpenAiProvider, ToolRegistry
+from core.ai.memory import ConversationMemory
+from core.ai.prompts import (
+    format_system_prompt,
+    format_user_prompt,
+    INGREDIENT_EXTRACTION_PROMPT,
+    INVENTORY_ITEM_SUGGESTION_PROMPT,
+    PromptTemplate,
+    RECIPE_CLASSIFICATION_PROMPT,
+)
+from core.ai.utils import parse_structured_output, validate_structured_output
 
 __all__ = [
+    # domain/data_model
     "ALLOWED_USER_ROLES",
     "CategoryRecipe",
     "CategoryRecipeRegistry",
     "DEFAULT_INVENTORY_CATEGORIES",
     "DEFAULT_RESTAURANT_TYPES",
+    "FamilyInventory",
+    "FamilyInventoryRegistry",
     "get_category_recipe_template",
     "get_family_inventory_template",
     "get_inventory_unit_template",
     "get_recipe_unit_template",
-    "FamilyInventory",
-    "FamilyInventoryRegistry",
-    "InventoryItemRegistry",
     "Ingredient",
     "InventoryCategory",
     "InventoryItem",
+    "InventoryItemRegistry",
     "InventoryUnit",
     "InventoryUnitEquivalence",
     "InventoryUnitEquivalenceRegistry",
@@ -128,26 +135,7 @@ __all__ = [
     "RestaurantType",
     "User",
     "UserRegistry",
-    "apply_deduction_lines",
-    "convert_quantity",
-    "DeductionLine",
-    "from_base_quantity",
-    "from_base_quantity_by_id",
-    "get_family_base_unit_id",
-    "make_resolver",
-    "normalize_recipe_for_deduction",
-    "normalize_recipe_unit_quantity",
-    "RecipeUnitConversionEntry",
-    "RecipeUnitConversionRegistry",
-    "to_base_quantity",
-    "to_base_quantity_by_id",
-    "IS_A",
-    "PART_OF",
-    "find_related_items",
-    "IngredientTaxonomy",
-    "InventoryTaxonomy",
-    "RecipeTaxonomy",
-    "Taxonomy",
+    # domain/data_model_utils
     "build_ingredient",
     "create_inventory_item_from_ingredient",
     "format_deduction_line_for_display",
@@ -159,23 +147,7 @@ __all__ = [
     "units_used_by_recipe",
     "validate_ingredient_with_registries",
     "validate_recipe_for_deduction",
-    "compute_readiness_report",
-    "ClaudeProvider",
-    "LlmProvider",
-    "OpenAiProvider",
-    "ToolRegistry",
-    "parse_structured_output",
-    "validate_structured_output",
-    "PromptTemplate",
-    "format_system_prompt",
-    "format_user_prompt",
-    "INGREDIENT_EXTRACTION_PROMPT",
-    "RECIPE_CLASSIFICATION_PROMPT",
-    "INVENTORY_ITEM_SUGGESTION_PROMPT",
-    "ConversationMemory",
-    "DataLake",
-    "JsonStorage",
-    "SqliteStorage",
+    # domain/serialization
     "category_recipe_from_dict",
     "category_recipe_to_dict",
     "family_inventory_from_dict",
@@ -190,10 +162,55 @@ __all__ = [
     "inventory_unit_to_dict",
     "recipe_from_dict",
     "recipe_to_dict",
-    "restaurant_from_dict",
-    "restaurant_to_dict",
     "recipe_unit_from_dict",
     "recipe_unit_to_dict",
+    "restaurant_from_dict",
+    "restaurant_to_dict",
     "user_from_dict",
     "user_to_dict",
+    # domain/taxonomy
+    "find_related_items",
+    "IngredientTaxonomy",
+    "InventoryTaxonomy",
+    "IS_A",
+    "PART_OF",
+    "RecipeTaxonomy",
+    "Taxonomy",
+    # operations/normalization
+    "apply_deduction_lines",
+    "convert_quantity",
+    "DeductionLine",
+    "from_base_quantity",
+    "from_base_quantity_by_id",
+    "get_family_base_unit_id",
+    "make_resolver",
+    "normalize_recipe_for_deduction",
+    "normalize_recipe_unit_quantity",
+    "RecipeUnitConversionEntry",
+    "RecipeUnitConversionRegistry",
+    "to_base_quantity",
+    "to_base_quantity_by_id",
+    # operations/readiness_kpis
+    "compute_readiness_report",
+    # storage/persistence
+    "DataLake",
+    "JsonStorage",
+    "SqliteStorage",
+    # ai/providers
+    "ClaudeProvider",
+    "LlmProvider",
+    "OpenAiProvider",
+    "ToolRegistry",
+    # ai/memory
+    "ConversationMemory",
+    # ai/prompts
+    "format_system_prompt",
+    "format_user_prompt",
+    "INGREDIENT_EXTRACTION_PROMPT",
+    "INVENTORY_ITEM_SUGGESTION_PROMPT",
+    "PromptTemplate",
+    "RECIPE_CLASSIFICATION_PROMPT",
+    # ai/utils
+    "parse_structured_output",
+    "validate_structured_output",
 ]

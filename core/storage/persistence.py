@@ -12,7 +12,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-from core.schema import _create_tables
+from core.storage.schema import _create_tables
 
 
 def _entity_id_to_str(entity_id: int | str) -> str:
@@ -453,8 +453,8 @@ class SqliteStorage:
 
 # Lazy imports for entity types and serialization (avoid circular import)
 def _get_entity_registries() -> tuple[dict[type, str], dict[str, Any], dict[str, Any]]:
-    from core import data_model as dm
-    from core import serialization as ser
+    from core.domain import data_model as dm
+    from core.domain import serialization as ser
     class_to_type: dict[type, str] = {
         dm.Restaurant: "restaurant",
         dm.User: "user",

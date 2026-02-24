@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from core.data_model import (
+from core.domain.data_model import (
     CategoryRecipe,
     FamilyInventory,
     Ingredient,

@@ -6,7 +6,7 @@ Tests PromptTemplate dataclass, helper functions, and pre-built templates.
 
 import unittest
 
-from core.prompts import (
+from core.ai.prompts import (
     INGREDIENT_EXTRACTION_PROMPT,
     INVENTORY_ITEM_SUGGESTION_PROMPT,
     PromptTemplate,

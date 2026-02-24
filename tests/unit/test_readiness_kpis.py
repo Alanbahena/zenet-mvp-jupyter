@@ -3,7 +3,7 @@
 import unittest
 
 from core import compute_readiness_report
-from core.data_model import (
+from core.domain.data_model import (
     CategoryRecipe,
     CategoryRecipeRegistry,
     FamilyInventory,
@@ -18,7 +18,7 @@ from core.data_model import (
     RecipeUnitRegistry,
     Restaurant,
 )
-from core.normalization import RecipeUnitConversionRegistry
+from core.operations.normalization import RecipeUnitConversionRegistry
 from typing import Optional
 
 

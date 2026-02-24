@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from typing import Optional
 
-from core.data_model import (
+from core.domain.data_model import (
     FamilyInventory,
     FamilyInventoryRegistry,
     Ingredient,
@@ -16,7 +16,7 @@ from core.data_model import (
     InventoryUnitRegistry,
     Recipe,
 )
-from core.normalization import (
+from core.operations.normalization import (
     apply_deduction_lines,
     convert_quantity,
     from_base_quantity,

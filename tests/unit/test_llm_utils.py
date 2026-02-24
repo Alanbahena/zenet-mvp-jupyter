@@ -7,7 +7,7 @@ input formats, edge cases, and error conditions.
 
 import unittest
 
-from core.llm_utils import parse_structured_output, validate_structured_output
+from core.ai.utils import parse_structured_output, validate_structured_output
 
 
 class TestParseStructuredOutput(unittest.TestCase):

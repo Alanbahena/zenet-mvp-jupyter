@@ -5,13 +5,13 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from core.llm_framework import ClaudeProvider, LlmProvider, OpenAiProvider, ToolRegistry
+from core.ai.providers import ClaudeProvider, LlmProvider, OpenAiProvider, ToolRegistry
 
 
 class TestOpenAiProvider(unittest.TestCase):
     """Tests with mocked OpenAI API."""
 
-    @patch("core.llm_framework.OpenAI")
+    @patch("core.ai.providers.OpenAI")
     def test_generate_returns_string(self, mock_openai_class: MagicMock) -> None:
         """OpenAiProvider().generate(prompt='Hi') returns string."""
         mock_client = MagicMock()
@@ -40,7 +40,7 @@ class TestOpenAiProvider(unittest.TestCase):
             provider.generate(prompt="", messages=None)
         self.assertIn("Either prompt or messages must be provided", str(ctx.exception))
 
-    @patch("core.llm_framework.OpenAI")
+    @patch("core.ai.providers.OpenAI")
     def test_generate_with_messages_uses_messages_ignores_prompt(
         self, mock_openai_class: MagicMock
     ) -> None:
@@ -60,7 +60,7 @@ class TestOpenAiProvider(unittest.TestCase):
         call_kwargs = mock_client.chat.completions.create.call_args[1]
         self.assertEqual(call_kwargs["messages"], [{"role": "user", "content": "Hello"}])
 
-    @patch("core.llm_framework.OpenAI")
+    @patch("core.ai.providers.OpenAI")
     def test_generate_with_system_prepends_system_message(
         self, mock_openai_class: MagicMock
     ) -> None:
@@ -79,7 +79,7 @@ class TestOpenAiProvider(unittest.TestCase):
         self.assertEqual(msgs[0], {"role": "system", "content": "You are helpful."})
         self.assertEqual(msgs[1], {"role": "user", "content": "Hi"})
 
-    @patch("core.llm_framework.OpenAI")
+    @patch("core.ai.providers.OpenAI")
     def test_generate_structured_output_adds_response_format(
         self, mock_openai_class: MagicMock
     ) -> None:
@@ -99,7 +99,7 @@ class TestOpenAiProvider(unittest.TestCase):
             {"type": "json_object"},
         )
 
-    @patch("core.llm_framework.OpenAI")
+    @patch("core.ai.providers.OpenAI")
     def test_openai_provider_uses_custom_model_name(
         self, mock_openai_class: MagicMock
     ) -> None:
@@ -116,7 +116,7 @@ class TestOpenAiProvider(unittest.TestCase):
         call_kwargs = mock_client.chat.completions.create.call_args[1]
         self.assertEqual(call_kwargs["model"], "gpt-4-turbo")
 
-    @patch("core.llm_framework.OpenAI")
+    @patch("core.ai.providers.OpenAI")
     def test_generate_with_tools_passes_tools_to_api(
         self, mock_openai_class: MagicMock
     ) -> None:
@@ -143,7 +143,7 @@ class TestOpenAiProvider(unittest.TestCase):
         call_kwargs = mock_client.chat.completions.create.call_args[1]
         self.assertEqual(call_kwargs.get("tools"), tools)
 
-    @patch("core.llm_framework.OpenAI")
+    @patch("core.ai.providers.OpenAI")
     def test_generate_content_none_returns_empty_string(
         self, mock_openai_class: MagicMock
     ) -> None:
@@ -163,7 +163,7 @@ class TestOpenAiProvider(unittest.TestCase):
 class TestClaudeProvider(unittest.TestCase):
     """Tests with mocked Anthropic API."""
 
-    @patch("core.llm_framework.Anthropic")
+    @patch("core.ai.providers.Anthropic")
     def test_generate_returns_string(self, mock_anthropic_class: MagicMock) -> None:
         """ClaudeProvider().generate(prompt='Hi') returns string."""
         mock_client = MagicMock()
@@ -178,7 +178,7 @@ class TestClaudeProvider(unittest.TestCase):
         self.assertEqual(result, "Hello there!")
         mock_client.messages.create.assert_called_once()
 
-    @patch("core.llm_framework.Anthropic")
+    @patch("core.ai.providers.Anthropic")
     def test_generate_with_system_passes_system_param(
         self, mock_anthropic_class: MagicMock
     ) -> None:
@@ -197,7 +197,7 @@ class TestClaudeProvider(unittest.TestCase):
         msgs = call_kwargs["messages"]
         self.assertEqual(msgs, [{"role": "user", "content": "Hi"}])
 
-    @patch("core.llm_framework.Anthropic")
+    @patch("core.ai.providers.Anthropic")
     def test_generate_with_messages_filters_system(
         self, mock_anthropic_class: MagicMock
     ) -> None:
@@ -219,7 +219,7 @@ class TestClaudeProvider(unittest.TestCase):
         call_kwargs = mock_client.messages.create.call_args[1]
         self.assertEqual(call_kwargs["messages"], [{"role": "user", "content": "Hello"}])
 
-    @patch("core.llm_framework.Anthropic")
+    @patch("core.ai.providers.Anthropic")
     def test_generate_structured_output_appends_json_instruction(
         self, mock_anthropic_class: MagicMock
     ) -> None:
@@ -238,7 +238,7 @@ class TestClaudeProvider(unittest.TestCase):
         self.assertIn("JSON", system)
         self.assertIn("valid JSON", system)
 
-    @patch("core.llm_framework.Anthropic")
+    @patch("core.ai.providers.Anthropic")
     def test_claude_provider_uses_custom_model(
         self, mock_anthropic_class: MagicMock
     ) -> None:
@@ -255,7 +255,7 @@ class TestClaudeProvider(unittest.TestCase):
         call_kwargs = mock_client.messages.create.call_args[1]
         self.assertEqual(call_kwargs["model"], "claude-opus-4-6")
 
-    @patch("core.llm_framework.Anthropic")
+    @patch("core.ai.providers.Anthropic")
     def test_generate_with_tools_passes_tools_to_api(
         self, mock_anthropic_class: MagicMock
     ) -> None:
@@ -279,7 +279,7 @@ class TestClaudeProvider(unittest.TestCase):
         call_kwargs = mock_client.messages.create.call_args[1]
         self.assertEqual(call_kwargs.get("tools"), tools)
 
-    @patch("core.llm_framework.Anthropic")
+    @patch("core.ai.providers.Anthropic")
     def test_generate_no_text_block_returns_empty_string(
         self, mock_anthropic_class: MagicMock
     ) -> None:
