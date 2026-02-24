@@ -16,6 +16,8 @@ Create an in-memory conversation history manager that tracks user/assistant mess
 | In-memory storage only | Database or file-based persistence |
 | Simple append-only message list | Message editing or deletion |
 | Compatible with OpenAI/Anthropic formats | Streaming support |
+| **Tool use support** (add_tool_call, add_tool_result) | Message validation (defer to callers) |
+| **Convenience methods** (message_count, get_recent) | Conversation metadata (IDs, timestamps) |
 
 ---
 
@@ -234,7 +236,142 @@ def _truncate(self) -> None:
 
 ---
 
-### 4. Module docstring and exports
+### 4. Tool use support
+
+**Rationale:** Agents in Task 5 will use tools (from ToolRegistry in 4.3). Without tool message support, memory can't track multi-turn conversations involving tool calls.
+
+**Tool call message format:**
+
+```python
+# Assistant uses a tool
+{
+    "role": "assistant",
+    "content": None,
+    "tool_calls": [
+        {
+            "id": "call_abc123",
+            "type": "function",
+            "function": {
+                "name": "get_inventory_item",
+                "arguments": '{"name": "tomato"}'
+            }
+        }
+    ]
+}
+
+# Tool returns result
+{
+    "role": "tool",
+    "tool_call_id": "call_abc123",
+    "content": '{"name": "tomato", "quantity": 50, "unit": "kg"}'
+}
+```
+
+**Implementation:**
+
+```python
+def add_tool_call(self, tool_calls: list[dict[str, Any]]) -> None:
+    """
+    Add an assistant message with tool calls.
+
+    Args:
+        tool_calls: List of tool call dicts (OpenAI/Anthropic format)
+
+    Example:
+        >>> memory.add_tool_call([{
+        ...     "id": "call_abc123",
+        ...     "type": "function",
+        ...     "function": {
+        ...         "name": "get_inventory_item",
+        ...         "arguments": '{"name": "tomato"}'
+        ...     }
+        ... }])
+    """
+    self._messages.append({
+        "role": "assistant",
+        "content": None,
+        "tool_calls": tool_calls
+    })
+    self._truncate()
+
+def add_tool_result(self, tool_call_id: str, content: str) -> None:
+    """
+    Add a tool result message.
+
+    Args:
+        tool_call_id: ID from the original tool call
+        content: Tool result (typically JSON string)
+
+    Example:
+        >>> memory.add_tool_result(
+        ...     "call_abc123",
+        ...     '{"name": "tomato", "quantity": 50, "unit": "kg"}'
+        ... )
+    """
+    self._messages.append({
+        "role": "tool",
+        "tool_call_id": tool_call_id,
+        "content": content
+    })
+    self._truncate()
+```
+
+**Design notes:**
+- Compatible with both OpenAI and Anthropic tool calling formats
+- Tool calls are assistant messages with `content=None` and `tool_calls` list
+- Tool results reference the original call via `tool_call_id`
+- Both methods apply automatic truncation like other add methods
+
+---
+
+### 5. Convenience methods
+
+**Rationale:** Simple utilities that improve API usability and debugging.
+
+**Implementation:**
+
+```python
+@property
+def message_count(self) -> int:
+    """
+    Get the total number of messages in memory.
+
+    Returns:
+        Number of messages currently stored
+
+    Example:
+        >>> memory.message_count
+        5
+    """
+    return len(self._messages)
+
+def get_recent(self, n: int) -> list[dict[str, Any]]:
+    """
+    Get the N most recent messages.
+
+    Args:
+        n: Number of recent messages to return
+
+    Returns:
+        List of the last N messages (or all if fewer than N exist)
+
+    Example:
+        >>> memory.get_recent(3)  # Get last 3 messages
+        [{'role': 'user', 'content': '...'}, ...]
+    """
+    if n <= 0:
+        return []
+    return self._messages[-n:].copy()
+```
+
+**Design notes:**
+- `message_count` is a property (read-only, cleaner than `len(memory.get_messages())`)
+- `get_recent(n)` returns copy (like `get_messages()`) to prevent external modification
+- Useful for debugging, logging, and context window management
+
+---
+
+### 6. Module docstring and exports
 
 ```python
 """
@@ -279,6 +416,12 @@ __all__ = [
 | from_dict with missing keys | Uses defaults (`max_turns=20`, `messages=[]`) |
 | Only user messages (no assistant) | Valid; user hasn't gotten response yet |
 | Only assistant messages (no user) | Technically valid, but unusual |
+| Tool call without result | Valid; result may come in next turn |
+| Tool result without call | Technically valid, but unusual (orphaned result) |
+| Multiple tool calls in one message | Valid; assistant can call multiple tools |
+| Truncation splits tool call/result pair | Allowed; caller should use larger `max_turns` if needed |
+| get_recent(n) with n > message count | Returns all messages (no error) |
+| get_recent(0) or negative | Returns empty list |
 
 ---
 
@@ -397,6 +540,55 @@ __all__ = [
 
 ---
 
+### Tool use (4 tests)
+
+24. **Tool call storage:**
+    - Add tool call message via `add_tool_call()`
+    - Verify role is "assistant"
+    - Verify `tool_calls` list preserved
+    - Verify `content` is None
+
+25. **Tool result storage:**
+    - Add tool result via `add_tool_result()`
+    - Verify role is "tool"
+    - Verify `tool_call_id` links to original call
+    - Verify content preserved
+
+26. **Tool call round-trip:**
+    - Add user → tool call → tool result → assistant response
+    - Verify full conversation flow preserved
+    - Verify order maintained
+
+27. **Tool truncation:**
+    - Add tool calls beyond max_turns
+    - Verify truncation works correctly
+    - Verify serialization handles tool messages
+
+---
+
+### Convenience methods (4 tests)
+
+28. **message_count property:**
+    - Returns correct count after adds
+    - Updates on clear
+    - Zero for empty memory
+
+29. **get_recent with valid n:**
+    - Returns last N messages
+    - Preserves order
+    - Returns copy (modification doesn't affect internal state)
+
+30. **get_recent edge cases:**
+    - n > total messages returns all
+    - n = 0 returns empty list
+    - n negative returns empty list
+
+31. **get_recent vs get_messages consistency:**
+    - `get_recent(message_count)` equals `get_messages()`
+    - Verify both return copies
+
+---
+
 ## Integration Points
 
 **Where ConversationMemory will be used:**
@@ -437,7 +629,52 @@ memory.add_assistant(response)
 
 ---
 
-### 2. Workflow engine (Task 6)
+### 2. Agent with tool use (Task 5)
+
+```python
+from core import ConversationMemory, ClaudeProvider, ToolRegistry
+
+memory = ConversationMemory()
+provider = ClaudeProvider()
+tools = ToolRegistry()
+
+# Register a tool
+@tools.register("get_inventory_item")
+def get_inventory_item(name: str) -> dict:
+    return {"name": name, "quantity": 50, "unit": "kg"}
+
+# User asks question
+user_msg = "How many tomatoes do I have?"
+memory.add_user(user_msg)
+
+# LLM decides to use tool
+response = provider.generate(
+    user_msg,
+    tools=tools.get_tools(),
+    messages=memory.get_messages()
+)
+
+# Response includes tool call
+tool_calls = response.get("tool_calls", [])
+if tool_calls:
+    memory.add_tool_call(tool_calls)  # ← Store tool call
+
+    # Execute tool
+    for call in tool_calls:
+        result = tools.execute(call["function"]["name"], call["function"]["arguments"])
+        memory.add_tool_result(call["id"], result)  # ← Store result
+
+    # Get final answer with tool context
+    final_response = provider.generate(
+        user_msg,
+        messages=memory.get_messages()  # ← Includes tool call + result!
+    )
+    memory.add_assistant(final_response)
+```
+
+---
+
+### 3. Workflow engine (Task 6)
 
 ```python
 # Agent maintains memory across workflow steps
@@ -461,7 +698,7 @@ class ConversationalAgent(BaseAgent):
 
 ---
 
-### 3. Future persistence (Task 5+)
+### 4. Future persistence (Task 5+)
 
 ```python
 # Save conversation state
@@ -483,7 +720,11 @@ memory = ConversationMemory.from_dict(state)
   - [ ] `_messages` private field (list of dicts)
   - [ ] `add_user(message: str) -> None`
   - [ ] `add_assistant(message: str) -> None`
-  - [ ] `get_messages() -> list[dict[str, str]]` returns copy
+  - [ ] `add_tool_call(tool_calls: list[dict]) -> None` **[NEW]**
+  - [ ] `add_tool_result(tool_call_id: str, content: str) -> None` **[NEW]**
+  - [ ] `get_messages() -> list[dict[str, Any]]` returns copy
+  - [ ] `get_recent(n: int) -> list[dict[str, Any]]` returns copy **[NEW]**
+  - [ ] `message_count` property **[NEW]**
   - [ ] `clear() -> None`
   - [ ] `_truncate() -> None` (private, automatic)
   - [ ] `to_dict() -> dict[str, Any]`
@@ -496,6 +737,8 @@ memory = ConversationMemory.from_dict(state)
   - [ ] Test serialization (to_dict, from_dict, round-trip) — 5 tests
   - [ ] Test edge cases (empty, single, max_turns=0/1) — 5 tests
   - [ ] Test integration (with LlmProvider, multi-turn) — 3 tests
+  - [ ] **Test tool use (call, result, round-trip, truncation) — 4 tests [NEW]**
+  - [ ] **Test convenience methods (message_count, get_recent) — 4 tests [NEW]**
 - [ ] Run tests: `python -m pytest tests/unit/test_memory.py -v`
 - [ ] Run full test suite: `python -m pytest tests/unit/ -v`
 
@@ -506,11 +749,13 @@ memory = ConversationMemory.from_dict(state)
 - **In-memory only:** Persistence deferred to Task 5 (agents). `to_dict()`/`from_dict()` enable future DataLake integration.
 - **No token counting:** Count-based truncation is simpler and sufficient for MVP. Token-based can be added later if needed.
 - **Message format:** Uses OpenAI/Anthropic standard (`{"role": "...", "content": "..."}`). Both providers (4.1-4.2) already support this.
+- **Tool use support:** Critical for Task 5 agents. Supports tool calls and results using OpenAI/Anthropic format. Agents can use tools from ToolRegistry (4.3) in multi-turn conversations.
 - **Automatic truncation:** Happens on every `add_*()` call. Simple and prevents manual truncation errors.
 - **Thread safety:** Not addressed in MVP (single-threaded usage assumed). Add locks if needed for multi-threaded agents.
 - **Append-only:** No message editing or deletion. Simplifies implementation and prevents bugs.
-- **get_messages() returns copy:** Prevents accidental external modification of internal state.
+- **get_messages() returns copy:** Prevents accidental external modification of internal state. Same for `get_recent()`.
 - **Empty messages allowed:** Callers should validate if needed; memory doesn't enforce non-empty.
+- **Convenience methods:** `message_count` and `get_recent(n)` improve API usability and debugging.
 - **Future enhancements (out of scope for 4.6):**
   - Token-based truncation (requires tiktoken/tokenizer)
   - Smart summarization (compress old messages)
@@ -524,6 +769,6 @@ memory = ConversationMemory.from_dict(state)
 
 ## Time Estimate
 
-- **Implementation:** 30-45 minutes (dataclass + methods)
-- **Tests:** 45-60 minutes (23 test cases)
-- **Total:** 1.5-2 hours
+- **Implementation:** 45-60 minutes (dataclass + methods + tool use + convenience)
+- **Tests:** 60-75 minutes (31 test cases: 23 original + 4 tool use + 4 convenience)
+- **Total:** 2-2.5 hours (was 1.5-2 hours before tool use/convenience additions)
