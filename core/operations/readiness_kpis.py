@@ -12,7 +12,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from core.data_model import (
+from core.domain.data_model import (
     CategoryRecipeRegistry,
     DEFAULT_INVENTORY_CATEGORIES,
     FamilyInventoryRegistry,
@@ -24,9 +24,9 @@ from core.data_model import (
     RecipeUnitRegistry,
     Restaurant,
 )
-from core.data_model_utils import resolve_ingredient_to_inventory_item
-from core.normalization import RecipeUnitConversionRegistry, normalize_recipe_for_deduction
-from core.taxonomy import IngredientTaxonomy, InventoryTaxonomy, RecipeTaxonomy, Taxonomy
+from core.domain.data_model_utils import resolve_ingredient_to_inventory_item
+from core.operations.normalization import RecipeUnitConversionRegistry, normalize_recipe_for_deduction
+from core.domain.taxonomy import IngredientTaxonomy, InventoryTaxonomy, RecipeTaxonomy, Taxonomy
 
 
 SCHEMA_VERSION = "1.0"

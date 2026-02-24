@@ -229,3 +229,119 @@ MVP Jupyter/
 ├── main.py
 └── README.md
 ```
+
+---
+
+## 🧪 Testing
+
+Zenet includes comprehensive test coverage for all core modules and LLM integrations.
+
+### Unit Tests (Mocked, No API Calls)
+
+Unit tests use mocked API responses and run quickly without requiring API keys:
+
+```bash
+# Run all unit tests (394 tests)
+python -m pytest tests/unit/ -v
+
+# Run specific test file
+python -m pytest tests/unit/test_data_model.py -v
+
+# Run tests for a specific module
+python -m pytest tests/unit/test_llm_framework.py -v
+
+# Skip live tests explicitly
+python -m pytest tests/unit/ -k "not Live" -v
+```
+
+### Live Integration Tests (Real API Calls)
+
+Live tests make **real API calls** to OpenAI and Anthropic. They are **optional** and require:
+1. API keys in your `.env` file
+2. Active internet connection
+3. Small cost per run (~$0.01 with default lightweight models)
+
+#### Setup for Live Tests
+
+1. **Copy `.env.example` to `.env`** (if you haven't already):
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Add your API keys** to `.env`:
+   ```bash
+   OPENAI_API_KEY=sk-your-openai-key-here
+   ANTHROPIC_API_KEY=sk-ant-your-anthropic-key-here
+   ```
+
+3. **(Optional) Override test models** in `.env`:
+   ```bash
+   # Defaults are lightweight models (recommended for cost savings)
+   TEST_OPENAI_MODEL=gpt-4o-mini
+   TEST_ANTHROPIC_MODEL=claude-haiku-4-5-20251001
+   ```
+
+#### Running Live Tests
+
+```bash
+# Run only live tests (requires API keys)
+python -m pytest tests/unit/ -k Live -v
+
+# Run all tests (live tests run if API keys present, skip otherwise)
+python -m pytest tests/unit/ -v
+
+# Run OpenAI live tests only
+python -m pytest tests/unit/ -k LiveOpenAi -v
+
+# Run Claude live tests only
+python -m pytest tests/unit/ -k LiveClaude -v
+
+# Run cross-provider tests
+python -m pytest tests/unit/ -k LiveProviderComparison -v
+```
+
+#### One-Time Model Override
+
+Test with production models without editing `.env`:
+
+```bash
+# Test OpenAI with gpt-4o (production model)
+TEST_OPENAI_MODEL=gpt-4o python -m pytest tests/unit/ -k LiveOpenAi -v
+
+# Test Claude with sonnet (production model)
+TEST_ANTHROPIC_MODEL=claude-sonnet-4-5 python -m pytest tests/unit/ -k LiveClaude -v
+```
+
+#### Cost Considerations
+
+**With default lightweight models:**
+- Cost per full live test run: **~$0.01**
+- Safe to run frequently during development
+- Models used:
+  - OpenAI: `gpt-4o-mini` ($0.15/$0.60 per 1M tokens)
+  - Anthropic: `claude-haiku-4-5-20251001` ($0.80/$4.00 per 1M tokens)
+
+**With production models:**
+- Cost per full live test run: ~$0.05
+- Only use when validating production parity
+- Models:
+  - OpenAI: `gpt-4o` ($2.50/$10.00 per 1M tokens)
+  - Anthropic: `claude-sonnet-4-5` ($3.00/$15.00 per 1M tokens)
+
+### Test Coverage
+
+| Module | Tests | Coverage |
+|--------|-------|----------|
+| Data Model | 88 | Entities, registries, templates |
+| Normalization | 54 | Unit conversion, deduction logic |
+| Taxonomy | 18 | Hierarchies and relationships |
+| Data Model Utils | 42 | Validation, resolution, formatting |
+| Persistence | 42 | JSON/SQLite storage, DataLake |
+| Serialization | 70 | Entity ↔ dict conversion |
+| LLM Framework | 29 | Providers, tools, prompts (mocked) |
+| LLM Utils | 8 | Structured output parsing |
+| Prompts | 7 | Template rendering |
+| Memory | 33 | Conversation memory |
+| **Live Tests** | **13** | **Real API integration** |
+| **Total** | **407** | **100% core coverage** |
+

@@ -2,7 +2,7 @@
 
 import unittest
 
-from core.data_model import (
+from core.domain.data_model import (
     CategoryRecipe,
     CategoryRecipeRegistry,
     DEFAULT_INVENTORY_CATEGORIES,
