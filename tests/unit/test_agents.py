@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from core.agents.base_agent import BaseAgent
 from core.ai.memory import ConversationMemory
-from core.ai.providers import LlmProvider, ToolRegistry
+from core.ai.providers import LlmProvider, ProviderResponse, ToolRegistry
 from core.storage.persistence import DataLake
 
 
@@ -335,6 +335,184 @@ class TestStructuredOutput(unittest.TestCase):
         # Messages list is non-empty (contains the user message added by run())
         self.assertIsNotNone(provider.last_call_kwargs["messages"])
         self.assertGreater(len(provider.last_call_kwargs["messages"]), 0)
+
+
+# ---------------------------------------------------------------------------
+# Fixture for tool calling tests (5.2)
+# ---------------------------------------------------------------------------
+
+class _MockToolProvider(LlmProvider):
+    """
+    Provider that returns a pre-configured sequence of ProviderResponse objects.
+
+    Used to simulate multi-turn tool interactions without any API calls.
+    Raises StopIteration if more calls are made than responses configured.
+    """
+
+    def __init__(self, responses: list[ProviderResponse]) -> None:
+        super().__init__(model_name="mock-tool")
+        self._responses = iter(responses)
+        self.call_count = 0
+
+    def _do_generate(self, **kwargs) -> str:
+        # Not used in tool calling tests -- generate_raw() is called instead.
+        return ""
+
+    def generate_raw(self, **kwargs) -> ProviderResponse:
+        self.call_count += 1
+        return next(self._responses)
+
+
+class _ToolAgent(BaseAgent):
+    """Concrete agent used in tool calling tests."""
+
+    INPUT_SCHEMA  = {"message": "A message."}
+    OUTPUT_SCHEMA = {"reply": "The agent's reply."}
+
+    def _generate_prompt(self, input_data: dict, context: dict) -> tuple[str, str]:
+        return "You are a tool-calling test agent.", input_data["message"]
+
+    def _process_response(self, response: str) -> dict[str, Any]:
+        return {"reply": response}
+
+
+# ---------------------------------------------------------------------------
+# Tool calling tests (5.2)
+# ---------------------------------------------------------------------------
+
+class TestToolCalling(unittest.TestCase):
+    """Tests for register_tool(), _execute_tool(), and the tool calling loop."""
+
+    def test_register_tool_creates_registry_when_none(self) -> None:
+        """register_tool() auto-creates ToolRegistry when tools=None."""
+        provider = _MockToolProvider([ProviderResponse(text="done")])
+        agent = _ToolAgent(name="test", provider=provider)
+
+        self.assertIsNone(agent.tools)
+        agent.register_tool("my_tool", lambda: "ok", description="A tool.")
+        self.assertIsNotNone(agent.tools)
+        self.assertIsInstance(agent.tools, ToolRegistry)
+
+    def test_register_tool_reuses_existing_registry(self) -> None:
+        """register_tool() reuses the existing ToolRegistry when already set."""
+        provider = _MockToolProvider([ProviderResponse(text="done")])
+        registry = ToolRegistry()
+        agent = _ToolAgent(name="test", provider=provider, tools=registry)
+
+        agent.register_tool("my_tool", lambda: "ok", description="A tool.")
+        self.assertIs(agent.tools, registry)
+
+    def test_execute_tool_returns_result_for_valid_tool(self) -> None:
+        """_execute_tool() returns str(result) for a registered tool."""
+        provider = _MockToolProvider([ProviderResponse(text="done")])
+        agent = _ToolAgent(name="test", provider=provider)
+        agent.register_tool("add", lambda a, b: a + b, description="Add two numbers.")
+
+        tool_call = {
+            "id": "call_1",
+            "type": "function",
+            "function": {"name": "add", "arguments": '{"a": 3, "b": 4}'},
+        }
+        result = agent._execute_tool(tool_call)
+        self.assertEqual(result, "7")
+
+    def test_execute_tool_returns_error_string_for_unknown_tool(self) -> None:
+        """_execute_tool() returns error string for unregistered tool -- never raises."""
+        provider = _MockToolProvider([ProviderResponse(text="done")])
+        agent = _ToolAgent(name="test", provider=provider)
+        agent.register_tool("known_tool", lambda: "ok", description="Known.")
+
+        tool_call = {
+            "id": "call_1",
+            "type": "function",
+            "function": {"name": "unknown_tool", "arguments": "{}"},
+        }
+        result = agent._execute_tool(tool_call)
+        self.assertIn("unknown_tool", result)
+        self.assertIn("Error", result)
+
+    def test_execute_tool_returns_error_string_when_tool_raises(self) -> None:
+        """_execute_tool() returns error string when tool function raises -- never raises."""
+        def _bad_tool():
+            raise ValueError("something went wrong")
+
+        provider = _MockToolProvider([ProviderResponse(text="done")])
+        agent = _ToolAgent(name="test", provider=provider)
+        agent.register_tool("bad_tool", _bad_tool, description="Always fails.")
+
+        tool_call = {
+            "id": "call_1",
+            "type": "function",
+            "function": {"name": "bad_tool", "arguments": "{}"},
+        }
+        result = agent._execute_tool(tool_call)
+        self.assertIn("bad_tool", result)
+        self.assertIn("Error", result)
+
+    def test_multi_turn_tool_loop_returns_final_text(self) -> None:
+        """Tool call on turn 1, text on turn 2 -- run() returns the final text."""
+        tool_call_response = ProviderResponse(tool_calls=[{
+            "id": "call_1",
+            "type": "function",
+            "function": {"name": "get_value", "arguments": '{"key": "x"}'},
+        }])
+        text_response = ProviderResponse(text="final answer")
+
+        provider = _MockToolProvider([tool_call_response, text_response])
+        agent = _ToolAgent(name="test", provider=provider)
+        agent.register_tool(
+            "get_value", lambda key: "42", description="Get value by key.",
+            parameters_schema={"type": "object", "properties": {"key": {"type": "string"}}},
+        )
+
+        result = agent.run(input_data={"message": "what is x?"})
+
+        self.assertEqual(result, {"reply": "final answer"})
+        self.assertEqual(provider.call_count, 2)
+
+    def test_memory_contains_tool_call_and_result_after_tool_use(self) -> None:
+        """Memory has tool call and tool result messages after a tool-use turn."""
+        tool_call_response = ProviderResponse(tool_calls=[{
+            "id": "call_1",
+            "type": "function",
+            "function": {"name": "get_value", "arguments": '{"key": "x"}'},
+        }])
+        text_response = ProviderResponse(text="done")
+
+        provider = _MockToolProvider([tool_call_response, text_response])
+        agent = _ToolAgent(name="test", provider=provider)
+        agent.register_tool("get_value", lambda key: "42", description="Get value.")
+
+        agent.run(input_data={"message": "hi"})
+
+        messages = agent.memory.get_messages()
+        roles = [m["role"] for m in messages]
+
+        self.assertIn("tool", roles)
+        tool_call_msgs = [m for m in messages if m.get("tool_calls")]
+        self.assertTrue(len(tool_call_msgs) >= 1)
+        tool_result_msgs = [m for m in messages if m.get("role") == "tool"]
+        self.assertEqual(tool_result_msgs[0]["content"], "42")
+
+    def test_exceeding_max_tool_rounds_raises_runtime_error(self) -> None:
+        """_generate_response() raises RuntimeError after _MAX_TOOL_ROUNDS tool responses."""
+        responses = [
+            ProviderResponse(tool_calls=[{
+                "id": f"call_{i}",
+                "type": "function",
+                "function": {"name": "loop_tool", "arguments": "{}"},
+            }])
+            for i in range(BaseAgent._MAX_TOOL_ROUNDS + 1)
+        ]
+        provider = _MockToolProvider(responses)
+        agent = _ToolAgent(name="test", provider=provider)
+        agent.register_tool("loop_tool", lambda: "ok", description="Loops forever.")
+
+        with self.assertRaises(RuntimeError) as ctx:
+            agent.run(input_data={"message": "go"})
+
+        self.assertIn(str(BaseAgent._MAX_TOOL_ROUNDS), str(ctx.exception))
+        self.assertIn("test", str(ctx.exception))
 
 
 if __name__ == "__main__":

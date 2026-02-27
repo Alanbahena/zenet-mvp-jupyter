@@ -15,14 +15,16 @@ in subsequent subtasks without modifying run().
 
 from __future__ import annotations
 
+import json
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, ClassVar
 
 from pydantic import BaseModel
 
 from core.ai.memory import ConversationMemory
-from core.ai.providers import LlmProvider, ToolRegistry
+from core.ai.providers import LlmProvider, ProviderResponse, ToolRegistry
 from core.ai.utils import parse_structured_output
 from core.storage.persistence import DataLake
 
@@ -48,9 +50,10 @@ class BaseAgent(ABC):
         tools:    ToolRegistry | None -- tool registry for function calling (5.2)
     """
 
-    INPUT_SCHEMA:   ClassVar[dict[str, str]]         = {}
-    OUTPUT_SCHEMA:  ClassVar[dict[str, str]]         = {}
-    RESPONSE_MODEL: ClassVar[type[BaseModel] | None] = None
+    INPUT_SCHEMA:    ClassVar[dict[str, str]]         = {}
+    OUTPUT_SCHEMA:   ClassVar[dict[str, str]]         = {}
+    RESPONSE_MODEL:  ClassVar[type[BaseModel] | None] = None
+    _MAX_TOOL_ROUNDS: ClassVar[int]                   = 10
 
     name:     str
     provider: LlmProvider
@@ -242,29 +245,113 @@ class BaseAgent(ABC):
         """
         Generate LLM response using current conversation memory.
 
-        Automatically enables structured output mode when RESPONSE_MODEL is defined:
-            - OpenAI: response_format={"type": "json_object"} (API-level guarantee)
-            - Claude: JSON instruction injected into system prompt
+        When self.tools is None: single-turn call via provider.generate() -- identical
+        to the 5.1 implementation. All existing tests exercise this path.
 
-        Subtask 5.2 replaces this method with the tool calling loop.
-        In 5.1: single-turn, no tool use.
-        In 5.2: multi-turn loop that executes tool calls until a final text response.
+        When self.tools is set: multi-turn tool calling loop via provider.generate_raw().
+            Per round:
+                1. Call generate_raw() with current memory and tools.
+                2. If tool calls returned: execute each, add results to memory, repeat.
+                3. If text returned: return it (loop exits).
+            After _MAX_TOOL_ROUNDS without a final text response: raise RuntimeError.
+
+        Automatically enables structured output mode when RESPONSE_MODEL is defined,
+        consistent across both paths.
+
+        Note: prompt=None is critical. The user message is already in self.memory
+        (added by run()). Passing prompt alongside messages would duplicate it.
+
+        Subtask 5.3 does not change this method.
+        Subtask 5.5 wraps the provider call with retry logic.
+        """
+        if self.tools is None:
+            # No tools -- single-turn, 5.1 behavior preserved exactly.
+            return self.provider.generate(
+                prompt=None,
+                system=system_prompt,
+                messages=self.memory.get_messages(),
+                structured_output=self.RESPONSE_MODEL is not None,
+            )
+
+        for _ in range(self._MAX_TOOL_ROUNDS):
+            raw: ProviderResponse = self.provider.generate_raw(
+                prompt=None,
+                system=system_prompt,
+                messages=self.memory.get_messages(),
+                tools=self.tools,
+                structured_output=self.RESPONSE_MODEL is not None,
+            )
+            if raw.has_tool_calls:
+                self.memory.add_tool_call(raw.tool_calls)
+                for call in raw.tool_calls:
+                    result = self._execute_tool(call)
+                    self.memory.add_tool_result(call["id"], result)
+                continue
+            return raw.text or ""
+
+        raise RuntimeError(
+            f"[{self.name}] Exceeded maximum tool rounds ({self._MAX_TOOL_ROUNDS}). "
+            "The LLM did not return a final text response within the allowed rounds."
+        )
+
+    def _execute_tool(self, tool_call: dict[str, Any]) -> str:
+        """
+        Execute a single tool call and return the result as a string.
+
+        Never raises. Tool errors are returned as descriptive strings so the LLM
+        can read them, explain the issue to the user, or try a different approach.
 
         Args:
-            system_prompt: System-level instructions for the LLM.
-                           User content is already in self.memory (added by run()).
+            tool_call: Normalized tool call dict from ProviderResponse.tool_calls.
+                       Format: {"id": "...", "function": {"name": "...", "arguments": "..."}}
+                       arguments is a JSON string; parsed to dict before execution.
 
         Returns:
-            Raw LLM response string.
-
-        Note:
-            prompt=None is critical here. By the time this method is called, run() has
-            already added the user message to self.memory. Passing prompt=user_prompt
-            alongside messages would duplicate the user message in the conversation.
+            str(result) on success.
+            "Error: tool '<name>' not registered." for unknown tools.
+            "Error executing '<name>': <exception>" if the tool function raises.
         """
-        return self.provider.generate(
-            prompt=None,
-            system=system_prompt,
-            messages=self.memory.get_messages(),
-            structured_output=self.RESPONSE_MODEL is not None,
+        function = tool_call.get("function", {})
+        name = function.get("name", "")
+        args = function.get("arguments", {})
+
+        if isinstance(args, str):
+            try:
+                args = json.loads(args)
+            except json.JSONDecodeError:
+                args = {}
+
+        try:
+            result = self.tools.execute(name, args)
+            return str(result)
+        except ValueError:
+            return f"Error: tool '{name}' not registered."
+        except Exception as e:
+            return f"Error executing '{name}': {e}"
+
+    def register_tool(
+        self,
+        name: str,
+        func: Callable[..., Any],
+        *,
+        description: str,
+        parameters_schema: dict[str, Any] | None = None,
+    ) -> None:
+        """
+        Register a tool with the agent.
+
+        Auto-creates a ToolRegistry if the agent was initialized without one
+        (tools=None). Subsequent calls reuse the same registry.
+
+        Args:
+            name:              Tool name (must be unique; duplicates overwrite).
+            func:              Callable to execute when the LLM requests this tool.
+            description:       Human/LLM-readable description of what the tool does.
+            parameters_schema: JSON schema dict for the tool's parameters.
+                               If None, defaults to {"type": "object", "properties": {}}.
+        """
+        if self.tools is None:
+            self.tools = ToolRegistry()
+        self.tools.register(
+            name, func, description=description, parameters_schema=parameters_schema
         )
