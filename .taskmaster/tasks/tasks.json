@@ -268,7 +268,83 @@
           "4"
         ],
         "status": "in-progress",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "BaseAgent class and input/output contract",
+            "description": "Define the abstract BaseAgent with run(), INPUT_SCHEMA, OUTPUT_SCHEMA, RESPONSE_MODEL, memory, save_state/load_state. No tool calling.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 5
+          },
+          {
+            "id": 2,
+            "title": "Tool calling mechanism",
+            "description": "ProviderResponse, generate_raw() on providers, _generate_response() tool loop, _execute_tool(), register_tool(), _MAX_TOOL_ROUNDS. Claude _normalize_messages().",
+            "details": "",
+            "status": "done",
+            "dependencies": [
+              "5.1"
+            ],
+            "parentTaskId": 5
+          },
+          {
+            "id": 3,
+            "title": "State and memory management",
+            "description": "Add _data_store on BaseAgent; store(), retrieve(), clear_store(). Extend save_state/load_state to persist both memory and data store.",
+            "details": "",
+            "status": "in-progress",
+            "dependencies": [
+              "5.2"
+            ],
+            "parentTaskId": 5
+          },
+          {
+            "id": 4,
+            "title": "Concrete agent (RestaurantInfoAgent)",
+            "description": "Create core/agents/simple_agent.py with RestaurantInfoAgent: INPUT_SCHEMA, OUTPUT_SCHEMA, _generate_prompt(), _process_response(). Mirrors Welcome Agent needs.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              "5.3"
+            ],
+            "parentTaskId": 5
+          },
+          {
+            "id": 5,
+            "title": "Utilities and error handling",
+            "description": "Create core/agents/utils.py: create_agent() factory, AgentRegistry, _generate_with_retry() with exponential backoff. Retry on retryable errors.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              "5.4"
+            ],
+            "parentTaskId": 5
+          },
+          {
+            "id": 6,
+            "title": "Tests (unit and live)",
+            "description": "Full test coverage in tests/unit/test_agents.py: unit tests mocked, plus live tests (skip if no API key). All tests pass.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              "5.5"
+            ],
+            "parentTaskId": 5
+          },
+          {
+            "id": 7,
+            "title": "Documentation",
+            "description": "Create docs/Architecture/architecture-agent-framework.md and update README architecture table.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              "5.6"
+            ],
+            "parentTaskId": 5
+          }
+        ]
       },
       {
         "id": 6,
