@@ -9,7 +9,7 @@ and implements two abstract methods:
 The run() method orchestrates the full lifecycle:
     validate input -> build prompts -> generate response -> parse output
 
-Tool calling (5.2), data store (5.3), and retry logic (5.5) are added
+Tool calling (5.2), state and memory management (5.3), and retry logic (5.5) are added
 in subsequent subtasks without modifying run().
 """
 
@@ -44,10 +44,11 @@ class BaseAgent(ABC):
         RESPONSE_MODEL: type[BaseModel] | None  -- Pydantic model for LLM JSON response
 
     Instance fields:
-        name:     str                -- identifier used in error messages and storage keys
-        provider: LlmProvider        -- LLM provider (OpenAI, Claude)
-        memory:   ConversationMemory -- conversation history (injected or fresh)
-        tools:    ToolRegistry | None -- tool registry for function calling (5.2)
+        name:        str                -- identifier used in error messages and storage keys
+        provider:    LlmProvider        -- LLM provider (OpenAI, Claude)
+        memory:      ConversationMemory -- conversation history (injected or fresh)
+        tools:       ToolRegistry | None -- tool registry for function calling (5.2)
+        _data_store: dict[str, Any]     -- structured business data extracted during conversation (5.3)
     """
 
     INPUT_SCHEMA:    ClassVar[dict[str, str]]         = {}
@@ -55,10 +56,11 @@ class BaseAgent(ABC):
     RESPONSE_MODEL:  ClassVar[type[BaseModel] | None] = None
     _MAX_TOOL_ROUNDS: ClassVar[int]                   = 10
 
-    name:     str
-    provider: LlmProvider
-    memory:   ConversationMemory = field(default_factory=ConversationMemory)
-    tools:    ToolRegistry | None = None
+    name:        str
+    provider:    LlmProvider
+    memory:      ConversationMemory = field(default_factory=ConversationMemory)
+    tools:       ToolRegistry | None = None
+    _data_store: dict[str, Any] = field(default_factory=dict, init=False, repr=False)
 
     def __post_init__(self) -> None:
         """Validate fields after dataclass initialization."""
@@ -156,34 +158,71 @@ class BaseAgent(ABC):
         """
         Clear conversation history.
 
-        Does not affect the agent data store (subtask 5.3).
-        Use this to start a fresh conversation without creating a new agent instance,
-        for example when moving between pipeline stages with the same agent.
+        Does not affect the agent data store. Use clear_store() to reset stored data.
+        Use this to start a fresh conversation without creating a new agent instance.
         """
         self.memory.clear()
 
+    def store(self, key: str, value: Any) -> None:
+        """
+        Store a value in the agent's data store.
+
+        The data store holds structured business data extracted during the conversation
+        (e.g. restaurant name, operator concerns). It is separate from conversation memory
+        and is persisted by save_state() alongside the message history.
+
+        Args:
+            key:   String key. Overwrites existing value if key already exists.
+            value: Any Python value. No type constraint -- store what the agent extracts.
+        """
+        self._data_store[key] = value
+
+    def retrieve(self, key: str, default: Any = None) -> Any:
+        """
+        Retrieve a value from the agent's data store.
+
+        Args:
+            key:     Key to look up.
+            default: Value returned when key is not present. Defaults to None.
+
+        Returns:
+            The stored value, or default if key does not exist.
+        """
+        return self._data_store.get(key, default)
+
+    def clear_store(self) -> None:
+        """
+        Clear all data in the agent's data store.
+
+        Does not affect conversation memory. Use reset_memory() to clear message history.
+        Use this to reset collected business data without discarding the conversation.
+        """
+        self._data_store.clear()
+
     def save_state(self, data_lake: DataLake, *, session_id: str) -> None:
         """
-        Persist conversation memory to DataLake.
+        Persist conversation memory and data store to DataLake.
 
-        Subtask 5.3 extends this to also persist the agent data store.
+        Both are saved together under the same session_id. Call load_state() with
+        the same session_id and DataLake instance to restore both.
 
         Args:
             data_lake:  DataLake instance for storage.
-            session_id: Unique session identifier. Used as the storage key.
-                        Must be unique per agent instance to avoid key collisions.
+            session_id: Unique session identifier. Must be unique per agent instance
+                        to avoid key collisions in multi-agent workflows.
         """
         data_lake.save_entity("agent_state", session_id, {
             "agent_name": self.name,
             "memory": self.memory.to_dict(),
+            "data_store": self._data_store,
         })
 
     def load_state(self, data_lake: DataLake, *, session_id: str) -> None:
         """
-        Restore conversation memory from DataLake.
+        Restore conversation memory and data store from DataLake.
 
         No-op if session_id does not exist in storage -- agent state is unchanged.
-        Subtask 5.3 extends this to also restore the agent data store.
+        Memory and data store are always restored together to maintain consistency.
 
         Args:
             data_lake:  DataLake instance for storage.
@@ -192,6 +231,7 @@ class BaseAgent(ABC):
         state = data_lake.load_entity("agent_state", session_id)
         if state:
             self.memory = ConversationMemory.from_dict(state["memory"])
+            self._data_store = state.get("data_store", {})
 
     # ------------------------------------------------------------------
     # Internal helpers

@@ -515,5 +515,78 @@ class TestToolCalling(unittest.TestCase):
         self.assertIn("test", str(ctx.exception))
 
 
+class TestBaseAgentStateManagement(unittest.TestCase):
+    """Tests for store(), retrieve(), clear_store(), and extended save/load_state() (5.3)."""
+
+    def setUp(self) -> None:
+        self.provider = _MockProvider()
+        self.agent = _ConcreteAgent(name="test", provider=self.provider)
+
+    def test_store_and_retrieve_round_trip(self) -> None:
+        """store() and retrieve() return the same value."""
+        self.agent.store("restaurant_name", "La Palapa")
+        self.assertEqual(self.agent.retrieve("restaurant_name"), "La Palapa")
+
+    def test_retrieve_missing_key_returns_none_by_default(self) -> None:
+        """retrieve() returns None when key is absent and no default is given."""
+        self.assertIsNone(self.agent.retrieve("nonexistent_key"))
+
+    def test_retrieve_missing_key_returns_explicit_default(self) -> None:
+        """retrieve() returns the caller-supplied default when key is absent."""
+        self.assertEqual(self.agent.retrieve("nonexistent_key", "fallback"), "fallback")
+
+    def test_clear_store_empties_store_and_leaves_memory_unchanged(self) -> None:
+        """clear_store() removes all stored values without touching conversation memory."""
+        self.agent.memory.add_user("hello")
+        self.agent.store("restaurant_name", "La Palapa")
+
+        self.agent.clear_store()
+
+        self.assertIsNone(self.agent.retrieve("restaurant_name"))
+        self.assertEqual(len(self.agent.memory.get_messages()), 1)
+
+    def test_reset_memory_clears_memory_and_leaves_store_unchanged(self) -> None:
+        """reset_memory() removes all messages without touching the data store."""
+        self.agent.memory.add_user("hello")
+        self.agent.store("restaurant_name", "La Palapa")
+
+        self.agent.reset_memory()
+
+        self.assertEqual(self.agent.retrieve("restaurant_name"), "La Palapa")
+        self.assertEqual(len(self.agent.memory.get_messages()), 0)
+
+    def test_save_and_load_state_round_trip_preserves_memory_and_store(self) -> None:
+        """save_state / load_state restore both conversation memory and data store."""
+        with tempfile.TemporaryDirectory() as tmp:
+            data_lake = DataLake(data_dir=tmp)
+
+            self.agent.memory.add_user("hello")
+            self.agent.memory.add_assistant("world")
+            self.agent.store("restaurant_name", "La Palapa")
+            self.agent.store("restaurant_type", "casual")
+            self.agent.save_state(data_lake, session_id="test_session")
+
+            fresh = _ConcreteAgent(name="test", provider=self.provider)
+            fresh.load_state(data_lake, session_id="test_session")
+
+            self.assertEqual(fresh.retrieve("restaurant_name"), "La Palapa")
+            self.assertEqual(fresh.retrieve("restaurant_type"), "casual")
+            messages = fresh.memory.get_messages()
+            self.assertEqual(len(messages), 2)
+            self.assertEqual(messages[0]["content"], "hello")
+            self.assertEqual(messages[1]["content"], "world")
+
+    def test_load_state_unknown_session_is_noop(self) -> None:
+        """load_state() with an unknown session_id leaves memory and store unchanged."""
+        with tempfile.TemporaryDirectory() as tmp:
+            data_lake = DataLake(data_dir=tmp)
+
+            self.agent.store("key", "value")
+            self.agent.load_state(data_lake, session_id="does_not_exist")
+
+            self.assertEqual(self.agent.retrieve("key"), "value")
+            self.assertEqual(len(self.agent.memory.get_messages()), 0)
+
+
 if __name__ == "__main__":
     unittest.main()
