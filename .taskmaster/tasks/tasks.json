@@ -309,25 +309,26 @@
             "title": "Concrete agent (RestaurantInfoAgent)",
             "description": "Create core/agents/simple_agent.py with RestaurantInfoAgent: INPUT_SCHEMA, OUTPUT_SCHEMA, _generate_prompt(), _process_response(). Mirrors Welcome Agent needs.",
             "details": "",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               "5.3"
             ],
             "parentTaskId": 5,
             "parentId": "undefined",
-            "updatedAt": "2026-03-02T08:23:46.527Z"
+            "updatedAt": "2026-03-03T03:44:35.541Z"
           },
           {
             "id": 5,
             "title": "Utilities and error handling",
             "description": "Create core/agents/utils.py: create_agent() factory, AgentRegistry, _generate_with_retry() with exponential backoff. Retry on retryable errors.",
             "details": "",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [
               "5.4"
             ],
             "parentTaskId": 5,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-03-03T03:44:37.136Z"
           },
           {
             "id": 6,
@@ -354,7 +355,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-03-02T08:23:46.527Z"
+        "updatedAt": "2026-03-03T03:44:37.136Z"
       },
       {
         "id": "6",
@@ -587,7 +588,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-02T08:23:46.528Z",
+      "lastModified": "2026-03-03T03:44:37.136Z",
       "taskCount": 16,
       "completedCount": 4,
       "tags": [
