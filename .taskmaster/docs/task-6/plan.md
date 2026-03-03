@@ -5,8 +5,9 @@
 Task 6 builds two things that every subsequent task depends on:
 
 1. **Gradio UI foundation** — the multi-section shell with navigation, session management,
-   and reusable form+chat layout. Tasks 7–12 plug their agents and form fields into this
-   shell. Without it, no section can be built.
+   a reusable chat panel component, and section stub files. Tasks 7–12 own their section's
+   complete left-column form design and plug their agents into the shell. Without it, no
+   section can be built.
 
 2. **LangGraph integration pattern** — a reusable pattern showing how `BaseAgent.run()`
    maps to a LangGraph node, with a shared state schema. Tasks 10 (Alineamiento) and 11
@@ -16,9 +17,9 @@ Task 6 builds two things that every subsequent task depends on:
 **Prior task (5):** Delivered `BaseAgent`, `AgentRegistry`, `create_agent()`,
 `ConversationMemory`, `ToolRegistry`, `DataLake`. All are inputs to Task 6.
 
-**Next tasks (7–12):** Each section task receives a stub screen in the Gradio shell and
-plugs in its agent and form fields. Complex sections (10, 11) also receive the LangGraph
-pattern to build their graphs on.
+**Next tasks (7–12):** Each section task receives a stub file in `gradio_app/sections/`
+and owns its complete left-column form design — Task 6 does not define it. Complex
+sections (10, 11) also receive the LangGraph pattern to build their graphs on.
 
 ---
 
@@ -26,13 +27,14 @@ pattern to build their graphs on.
 
 | In scope | Out of scope |
 |----------|-------------|
-| Gradio app shell with 6 tab stubs | Any section-specific form fields or agents (Tasks 7–12) |
-| Reusable two-column form+chat layout component | Full agent implementations |
+| Gradio app shell with 6 tab stubs (`gradio_app/app.py`) | Left-column form design for any section (Tasks 7–12) |
+| Reusable chat panel component (`render_chat_panel()`) | Full agent implementations |
 | Session management (`session_id` + DataLake wired to `gr.State`) | LangGraph graphs for specific sections |
-| LangGraph + BaseAgent node wrapper pattern | Multi-agent graph design for Alineamiento or Estructura |
-| Minimal working 2-node example graph | File upload UI (Task 10) |
-| `uv add langgraph` dependency | OpenAI live costs — example graph uses mocked agents in tests |
-| Architecture doc update (`docs/Architecture/`) | Gradio theming or styling polish |
+| 6 section stub files in `gradio_app/sections/` | Multi-agent graph design for Alineamiento or Estructura |
+| LangGraph + BaseAgent node wrapper pattern | File upload UI (Task 10) |
+| Minimal working 2-node example graph (`examples/graph_example.py`) | OpenAI live costs — example graph uses mocked agents in tests |
+| `uv add gradio` and `uv add langgraph` dependencies | Gradio theming or styling polish |
+| Architecture doc update (`docs/Architecture/`) | |
 
 ---
 
@@ -91,16 +93,40 @@ argument. Section-specific fields are typed explicitly — no untyped dicts.
 
 ---
 
+### Decision 6: Section form layouts are owned entirely by Tasks 7–12
+
+**Choice:** Task 6 creates a minimal stub `render()` function for each section in
+`gradio_app/sections/<section>.py`. The stub renders a placeholder markdown only.
+Tasks 7–12 replace it with the real form — dropdowns, text inputs, file uploads,
+data grids, whatever the section requires.
+
+**Rationale:** Each section has genuinely different UI needs (Alineamiento has file
+upload + results table; Bienvenida has a simple name input and type selector; Estructura
+has a structured data editor). A shared form abstraction would either be too rigid to
+cover all cases or too generic to be useful. Letting each section own its layout
+eliminates coupling between Task 6 and the section tasks.
+
+---
+
 ## Files to Create
 
 | File | Action | Summary |
 |------|--------|---------|
-| `gradio/session.py` | Create | `create_session()` and `get_data_lake()` — session and DataLake factory |
-| `gradio/layout.py` | Create | `create_section_layout()` — reusable two-column form+chat Gradio layout |
-| `gradio/app.py` | Create | Main Gradio app — `gr.Blocks` with 6 `gr.Tab` stubs; session state wired |
-| `core/agents/graph_utils.py` | Create | `make_agent_node()`, `BaseGraphState`, `build_sequential_graph()`, minimal example |
-| `docs/Architecture/architecture-gradio-and-langgraph.md` | Create | Architecture doc covering Gradio session model and LangGraph node pattern |
-| `README.md` | Modify | Add architecture table row; update `gradio/` block in project structure |
+| `gradio_app/__init__.py` | Create | Empty — marks `gradio_app` as a package |
+| `gradio_app/session.py` | Create | `create_session()` and `get_data_lake()` — session and DataLake factory |
+| `gradio_app/components.py` | Create | `render_chat_panel()` — reusable right-column chatbot component |
+| `gradio_app/sections/__init__.py` | Create | Empty — marks `sections` as a sub-package |
+| `gradio_app/sections/bienvenida.py` | Create | Stub `render()` — placeholder markdown, replaced by Task 7 |
+| `gradio_app/sections/clasificacion.py` | Create | Stub `render()` — placeholder markdown, replaced by Task 8 |
+| `gradio_app/sections/configuracion.py` | Create | Stub `render()` — placeholder markdown, replaced by Task 9 |
+| `gradio_app/sections/alineamiento.py` | Create | Stub `render()` — placeholder markdown, replaced by Task 10 |
+| `gradio_app/sections/estructura.py` | Create | Stub `render()` — placeholder markdown, replaced by Task 11 |
+| `gradio_app/sections/manual_operativo.py` | Create | Stub `render()` — placeholder markdown, replaced by Task 12 |
+| `gradio_app/app.py` | Create | Main Gradio app — `gr.Blocks` with 6 `gr.Tab`; delegates to section modules |
+| `examples/graph_example.py` | Create | Minimal 2-node LangGraph example using `RestaurantInfoAgent` |
+| `core/agents/graph_utils.py` | Create | `make_agent_node()`, `BaseGraphState`, `build_sequential_graph()` |
+| `docs/Architecture/architecture-gradio-and-langgraph.md` | Create | Architecture doc: Gradio session model, chat panel, LangGraph node pattern |
+| `README.md` | Modify | Add architecture table row; update `gradio_app/` block in project structure |
 
 ---
 
@@ -108,14 +134,15 @@ argument. Section-specific fields are typed explicitly — no untyped dicts.
 
 ### 6.1 — Install dependencies
 
-- Verify `gradio` is importable: `python -c "import gradio as gr; print(gr.__version__)"`
+- Install Gradio: `uv add gradio`
+- Verify: `python -c "import gradio as gr; print(gr.__version__)"`
 - Install LangGraph: `uv add langgraph`
 - Verify: `python -c "from langgraph.graph import StateGraph; print('ok')"`
-- Pin versions in `pyproject.toml` via `uv add`
+- Both are pinned in `pyproject.toml` automatically via `uv add`
 
 ---
 
-### 6.2 — Session management (`gradio/session.py`)
+### 6.2 — Session management (`gradio_app/session.py`)
 
 ```python
 import uuid
@@ -135,42 +162,50 @@ def create_session(data_lake: DataLake) -> str:
 
 ---
 
-### 6.3 — Reusable layout (`gradio/layout.py`)
+### 6.3 — Chat panel component (`gradio_app/components.py`)
 
 ```python
 import gradio as gr
 from typing import Callable
 
-def create_section_layout(
-    title: str,
-    form_fn: Callable,
+def render_chat_panel(
     chat_fn: Callable,
+    session_id: gr.State,
+    data_lake_ref: object,
 ) -> None:
     """
-    Render a two-column section layout inside an active gr.Blocks context.
+    Render the right-column chat panel inside an active gr.Column context.
 
-    Left column:  title + form area (rendered by form_fn)
-    Right column: gr.Chatbot + gr.Textbox + Send button
+    Renders: gr.Chatbot + gr.Textbox (user input) + Send gr.Button.
+    Send button click calls chat_fn and updates the chatbot history.
 
-    chat_fn signature: (message: str, history: list, session_id: str, data_lake: DataLake)
+    chat_fn signature: (message: str, history: list, session_id: str, data_lake)
                        -> tuple[list, str]
+
+    data_lake_ref is captured as a closure variable from build_app() — it is NOT
+    a gr.State component. Only session_id lives in gr.State.
     """
 ```
 
-- Left column: section title + form area rendered by `form_fn()`
-- Right column: `gr.Chatbot`, `gr.Textbox` for user input, Send `gr.Button`
-- Send button click calls `chat_fn(message, history, session_id, data_lake)` and updates chatbot
-- `session_id` and `data_lake` are passed in from the app-level `gr.State` components
-- Tasks 7–12 pass their own `form_fn` and `chat_fn` — stubs for now
+- `gr.Chatbot`, `gr.Textbox`, and Send `gr.Button` are rendered inside the active column
+- Send button click wires `chat_fn(message, history, session_id, data_lake_ref)`
+- `session_id` comes from `gr.State`; `data_lake_ref` is a plain Python object from closure
+- Each section's `render()` function calls `render_chat_panel()` for its right column
+- Tasks 7–12 provide their own `chat_fn` — this component only handles the UI wiring
 
 ---
 
-### 6.4 — Gradio shell (`gradio/app.py`)
+### 6.4 — Gradio shell (`gradio_app/app.py`) and section stubs
+
+**`gradio_app/app.py`:**
 
 ```python
 import gradio as gr
-from gradio.session import create_session, get_data_lake
-from gradio.layout import create_section_layout
+from gradio_app.session import create_session, get_data_lake
+from gradio_app.sections import (
+    bienvenida, clasificacion, configuracion,
+    alineamiento, estructura, manual_operativo,
+)
 
 def build_app() -> gr.Blocks:
     data_lake = get_data_lake()
@@ -182,17 +217,17 @@ def build_app() -> gr.Blocks:
 
         with gr.Tabs():
             with gr.Tab("Bienvenida"):
-                create_section_layout("Bienvenida", form_fn=_stub_form, chat_fn=_stub_chat)
+                bienvenida.render(session_id, data_lake)
             with gr.Tab("Clasificación"):
-                create_section_layout("Clasificación", form_fn=_stub_form, chat_fn=_stub_chat)
+                clasificacion.render(session_id, data_lake)
             with gr.Tab("Configuración"):
-                create_section_layout("Configuración", form_fn=_stub_form, chat_fn=_stub_chat)
+                configuracion.render(session_id, data_lake)
             with gr.Tab("Alineamiento"):
-                create_section_layout("Alineamiento", form_fn=_stub_form, chat_fn=_stub_chat)
+                alineamiento.render(session_id, data_lake)
             with gr.Tab("Estructura"):
-                create_section_layout("Estructura", form_fn=_stub_form, chat_fn=_stub_chat)
+                estructura.render(session_id, data_lake)
             with gr.Tab("Manual operativo"):
-                create_section_layout("Manual operativo", form_fn=_stub_form, chat_fn=_stub_chat)
+                manual_operativo.render(session_id, data_lake)
 
     return demo
 
@@ -200,10 +235,20 @@ if __name__ == "__main__":
     build_app().launch()
 ```
 
-- `_stub_form()` renders a placeholder `gr.Markdown("Formulario pendiente — Task 7-12")`
-- `_stub_chat()` returns a static reply `"Sección en construcción."`
-- `session_id` `gr.State` is initialised to `""` and set on `.load()`
-- App must launch without errors before subtask is complete
+**Each section stub (`gradio_app/sections/<section>.py`):**
+
+```python
+import gradio as gr
+
+def render(session_id: gr.State, data_lake) -> None:
+    """Stub — replaced by Task <N>."""
+    gr.Markdown("### <Section name>\nPendiente — Task <N>.")
+```
+
+- All 6 section files follow the same stub pattern: `render(session_id, data_lake) -> None`
+- `session_id` is `gr.State`; `data_lake` is a plain Python closure variable
+- Tasks 7–12 replace the stub body with the real form + `render_chat_panel()` call
+- App must launch without errors and all 6 tabs must be visible before subtask is complete
 
 ---
 
@@ -270,14 +315,44 @@ def build_sequential_graph(
     return graph.compile()
 ```
 
-**Minimal 2-node example** (in `core/agents/graph_utils.py` or a dedicated
-`examples/graph_example.py`):
-- Uses `RestaurantInfoAgent` as both nodes (different instances, different prompts)
-- State has `session_id`, `data_lake`, `user_message`, `restaurant_name`, `restaurant_type`
-- Node 1 extracts restaurant name from `user_message`
-- Node 2 confirms/enriches using output of Node 1
-- Purpose: validate the full wiring (StateGraph → node → `agent.run()` → state merge) before
-  any real section depends on it
+**Minimal 2-node example** (`examples/graph_example.py` — kept separate from `graph_utils.py`
+to avoid importing a concrete agent into the utility module):
+
+```python
+# examples/graph_example.py
+from gradio_app.session import get_data_lake, create_session
+from core.agents.simple_agent import RestaurantInfoAgent
+from core.agents.graph_utils import BaseGraphState, make_agent_node, build_sequential_graph
+from core.ai.providers import ClaudeProvider
+from typing import TypedDict
+
+class ExampleState(BaseGraphState):
+    user_message: str
+    restaurant_name: str | None
+    restaurant_type: str | None
+
+# Build two agent instances with different prompts
+agent_a = RestaurantInfoAgent(name="extractor", provider=ClaudeProvider(...))
+agent_b = RestaurantInfoAgent(name="confirmer", provider=ClaudeProvider(...))
+
+graph = build_sequential_graph(
+    nodes=[
+        ("extract", make_agent_node(agent_a, input_keys=["user_message"])),
+        ("confirm", make_agent_node(agent_b, input_keys=["restaurant_name"])),
+    ],
+    state_schema=ExampleState,
+)
+
+data_lake = get_data_lake()
+session_id = create_session(data_lake)
+result = graph.invoke({"session_id": session_id, "data_lake": data_lake,
+                       "user_message": "Mi restaurante se llama El Rincón."})
+print(result)
+```
+
+- Purpose: validate the full wiring (StateGraph → node → `agent.run()` → state merge)
+- Requires real API keys — run manually, not in the unit test suite
+- Unit tests in `test_graph_utils.py` use mock nodes and do not depend on this file
 
 ---
 
@@ -285,7 +360,7 @@ def build_sequential_graph(
 
 Two new test files:
 
-**`tests/unit/test_gradio_session.py`** (mocked — no Gradio launch)
+**`tests/unit/test_gradio_session.py`** (mocked — no Gradio launch; imports from `gradio_app.session`)
 
 | Test | Setup | Assertion |
 |------|-------|-----------|
@@ -313,25 +388,26 @@ Two new test files:
 
 Sections:
 1. Overview — where this layer sits (above agent framework, below section agents)
-2. Gradio session model — `session_id`, `gr.State`, DataLake factory, one session per launch
-3. Section layout pattern — two-column layout, `form_fn` / `chat_fn` contract
-4. LangGraph node pattern — `BaseGraphState`, `make_agent_node()`, `build_sequential_graph()`
-5. State schema convention — how complex sections extend `BaseGraphState`
-6. Known limitations — `DataLake` in state breaks LangGraph checkpointing; MVP scope
+2. Gradio session model — `session_id`, `gr.State`, DataLake closure, one session per launch
+3. Section ownership model — Task 6 provides stubs; Tasks 7–12 own each section's left column; `render(session_id, data_lake)` contract
+4. Chat panel component — `render_chat_panel()` usage, `chat_fn` signature contract
+5. LangGraph node pattern — `BaseGraphState`, `make_agent_node()`, `build_sequential_graph()`
+6. State schema convention — how complex sections extend `BaseGraphState`
+7. Known limitations — `DataLake` in state breaks LangGraph checkpointing; MVP scope
 
 **Update `README.md`:**
 - Add architecture table row: `| Gradio UI foundation and LangGraph pattern | architecture-gradio-and-langgraph.md |`
-- Update `gradio/` block in project structure to show `app.py`, `layout.py`, `session.py`
+- Update project structure to show `gradio_app/` with `app.py`, `session.py`, `components.py`, `sections/`
 
 ---
 
 ## Dependencies
 
 - Tasks 1–5 marked done
-- `gradio` installed (Task 1 — verify before implementing)
-- `langgraph` not yet installed — `uv add langgraph` in subtask 6.1
-- `ANTHROPIC_API_KEY` in `.env` — only required for live tests in other tasks; all Task 6
-  tests use mocked providers
+- `gradio` not yet in `pyproject.toml` — `uv add gradio` in subtask 6.1
+- `langgraph` not yet in `pyproject.toml` — `uv add langgraph` in subtask 6.1
+- `ANTHROPIC_API_KEY` in `.env` — required only for `examples/graph_example.py` (run manually);
+  all unit tests use mocked providers
 
 ---
 
@@ -351,41 +427,49 @@ Sections:
    limitation in the architecture doc. Resolution: pass `session_id` only and reconstruct
    `DataLake` inside each node if checkpointing is needed later.
 
-4. **`gradio/` import path conflict.** Naming the module `gradio/session.py` means
-   `from gradio.session import ...` could collide with Gradio's own internal modules.
-   Use `from gradio_app.session import ...` or add `gradio/` to `sys.path` explicitly
-   and import as `from session import ...`. Decide and document before implementing.
+4. ~~**`gradio/` import path conflict.**~~ Resolved — local package is named `gradio_app/`.
+   All imports use `from gradio_app.session import ...`, `from gradio_app.components import ...`,
+   etc. No collision with the installed `gradio` package.
 
-### [OPEN] — Minimal example graph location is unresolved
-**Source:** Validation of task 6
-**Problem:** Section 6.5 says the 2-node example goes "in `core/agents/graph_utils.py` or a dedicated `examples/graph_example.py`" — the choice is left open. If placed in `graph_utils.py` it imports `RestaurantInfoAgent`, adding a concrete agent dependency to a utility module. If placed in `examples/`, the checklist item "2-node example graph runs end-to-end" needs a test or run script to verify it.
-**Impact:** Implementer of 6.5 must make this call on the spot; placing example code in `graph_utils.py` couples the utility module to a concrete agent, making it harder to test in isolation.
-**Suggested action:** Decide location before implementing 6.5: prefer `examples/graph_example.py` to keep `graph_utils.py` dependency-free; add a corresponding test (extend `test_graph_utils.py`) to the checklist.
+~~**[OPEN] Minimal example graph location**~~ Resolved — example lives in `examples/graph_example.py`. `graph_utils.py` has no concrete agent dependency.
 
 ---
 
 ## Deliverable Checklist
 
-### `gradio/session.py`
+### `gradio_app/session.py`
 - [ ] `get_data_lake()` returns a `DataLake` instance pointed at `data/sessions/`
 - [ ] `create_session(data_lake)` returns a unique UUID4 string
 
-### `gradio/layout.py`
-- [ ] `create_section_layout(title, form_fn, chat_fn)` renders a two-column layout
-- [ ] Chat send handler calls `chat_fn` and updates `gr.Chatbot` history
-- [ ] `session_id` and `data_lake` are wired through from app-level `gr.State`
+### `gradio_app/components.py`
+- [ ] `render_chat_panel(chat_fn, session_id, data_lake_ref)` renders `gr.Chatbot` + `gr.Textbox` + Send button
+- [ ] Send button click calls `chat_fn(message, history, session_id, data_lake_ref)` and updates chatbot
+- [ ] Docstring documents that `data_lake_ref` is a closure variable, not a `gr.State`
 
-### `gradio/app.py`
+### `gradio_app/sections/` (stubs)
+- [ ] `bienvenida.py` — `render(session_id, data_lake)` renders placeholder markdown
+- [ ] `clasificacion.py` — `render(session_id, data_lake)` renders placeholder markdown
+- [ ] `configuracion.py` — `render(session_id, data_lake)` renders placeholder markdown
+- [ ] `alineamiento.py` — `render(session_id, data_lake)` renders placeholder markdown
+- [ ] `estructura.py` — `render(session_id, data_lake)` renders placeholder markdown
+- [ ] `manual_operativo.py` — `render(session_id, data_lake)` renders placeholder markdown
+
+### `gradio_app/app.py`
 - [ ] `build_app()` creates a `gr.Blocks` app with `gr.State` for `session_id`
-- [ ] Session created on `.load()` event via `create_session()`
-- [ ] 6 `gr.Tab` stubs: Bienvenida, Clasificación, Configuración, Alineamiento, Estructura, Manual operativo
-- [ ] App launches without errors: `python gradio/app.py`
+- [ ] `data_lake` created once via `get_data_lake()` and passed as closure to all sections
+- [ ] Session created on `.load()` event via `create_session(data_lake)`
+- [ ] 6 `gr.Tab` components delegate to section `render()` functions
+- [ ] App launches without errors: `python -m gradio_app.app`
 
 ### `core/agents/graph_utils.py`
 - [ ] `BaseGraphState` TypedDict with `session_id: str` and `data_lake: DataLake`
 - [ ] `make_agent_node(agent, input_keys)` returns a LangGraph-compatible node function
 - [ ] `build_sequential_graph(nodes, state_schema)` compiles a linear `StateGraph`
-- [ ] 2-node example graph runs end-to-end via `.invoke()`
+- [ ] `build_sequential_graph` raises `ValueError` for empty `nodes` list
+
+### `examples/graph_example.py`
+- [ ] 2-node example using `RestaurantInfoAgent` and `build_sequential_graph`
+- [ ] Script runs end-to-end when API keys are present: `python examples/graph_example.py`
 
 ### Tests
 - [ ] `test_create_session_returns_string` passes
@@ -404,11 +488,12 @@ Sections:
 - [ ] Created at correct path
 - [ ] Section 1: Overview
 - [ ] Section 2: Gradio session model
-- [ ] Section 3: Section layout pattern
-- [ ] Section 4: LangGraph node pattern
-- [ ] Section 5: State schema convention
-- [ ] Section 6: Known limitations
+- [ ] Section 3: Section ownership model and `render()` contract
+- [ ] Section 4: Chat panel component
+- [ ] Section 5: LangGraph node pattern
+- [ ] Section 6: State schema convention
+- [ ] Section 7: Known limitations
 
 ### `README.md`
 - [ ] Architecture table row added for Gradio + LangGraph pattern
-- [ ] `gradio/` block updated in project structure
+- [ ] `gradio_app/` block updated in project structure (shows `app.py`, `session.py`, `components.py`, `sections/`)
