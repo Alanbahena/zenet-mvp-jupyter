@@ -16,6 +16,7 @@ in subsequent subtasks without modifying run().
 from __future__ import annotations
 
 import json
+import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -27,6 +28,7 @@ from core.ai.memory import ConversationMemory
 from core.ai.providers import LlmProvider, ProviderResponse, ToolRegistry
 from core.ai.utils import parse_structured_output
 from core.storage.persistence import DataLake
+from core.agents.utils import _is_retryable
 
 
 @dataclass
@@ -285,8 +287,9 @@ class BaseAgent(ABC):
         """
         Generate LLM response using current conversation memory.
 
-        When self.tools is None: single-turn call via provider.generate() -- identical
-        to the 5.1 implementation. All existing tests exercise this path.
+        When self.tools is None: single-turn call via _generate_with_retry(), which
+        wraps provider.generate() with exponential backoff on transient API errors.
+        Raises RuntimeError if the provider returns an empty string.
 
         When self.tools is set: multi-turn tool calling loop via provider.generate_raw().
             Per round:
@@ -294,24 +297,26 @@ class BaseAgent(ABC):
                 2. If tool calls returned: execute each, add results to memory, repeat.
                 3. If text returned: return it (loop exits).
             After _MAX_TOOL_ROUNDS without a final text response: raise RuntimeError.
+            The tool calling loop does not retry individual generate_raw() calls.
 
         Automatically enables structured output mode when RESPONSE_MODEL is defined,
         consistent across both paths.
 
         Note: prompt=None is critical. The user message is already in self.memory
         (added by run()). Passing prompt alongside messages would duplicate it.
-
-        Subtask 5.3 does not change this method.
-        Subtask 5.5 wraps the provider call with retry logic.
         """
         if self.tools is None:
-            # No tools -- single-turn, 5.1 behavior preserved exactly.
-            return self.provider.generate(
+            result = self._generate_with_retry(
                 prompt=None,
                 system=system_prompt,
                 messages=self.memory.get_messages(),
                 structured_output=self.RESPONSE_MODEL is not None,
             )
+            if not result:
+                raise RuntimeError(
+                    f"[{self.name}] LLM returned an empty response."
+                )
+            return result
 
         for _ in range(self._MAX_TOOL_ROUNDS):
             raw: ProviderResponse = self.provider.generate_raw(
@@ -333,6 +338,46 @@ class BaseAgent(ABC):
             f"[{self.name}] Exceeded maximum tool rounds ({self._MAX_TOOL_ROUNDS}). "
             "The LLM did not return a final text response within the allowed rounds."
         )
+
+    def _generate_with_retry(
+        self,
+        *,
+        max_retries: int = 3,
+        **kwargs: Any,
+    ) -> str:
+        """
+        Generate LLM response with exponential backoff on transient API errors.
+
+        Retries on: RateLimitError, APITimeoutError, APIConnectionError,
+                    ServiceUnavailableError, InternalServerError, Timeout, ConnectionError.
+        Does not retry on: authentication errors, invalid request errors.
+
+        Args:
+            max_retries: Maximum number of attempts (default 3). On the final attempt,
+                         the exception is re-raised regardless of type.
+            **kwargs:    Forwarded to provider.generate(). Must match its signature:
+                         prompt, system, messages, structured_output, tools, etc.
+
+        Returns:
+            LLM response string. May be "" if the provider returns no content;
+            _generate_response() is responsible for raising on empty.
+
+        Raises:
+            Exception: Re-raised from the provider when all retries are exhausted,
+                       or immediately if the error is not retryable.
+        """
+        delay = 1.0
+        for attempt in range(max_retries):
+            try:
+                return self.provider.generate(**kwargs)
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    raise
+                if _is_retryable(e):
+                    time.sleep(delay)
+                    delay *= 2
+                else:
+                    raise
 
     def _execute_tool(self, tool_call: dict[str, Any]) -> str:
         """

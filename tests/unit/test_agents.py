@@ -3,15 +3,29 @@
 import os
 import tempfile
 import unittest
+import unittest.mock
 from typing import Any
 
 from pydantic import BaseModel
 
 from core.agents.base_agent import BaseAgent
 from core.agents.simple_agent import RestaurantInfoAgent
+from core.agents.utils import AgentRegistry, _is_retryable, create_agent
 from core.ai.memory import ConversationMemory
 from core.ai.providers import ClaudeProvider, LlmProvider, ProviderResponse, ToolRegistry
 from core.storage.persistence import DataLake
+
+
+# ---------------------------------------------------------------------------
+# Exception stubs for retry tests
+# ---------------------------------------------------------------------------
+
+class RateLimitError(Exception):
+    pass
+
+
+class AuthenticationError(Exception):
+    pass
 
 
 # ---------------------------------------------------------------------------
@@ -691,6 +705,132 @@ class TestLiveRestaurantInfoAgent(unittest.TestCase):
         self.assertEqual(messages[0]["content"], "My restaurant is called El Fogón.")
         self.assertEqual(messages[2]["content"], "It's a full-service Mexican restaurant.")
         self.assertIsNotNone(result2["restaurant_type"])
+
+
+class _FailingProvider(LlmProvider):
+    """
+    Mock provider that works through a list of side effects in order.
+    Each element is either a string (returned) or an Exception instance (raised).
+    """
+
+    def __init__(self, side_effects: list) -> None:
+        super().__init__(model_name="mock-failing")
+        self._side_effects = list(side_effects)
+        self._call_count = 0
+
+    def _do_generate(self, *, prompt, system, tools, structured_output, messages, max_tokens, temperature) -> str:
+        effect = self._side_effects[self._call_count]
+        self._call_count += 1
+        if isinstance(effect, Exception):
+            raise effect
+        return effect
+
+
+class TestAgentUtils(unittest.TestCase):
+    """Tests for _is_retryable(), create_agent(), and AgentRegistry (5.5)."""
+
+    def setUp(self) -> None:
+        self.provider = _MockProvider()
+
+    def test_is_retryable_returns_true_for_retryable_name(self) -> None:
+        """_is_retryable() returns True for a known retryable exception class name."""
+        self.assertTrue(_is_retryable(RateLimitError()))
+
+    def test_is_retryable_returns_false_for_non_retryable_name(self) -> None:
+        """_is_retryable() returns False for an unrecognised exception class name."""
+        self.assertFalse(_is_retryable(ValueError("bad input")))
+
+    def test_create_agent_returns_correct_instance(self) -> None:
+        """create_agent() returns an agent of the requested class with correct fields."""
+        agent = create_agent(RestaurantInfoAgent, provider=self.provider, name="info-agent")
+        self.assertIsInstance(agent, RestaurantInfoAgent)
+        self.assertEqual(agent.name, "info-agent")
+        self.assertIs(agent.provider, self.provider)
+
+    def test_create_agent_with_non_baseagent_class_raises_type_error(self) -> None:
+        """create_agent() raises TypeError when passed a non-BaseAgent class."""
+        with self.assertRaises(TypeError):
+            create_agent(str, provider=self.provider, name="x")  # type: ignore[arg-type]
+
+    def test_agent_registry_register_and_get(self) -> None:
+        """register() + get() round-trip returns the correct agent instances."""
+        agent_a = _ConcreteAgent(name="agent-a", provider=self.provider)
+        agent_b = _ConcreteAgent(name="agent-b", provider=self.provider)
+        registry = AgentRegistry()
+        registry.register(agent_a)
+        registry.register(agent_b)
+        self.assertIs(registry.get("agent-a"), agent_a)
+        self.assertIs(registry.get("agent-b"), agent_b)
+
+    def test_agent_registry_get_unknown_name_returns_none(self) -> None:
+        """get() returns None for a name that was never registered."""
+        registry = AgentRegistry()
+        self.assertIsNone(registry.get("nonexistent"))
+
+    def test_agent_registry_list_names_reflects_registered_agents(self) -> None:
+        """list_names() contains the names of all registered agents."""
+        agent_alpha = _ConcreteAgent(name="alpha", provider=self.provider)
+        agent_beta = _ConcreteAgent(name="beta", provider=self.provider)
+        registry = AgentRegistry()
+        registry.register(agent_alpha)
+        registry.register(agent_beta)
+        names = registry.list_names()
+        self.assertIn("alpha", names)
+        self.assertIn("beta", names)
+
+
+class TestBaseAgentRetry(unittest.TestCase):
+    """Tests for _generate_with_retry() and empty response check (5.5)."""
+
+    def _make_agent(self, provider: LlmProvider) -> RestaurantInfoAgent:
+        return RestaurantInfoAgent(name="retry-test", provider=provider)
+
+    @unittest.mock.patch("core.agents.base_agent.time.sleep")
+    def test_retry_succeeds_on_transient_error(self, mock_sleep: unittest.mock.MagicMock) -> None:
+        """_generate_with_retry() retries on a retryable error and returns on third attempt."""
+        valid = '{"restaurant_name": "El Cielo", "restaurant_type": "fine-dining"}'
+        provider = _FailingProvider([RateLimitError(), RateLimitError(), valid])
+        agent = self._make_agent(provider)
+
+        result = agent.run(input_data={"user_message": "My restaurant is El Cielo."})
+
+        self.assertEqual(result["restaurant_name"], "El Cielo")
+        self.assertEqual(provider._call_count, 3)
+        self.assertEqual(mock_sleep.call_count, 2)
+
+    @unittest.mock.patch("core.agents.base_agent.time.sleep")
+    def test_retry_raises_after_max_retries_exhausted(self, mock_sleep: unittest.mock.MagicMock) -> None:
+        """_generate_with_retry() re-raises after all 3 attempts fail."""
+        provider = _FailingProvider([RateLimitError(), RateLimitError(), RateLimitError()])
+        agent = self._make_agent(provider)
+
+        with self.assertRaises(RateLimitError):
+            agent.run(input_data={"user_message": "hello"})
+
+        self.assertEqual(provider._call_count, 3)
+        self.assertEqual(mock_sleep.call_count, 2)
+
+    @unittest.mock.patch("core.agents.base_agent.time.sleep")
+    def test_no_retry_on_non_retryable_error(self, mock_sleep: unittest.mock.MagicMock) -> None:
+        """_generate_with_retry() raises immediately for a non-retryable error."""
+        provider = _FailingProvider([AuthenticationError()])
+        agent = self._make_agent(provider)
+
+        with self.assertRaises(AuthenticationError):
+            agent.run(input_data={"user_message": "hello"})
+
+        self.assertEqual(provider._call_count, 1)
+        mock_sleep.assert_not_called()
+
+    def test_empty_response_raises_runtime_error(self) -> None:
+        """_generate_response() raises RuntimeError when the provider returns ''."""
+        provider = _MockProvider(response="")
+        agent = self._make_agent(provider)
+
+        with self.assertRaises(RuntimeError) as ctx:
+            agent.run(input_data={"user_message": "hello"})
+
+        self.assertIn("retry-test", str(ctx.exception))
 
 
 if __name__ == "__main__":
