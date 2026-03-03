@@ -246,21 +246,21 @@ python -m pytest tests/unit/ -v
 ## Deliverable Checklist
 
 ### `tests/unit/test_agents.py`
-- [ ] File exists at `tests/unit/test_agents.py`
-- [ ] `RateLimitError` and `AuthenticationError` defined at module level
-- [ ] `_MockProvider`, `_MockToolProvider`, `_FailingProvider` fixtures defined
-- [ ] `_ConcreteAgent`, `_TypedAgent`, `_ToolAgent` stub agents defined
-- [ ] `TestBaseAgentInstantiation` — 4 tests
-- [ ] `TestInputValidation` — 3 tests
-- [ ] `TestRunLifecycle` — 4 tests
-- [ ] `TestResetMemory` — 1 test
-- [ ] `TestStatepersistence` — 2 tests
-- [ ] `TestStructuredOutput` — 7 tests
-- [ ] `TestToolCalling` — 8 tests
-- [ ] `TestBaseAgentStateManagement` — 7 tests
-- [ ] `TestRestaurantInfoAgent` — 6 tests
-- [ ] `TestAgentUtils` — 7 tests
-- [ ] `TestBaseAgentRetry` — 4 tests (all patch `core.agents.base_agent.time.sleep`)
-- [ ] `TestLiveRestaurantInfoAgent` — 2 tests (guarded by `ANTHROPIC_API_KEY`)
-- [ ] All tests pass: `python -m pytest tests/unit/test_agents.py -v`
-- [ ] Full suite passes: `python -m pytest tests/unit/ -v`
+- [x] File exists at `tests/unit/test_agents.py`
+- [x] `RateLimitError` and `AuthenticationError` defined at module level
+- [x] `_MockProvider`, `_MockToolProvider`, `_FailingProvider` fixtures defined
+- [x] `_ConcreteAgent`, `_TypedAgent`, `_ToolAgent` stub agents defined
+- [x] `TestBaseAgentInstantiation` — 4 tests
+- [x] `TestInputValidation` — 3 tests
+- [x] `TestRunLifecycle` — 4 tests
+- [x] `TestResetMemory` — 1 test
+- [x] `TestStatepersistence` — 2 tests
+- [x] `TestStructuredOutput` — 7 tests
+- [x] `TestToolCalling` — 8 tests
+- [x] `TestBaseAgentStateManagement` — 7 tests
+- [x] `TestRestaurantInfoAgent` — 6 tests
+- [x] `TestAgentUtils` — 7 tests
+- [x] `TestBaseAgentRetry` — 4 tests (all patch `core.agents.base_agent.time.sleep`)
+- [x] `TestLiveRestaurantInfoAgent` — 2 tests (guarded by `ANTHROPIC_API_KEY`)
+- [x] All tests pass: `python -m pytest tests/unit/test_agents.py -v` — 55 passed
+- [x] Full suite passes: `python -m pytest tests/unit/ -v` — 462 passed
