@@ -177,6 +177,7 @@ See `docs/Architecture/` for detailed documentation:
 | Data model helpers (format, validation, resolution) | [architecture-data-model-utils.md](docs/Architecture/architecture-data-model-utils.md) |
 | Readiness report (schema, KPIs, recommendations) | [architecture-readiness-kpis.md](docs/Architecture/architecture-readiness-kpis.md) |
 | **Persistence (storage layer, JSON/SQLite, DataLake API)** | **[architecture-persistence.md](docs/Architecture/architecture-persistence.md)** |
+| Agent framework (BaseAgent, tool calling, memory, state, retry) | [architecture-agent-framework.md](docs/Architecture/architecture-agent-framework.md) |
 
 ---
 
@@ -212,7 +213,12 @@ MVP Jupyter/
 │   ├── readiness_kpis.py    # Readiness report and KPI computation
 │   ├── persistence.py       # JsonStorage, SqliteStorage, DataLake (save/load)
 │   ├── schema.py            # SQLite schema (tables, FKs)
-│   └── serialization.py     # Entity ↔ dict (to_dict / from_dict)
+│   ├── serialization.py     # Entity ↔ dict (to_dict / from_dict)
+│   └── agents/
+│       ├── __init__.py
+│       ├── base_agent.py        # BaseAgent abstract class
+│       ├── simple_agent.py      # RestaurantInfoAgent (framework validation)
+│       └── utils.py             # create_agent(), AgentRegistry, retry helpers
 │
 ├── docs/
 │   └── Architecture/        # architecture-data-model, normalization, taxonomy, persistence, etc.
@@ -241,7 +247,7 @@ Zenet includes comprehensive test coverage for all core modules and LLM integrat
 Unit tests use mocked API responses and run quickly without requiring API keys:
 
 ```bash
-# Run all unit tests (394 tests)
+# Run all unit tests (462 tests)
 python -m pytest tests/unit/ -v
 
 # Run specific test file
@@ -342,6 +348,7 @@ TEST_ANTHROPIC_MODEL=claude-sonnet-4-5 python -m pytest tests/unit/ -k LiveClaud
 | LLM Utils | 8 | Structured output parsing |
 | Prompts | 7 | Template rendering |
 | Memory | 33 | Conversation memory |
+| Agent framework | 55 | BaseAgent lifecycle, tool calling, state, retry, RestaurantInfoAgent |
 | **Live Tests** | **13** | **Real API integration** |
-| **Total** | **407** | **100% core coverage** |
+| **Total** | **462** | **100% core coverage** |
 
