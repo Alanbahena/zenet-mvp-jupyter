@@ -2,7 +2,7 @@
   "master": {
     "tasks": [
       {
-        "id": 1,
+        "id": "1",
         "title": "Set up project structure and environment",
         "description": "Create the initial project structure with directories for notebooks, core modules, data storage, and Gradio UI components.",
         "details": "Create the following directory structure:\n- /notebooks (for Jupyter notebooks)\n- /core (for core Python modules)\n- /data (for data storage)\n- /gradio (for UI components)\n\nSet up a Python virtual environment and install required dependencies:\n```bash\npython -m venv venv\nsource venv/bin/activate  # or venv\\Scripts\\activate on Windows\npip install jupyter notebook gradio langchain langchain_experimental crewai openai anthropic autogen sqlite3 pandas numpy\n```\n\nCreate a requirements.txt file with all dependencies and versions.\nCreate a README.md with project overview and setup instructions.",
@@ -117,7 +117,7 @@
         "updatedAt": "2026-02-13T05:31:24.662Z"
       },
       {
-        "id": 2,
+        "id": "2",
         "title": "Design and implement data model and ontology",
         "description": "Define the core data entities, relationships, and normalization rules that will form the foundation of the system.",
         "details": "Create a core/data_model.py module that defines the following classes:\n- Restaurant: Basic restaurant information\n- Recipe: Recipe structure with name, description, steps\n- Ingredient: Components used in recipes\n- RecipeUnit: Units used in recipes\n- InventoryItem: Items in inventory\n- InventoryUnit: Units used for inventory\n- FamilyInventory: Grouping of inventory items\n- CategoryRecipe: Grouping of recipes\n\nImplement relationships between entities:\n```python\nclass Recipe:\n    def __init__(self, name, description, steps, category_id, ingredients=None):\n        self.name = name\n        self.description = description\n        self.steps = steps\n        self.category_id = category_id\n        self.ingredients = ingredients or []\n\nclass Ingredient:\n    def __init__(self, name, quantity, unit_id, inventory_item_id=None):\n        self.name = name\n        self.quantity = quantity\n        self.unit_id = unit_id\n        self.inventory_item_id = inventory_item_id\n```\n\nDefine normalization rules for units and measures in core/normalization.py.\nImplement semantic relations and taxonomies in core/taxonomy.py.\n<info added on 2026-02-14T06:06:48.277Z>\n<info added on 2026-02-13T08:15:22.456Z>\n## Design References for Subtask 2.2 and 2.3\n\n### Recipe.add_ingredient Method Enhancement\n- When creating a new InventoryItem, require unit_id_for_inventory parameter\n- This parameter must be a valid inventory unit ID (from valid_inventory_unit_ids)\n- Makes inventory unit explicit and separate from recipe unit\n- Caller responsibility to determine appropriate inventory unit via:\n  - Same-unit match if applicable\n  - User selection from valid inventory units\n  - LLM-assisted determination\n\n### InventoryUnit Equivalence System\n- Add to InventoryUnit class:\n  - base_unit_id (optional): Reference to another InventoryUnit that serves as base unit\n  - factor_to_base (optional float): Conversion factor to the base unit\n  - Example: 1 Caja (Box) = 10 kg, where kg is the base_unit_id and 10 is factor_to_base\n- Implementation split:\n  - Fields and basic validation in subtask 2.2 (entity relationships)\n  - Conversion logic in subtask 2.3 (normalization.py)\n- See .taskmaster/docs/inventory-units-and-equivalences-plan.md Parts 2 and 5 for detailed specifications\n\n### Implementation Notes\n- InventoryUnitRegistry should validate base_unit_id references\n- Circular references in base units must be prevented\n- Conversion methods should handle multi-step conversions through base units\n</info added on 2026-02-13T08:15:22.456Z>\n</info added on 2026-02-14T06:06:48.277Z>",
@@ -230,7 +230,7 @@
         "updatedAt": "2026-02-19T07:40:30.536Z"
       },
       {
-        "id": 3,
+        "id": "3",
         "title": "Implement data persistence layer",
         "description": "Create the data storage mechanisms using JSON and SQLite to persist restaurant data and system state.",
         "details": "Create core/persistence.py with classes for both JSON and SQLite storage:\n\n```python\nclass JsonStorage:\n    def __init__(self, data_dir):\n        self.data_dir = data_dir\n        os.makedirs(data_dir, exist_ok=True)\n    \n    def save(self, entity_type, entity_id, data):\n        file_path = os.path.join(self.data_dir, f\"{entity_type}_{entity_id}.json\")\n        with open(file_path, 'w') as f:\n            json.dump(data, f, indent=2)\n    \n    def load(self, entity_type, entity_id):\n        file_path = os.path.join(self.data_dir, f\"{entity_type}_{entity_id}.json\")\n        if not os.path.exists(file_path):\n            return None\n        with open(file_path, 'r') as f:\n            return json.load(f)\n\nclass SqliteStorage:\n    def __init__(self, db_path):\n        self.db_path = db_path\n        self.conn = sqlite3.connect(db_path)\n        self._create_tables()\n    \n    def _create_tables(self):\n        # Create tables for all entities\n        # Implementation with SQL CREATE TABLE statements\n        pass\n```\n\nImplement a DataLake class that manages both storage types and provides a unified interface.\nCreate database schema for SQLite with tables for all entities and relationships.\nImplement serialization/deserialization methods for converting between entity objects and storage formats.",
@@ -244,7 +244,7 @@
         "updatedAt": "2026-02-20T07:35:11.186Z"
       },
       {
-        "id": 4,
+        "id": "4",
         "title": "Develop LLM integration framework",
         "description": "Create a framework for integrating LLMs (OpenAI, Claude) with structured outputs, function calling, and tool use.",
         "details": "Create core/llm_framework.py with classes for different LLM providers:\n\n```python\nclass LlmProvider:\n    def __init__(self, model_name):\n        self.model_name = model_name\n    \n    def generate(self, prompt, tools=None, structured_output=None):\n        raise NotImplementedError()\n\nclass OpenAiProvider(LlmProvider):\n    def __init__(self, model_name=\"gpt-4\"):\n        super().__init__(model_name)\n        self.client = openai.OpenAI()\n    \n    def generate(self, prompt, tools=None, structured_output=None):\n        messages = [{\"role\": \"user\", \"content\": prompt}]\n        kwargs = {\"model\": self.model_name, \"messages\": messages}\n        \n        if tools:\n            kwargs[\"tools\"] = tools\n        if structured_output:\n            kwargs[\"response_format\"] = {\"type\": \"json_object\"}\n            \n        response = self.client.chat.completions.create(**kwargs)\n        return response.choices[0].message.content\n\nclass ClaudeProvider(LlmProvider):\n    # Similar implementation for Claude\n    pass\n```\n\nImplement prompt engineering utilities in core/prompts.py.\nCreate a ToolRegistry class for managing function calling and tool use.\nImplement structured output parsing and validation.\nCreate a memory system for maintaining context across interactions.",
@@ -258,7 +258,7 @@
         "updatedAt": "2026-02-21T00:20:24.867Z"
       },
       {
-        "id": 5,
+        "id": "5",
         "title": "Create agent framework and base agent class",
         "description": "Develop the foundation for all agents with common functionality and integration with the LLM framework.",
         "details": "Create core/agents/base_agent.py with a BaseAgent class:\n\n```python\nclass BaseAgent:\n    def __init__(self, name, llm_provider, tools=None):\n        self.name = name\n        self.llm_provider = llm_provider\n        self.tools = tools or []\n        self.memory = {}\n    \n    def run(self, input_data, context=None):\n        raise NotImplementedError(\"Subclasses must implement run method\")\n    \n    def _generate_prompt(self, input_data, context):\n        raise NotImplementedError(\"Subclasses must implement _generate_prompt method\")\n    \n    def _process_response(self, response):\n        raise NotImplementedError(\"Subclasses must implement _process_response method\")\n    \n    def add_to_memory(self, key, value):\n        self.memory[key] = value\n    \n    def get_from_memory(self, key, default=None):\n        return self.memory.get(key, default)\n```\n\nImplement integration with LangChain, LangGraph, CrewAI, and Autogen frameworks.\nCreate utility methods for common agent operations.\nImplement a mechanism for agents to call tools and process results.\nCreate a system for agents to maintain state and memory.",
@@ -276,7 +276,8 @@
             "details": "",
             "status": "done",
             "dependencies": [],
-            "parentTaskId": 5
+            "parentTaskId": 5,
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -287,29 +288,34 @@
             "dependencies": [
               "5.1"
             ],
-            "parentTaskId": 5
+            "parentTaskId": 5,
+            "parentId": "undefined"
           },
           {
             "id": 3,
             "title": "State and memory management",
             "description": "Add _data_store on BaseAgent; store(), retrieve(), clear_store(). Extend save_state/load_state to persist both memory and data store.",
             "details": "",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               "5.2"
             ],
-            "parentTaskId": 5
+            "parentTaskId": 5,
+            "updatedAt": "2026-03-02T08:23:44.509Z",
+            "parentId": "undefined"
           },
           {
             "id": 4,
             "title": "Concrete agent (RestaurantInfoAgent)",
             "description": "Create core/agents/simple_agent.py with RestaurantInfoAgent: INPUT_SCHEMA, OUTPUT_SCHEMA, _generate_prompt(), _process_response(). Mirrors Welcome Agent needs.",
             "details": "",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [
               "5.3"
             ],
-            "parentTaskId": 5
+            "parentTaskId": 5,
+            "parentId": "undefined",
+            "updatedAt": "2026-03-02T08:23:46.527Z"
           },
           {
             "id": 5,
@@ -320,7 +326,8 @@
             "dependencies": [
               "5.4"
             ],
-            "parentTaskId": 5
+            "parentTaskId": 5,
+            "parentId": "undefined"
           },
           {
             "id": 6,
@@ -331,7 +338,8 @@
             "dependencies": [
               "5.5"
             ],
-            "parentTaskId": 5
+            "parentTaskId": 5,
+            "parentId": "undefined"
           },
           {
             "id": 7,
@@ -342,12 +350,14 @@
             "dependencies": [
               "5.6"
             ],
-            "parentTaskId": 5
+            "parentTaskId": 5,
+            "parentId": "undefined"
           }
-        ]
+        ],
+        "updatedAt": "2026-03-02T08:23:46.527Z"
       },
       {
-        "id": 6,
+        "id": "6",
         "title": "Implement workflow engine for agent orchestration",
         "description": "Create a custom workflow engine to orchestrate the flow between agents and maintain system state.",
         "details": "Create core/workflow_engine.py with classes for workflow management:\n\n```python\nclass WorkflowState:\n    def __init__(self, initial_state=None):\n        self.state = initial_state or {}\n    \n    def update(self, key, value):\n        self.state[key] = value\n    \n    def get(self, key, default=None):\n        return self.state.get(key, default)\n\nclass WorkflowStep:\n    def __init__(self, name, agent, input_mapping=None, output_mapping=None):\n        self.name = name\n        self.agent = agent\n        self.input_mapping = input_mapping or {}\n        self.output_mapping = output_mapping or {}\n    \n    def execute(self, workflow_state):\n        # Map inputs from workflow state\n        inputs = {}\n        for target_key, source_key in self.input_mapping.items():\n            inputs[target_key] = workflow_state.get(source_key)\n        \n        # Run the agent\n        result = self.agent.run(inputs, workflow_state.state)\n        \n        # Map outputs to workflow state\n        for target_key, source_key in self.output_mapping.items():\n            if source_key in result:\n                workflow_state.update(target_key, result[source_key])\n        \n        return result\n\nclass Workflow:\n    def __init__(self, name, steps=None):\n        self.name = name\n        self.steps = steps or []\n        self.state = WorkflowState()\n    \n    def add_step(self, step):\n        self.steps.append(step)\n    \n    def run(self, initial_state=None):\n        if initial_state:\n            self.state = WorkflowState(initial_state)\n        \n        results = []\n        for step in self.steps:\n            result = step.execute(self.state)\n            results.append(result)\n        \n        return results, self.state.state\n```\n\nImplement state management for passing data between workflow steps.\nCreate a mechanism for conditional branching in workflows.\nImplement error handling and recovery for workflow execution.\nCreate utilities for workflow visualization and monitoring.",
@@ -360,7 +370,7 @@
         "subtasks": []
       },
       {
-        "id": 7,
+        "id": "7",
         "title": "Implement Welcome Agent and Notebook",
         "description": "Create the Welcome agent for onboarding, initial information capture, and emotional support, along with its Jupyter notebook interface.",
         "details": "Create core/agents/welcome_agent.py:\n\n```python\nfrom core.agents.base_agent import BaseAgent\n\nclass WelcomeAgent(BaseAgent):\n    def __init__(self, llm_provider):\n        tools = [\n            # Define tools for information capture\n            # Define tools for emotional support\n        ]\n        super().__init__(\"Welcome Agent\", llm_provider, tools)\n    \n    def run(self, input_data, context=None):\n        prompt = self._generate_prompt(input_data, context)\n        response = self.llm_provider.generate(prompt, tools=self.tools)\n        return self._process_response(response)\n    \n    def _generate_prompt(self, input_data, context):\n        # Create prompt for welcome, onboarding, and emotional support\n        return f\"\"\"You are Zenet's Welcome Agent. Your role is to onboard new restaurant operators,\n        capture initial information about their restaurant, and provide emotional support.\n        \n        User information: {input_data.get('user_info', '')}\n        Restaurant information: {input_data.get('restaurant_info', '')}\n        \n        Please welcome the user, ask for essential information about their restaurant,\n        and address any anxiety they might have about organizing their restaurant data.\"\"\"\n    \n    def _process_response(self, response):\n        # Process the LLM response and extract structured information\n        # Return a dictionary with captured information\n        return {\n            \"restaurant_name\": extracted_name,\n            \"restaurant_type\": extracted_type,\n            \"user_concerns\": extracted_concerns,\n            \"next_steps\": next_steps\n        }\n```\n\nCreate notebooks/bienvenida.ipynb with the following structure:\n1. Introduction to Zenet and the onboarding process\n2. Initialization of the Welcome Agent\n3. Interactive cells for user input\n4. Display of agent responses\n5. Capture of restaurant information\n6. Transition to the next notebook\n\nImplement Gradio UI components for the Welcome notebook in gradio/welcome_ui.py.",
@@ -374,7 +384,7 @@
         "subtasks": []
       },
       {
-        "id": 8,
+        "id": "8",
         "title": "Implement Classification Agent and Notebook",
         "description": "Create the Classification agent for restaurant-type classification, template suggestions, and operational-level diagnosis, along with its Jupyter notebook interface.",
         "details": "Create core/agents/classification_agent.py:\n\n```python\nfrom core.agents.base_agent import BaseAgent\n\nclass ClassificationAgent(BaseAgent):\n    def __init__(self, llm_provider):\n        tools = [\n            # Define tools for restaurant classification\n            # Define tools for template suggestion\n            # Define tools for operational-level diagnosis\n        ]\n        super().__init__(\"Classification Agent\", llm_provider, tools)\n    \n    def run(self, input_data, context=None):\n        prompt = self._generate_prompt(input_data, context)\n        response = self.llm_provider.generate(prompt, tools=self.tools, structured_output=True)\n        return self._process_response(response)\n    \n    def _generate_prompt(self, input_data, context):\n        # Create prompt for restaurant classification and template suggestion\n        return f\"\"\"You are Zenet's Classification Agent. Your role is to classify the restaurant type,\n        suggest appropriate templates, and diagnose the operational level.\n        \n        Restaurant information: {input_data.get('restaurant_info', '')}\n        \n        Please classify the restaurant type, suggest appropriate templates for recipe categories\n        and inventory families, and diagnose the operational level (accompaniment level,\n        automation level, AI suggestions level, visible guides).\"\"\"\n    \n    def _process_response(self, response):\n        # Process the LLM response and extract structured information\n        # Return a dictionary with classification results\n        return {\n            \"restaurant_type\": extracted_type,\n            \"suggested_templates\": extracted_templates,\n            \"recipe_categories\": default_categories,\n            \"inventory_families\": default_families,\n            \"operational_level\": {\n                \"accompaniment\": level,\n                \"automation\": level,\n                \"ai_suggestions\": level,\n                \"visible_guides\": level\n            }\n        }\n```\n\nCreate notebooks/Clasificación.ipynb with the following structure:\n1. Introduction to restaurant classification\n2. Loading of restaurant information from previous notebook\n3. Initialization of the Classification Agent\n4. Display of classification results\n5. Interactive cells for template selection and customization\n6. Saving of classification results and selected templates\n7. Transition to the next notebook\n\nImplement template presets for different restaurant types in core/templates.py.\nImplement Gradio UI components for the Classification notebook in gradio/classification_ui.py.",
@@ -387,7 +397,7 @@
         "subtasks": []
       },
       {
-        "id": 9,
+        "id": "9",
         "title": "Implement Configuration Agent and Notebook",
         "description": "Create the Configuration agent for guided setup of recipe categories, inventory families, recipe units, and inventory units, along with its Jupyter notebook interface.",
         "status": "pending",
@@ -447,7 +457,7 @@
         ]
       },
       {
-        "id": 10,
+        "id": "10",
         "title": "Implement Alignment Agent and Notebook",
         "description": "Create the Alignment agent for data ingestion, normalization, and semantic unification, along with its Jupyter notebook interface.",
         "details": "Create core/agents/alignment_agent.py:\n\n```python\nfrom core.agents.base_agent import BaseAgent\n\nclass AlignmentAgent(BaseAgent):\n    def __init__(self, llm_provider):\n        tools = [\n            # Define tools for PDF parsing\n            # Define tools for image processing\n            # Define tools for text extraction\n            # Define tools for Excel parsing\n            # Define tools for normalization\n            # Define tools for unit conversion\n            # Define tools for semantic unification\n        ]\n        super().__init__(\"Alignment Agent\", llm_provider, tools)\n    \n    def run(self, input_data, context=None):\n        prompt = self._generate_prompt(input_data, context)\n        response = self.llm_provider.generate(prompt, tools=self.tools)\n        return self._process_response(response)\n    \n    def _generate_prompt(self, input_data, context):\n        # Create prompt for data alignment and normalization\n        return f\"\"\"You are Zenet's Alignment Agent. Your role is to ingest restaurant data\n        from various sources, normalize it, and align it with the configured structure.\n        \n        Configuration: {input_data.get('configuration', {})}\n        Data source: {input_data.get('data_source', {})}\n        \n        Please extract the relevant information from the data source, normalize units and measures,\n        perform semantic unification, and align the data with the configured structure.\"\"\"\n    \n    def _process_response(self, response):\n        # Process the LLM response and extract structured information\n        # Return a dictionary with aligned data\n        return {\n            \"aligned_recipes\": aligned_recipes,\n            \"aligned_ingredients\": aligned_ingredients,\n            \"normalization_applied\": normalization_applied,\n            \"semantic_unification_applied\": semantic_unification_applied\n        }\n    \n    def process_pdf(self, pdf_path):\n        # Extract text from PDF\n        # Parse recipes and ingredients\n        pass\n    \n    def process_image(self, image_path):\n        # Extract text from image\n        # Parse recipes and ingredients\n        pass\n    \n    def process_text(self, text):\n        # Parse recipes and ingredients from text\n        pass\n    \n    def process_excel(self, excel_path):\n        # Extract data from Excel\n        # Parse recipes and ingredients\n        pass\n```\n\nCreate notebooks/alineamiento.ipynb with the following structure:\n1. Introduction to data alignment\n2. Loading of configuration from previous notebook\n3. Initialization of the Alignment Agent\n4. File upload interface for PDF, image, text, and Excel\n5. Data extraction and preview\n6. Normalization and semantic unification\n7. Interactive cells for alignment verification and correction\n8. Saving of aligned data\n9. Transition to the next notebook\n\nImplement data extraction utilities in core/extraction.py.\nImplement normalization utilities in core/normalization.py.\nImplement semantic unification utilities in core/semantic_unification.py.\nImplement Gradio UI components for the Alignment notebook in gradio/alignment_ui.py.",
@@ -460,7 +470,7 @@
         "subtasks": []
       },
       {
-        "id": 11,
+        "id": "11",
         "title": "Implement Structuring Agent and Notebook",
         "description": "Create the Structuring agent for structured representation of recipes and ingredients, along with its Jupyter notebook interface.",
         "details": "Create core/agents/structuring_agent.py:\n\n```python\nfrom core.agents.base_agent import BaseAgent\n\nclass StructuringAgent(BaseAgent):\n    def __init__(self, llm_provider):\n        tools = [\n            # Define tools for recipe structuring\n            # Define tools for ingredient structuring\n            # Define tools for inventory generation\n            # Define tools for recipe-inventory relations\n        ]\n        super().__init__(\"Structuring Agent\", llm_provider, tools)\n    \n    def run(self, input_data, context=None):\n        prompt = self._generate_prompt(input_data, context)\n        response = self.llm_provider.generate(prompt, tools=self.tools, structured_output=True)\n        return self._process_response(response)\n    \n    def _generate_prompt(self, input_data, context):\n        # Create prompt for structured representation of recipes and ingredients\n        return f\"\"\"You are Zenet's Structuring Agent. Your role is to create structured representations\n        of recipes and ingredients, generate a base inventory, and establish recipe-inventory relations.\n        \n        Aligned data: {input_data.get('aligned_data', {})}\n        Configuration: {input_data.get('configuration', {})}\n        \n        Please create structured representations of recipes and ingredients according to the\n        configured categories and families. Generate a base inventory from the ingredients\n        and establish coherent relations between recipes and inventory items.\"\"\"\n    \n    def _process_response(self, response):\n        # Process the LLM response and extract structured information\n        # Return a dictionary with structured data\n        return {\n            \"structured_recipes\": structured_recipes,\n            \"structured_ingredients\": structured_ingredients,\n            \"base_inventory\": base_inventory,\n            \"recipe_inventory_relations\": recipe_inventory_relations\n        }\n```\n\nCreate notebooks/Estructura.ipynb with the following structure:\n1. Introduction to data structuring\n2. Loading of aligned data from previous notebook\n3. Initialization of the Structuring Agent\n4. Structured representation of recipes\n5. Structured representation of ingredients\n6. Base inventory generation\n7. Recipe-inventory relations\n8. Interactive cells for structure verification and correction\n9. Saving of structured data\n10. Transition to the next notebook\n\nImplement recipe structuring utilities in core/recipe_structuring.py.\nImplement ingredient structuring utilities in core/ingredient_structuring.py.\nImplement inventory generation utilities in core/inventory_generation.py.\nImplement Gradio UI components for the Structuring notebook in gradio/structuring_ui.py.",
@@ -473,7 +483,7 @@
         "subtasks": []
       },
       {
-        "id": 12,
+        "id": "12",
         "title": "Implement Operational Manual Agent and Notebook",
         "description": "Create the Operational Manual agent for data visualization, digital operational manual generation, and business Q&A, along with its Jupyter notebook interface.",
         "details": "Create core/agents/operational_manual_agent.py:\n\n```python\nfrom core.agents.base_agent import BaseAgent\n\nclass OperationalManualAgent(BaseAgent):\n    def __init__(self, llm_provider):\n        tools = [\n            # Define tools for data visualization\n            # Define tools for operational manual generation\n            # Define tools for business Q&A\n        ]\n        super().__init__(\"Operational Manual Agent\", llm_provider, tools)\n    \n    def run(self, input_data, context=None):\n        prompt = self._generate_prompt(input_data, context)\n        response = self.llm_provider.generate(prompt, tools=self.tools)\n        return self._process_response(response)\n    \n    def _generate_prompt(self, input_data, context):\n        # Create prompt for operational manual generation and business Q&A\n        return f\"\"\"You are Zenet's Operational Manual Agent. Your role is to generate\n        a digital operational manual, visualize restaurant data, and answer business questions.\n        \n        Structured data: {input_data.get('structured_data', {})}\n        Configuration: {input_data.get('configuration', {})}\n        \n        Please generate a digital operational manual based on the structured data.\n        Visualize the restaurant data in a clear and informative way.\n        Answer any business questions the user might have about their restaurant operations.\"\"\"\n    \n    def _process_response(self, response):\n        # Process the LLM response and extract structured information\n        # Return a dictionary with operational manual and visualizations\n        return {\n            \"operational_manual\": operational_manual,\n            \"visualizations\": visualizations,\n            \"business_qa\": business_qa\n        }\n    \n    def generate_operational_manual(self, structured_data):\n        # Generate a digital operational manual\n        pass\n    \n    def visualize_data(self, structured_data):\n        # Generate visualizations of restaurant data\n        pass\n    \n    def answer_business_question(self, question, structured_data):\n        # Answer a business question based on structured data\n        pass\n```\n\nCreate notebooks/manual_operativo.ipynb with the following structure:\n1. Introduction to operational manual\n2. Loading of structured data from previous notebook\n3. Initialization of the Operational Manual Agent\n4. Digital operational manual generation\n5. Data visualization\n6. Interactive cells for business Q&A\n7. Export options for the operational manual\n8. Conclusion and next steps\n\nImplement visualization utilities in core/visualization.py.\nImplement operational manual generation utilities in core/manual_generation.py.\nImplement business Q&A utilities in core/business_qa.py.\nImplement Gradio UI components for the Operational Manual notebook in gradio/operational_manual_ui.py.",
@@ -486,7 +496,7 @@
         "subtasks": []
       },
       {
-        "id": 13,
+        "id": "13",
         "title": "Implement Gradio UI entry point",
         "description": "Create a Gradio UI entry point that allows users to start the Zenet journey and navigate between notebooks.",
         "details": "Create gradio/app.py:\n\n```python\nimport gradio as gr\nfrom gradio.components import Markdown, Button, File, Textbox\nimport subprocess\nimport os\n\ndef launch_notebook(notebook_path):\n    subprocess.Popen([\"jupyter\", \"notebook\", notebook_path])\n\ndef create_ui():\n    with gr.Blocks(title=\"Zenet MVP 0.1\") as app:\n        gr.Markdown(\"# Zenet MVP 0.1\\nA primary cognitive operating system for restaurants\")\n        \n        with gr.Tab(\"Welcome\"):\n            gr.Markdown(\"## Welcome to Zenet\\nStart your journey to bring order to your restaurant operations.\")\n            welcome_button = gr.Button(\"Start Onboarding\")\n            welcome_button.click(lambda: launch_notebook(\"notebooks/bienvenida.ipynb\"))\n        \n        with gr.Tab(\"Classification\"):\n            gr.Markdown(\"## Restaurant Classification\\nClassify your restaurant and get suggested templates.\")\n            classification_button = gr.Button(\"Start Classification\")\n            classification_button.click(lambda: launch_notebook(\"notebooks/Clasificación.ipynb\"))\n        \n        with gr.Tab(\"Configuration\"):\n            gr.Markdown(\"## Initial Configuration\\nSet up recipe categories and inventory families.\")\n            configuration_button = gr.Button(\"Start Configuration\")\n            configuration_button.click(lambda: launch_notebook(\"notebooks/Configuración_inicial.ipynb\"))\n        \n        with gr.Tab(\"Alignment\"):\n            gr.Markdown(\"## Data Alignment\\nAlign your restaurant data with the configured structure.\")\n            alignment_button = gr.Button(\"Start Alignment\")\n            alignment_button.click(lambda: launch_notebook(\"notebooks/alineamiento.ipynb\"))\n        \n        with gr.Tab(\"Structuring\"):\n            gr.Markdown(\"## Data Structuring\\nCreate structured representations of recipes and ingredients.\")\n            structuring_button = gr.Button(\"Start Structuring\")\n            structuring_button.click(lambda: launch_notebook(\"notebooks/Estructura.ipynb\"))\n        \n        with gr.Tab(\"Operational Manual\"):\n            gr.Markdown(\"## Operational Manual\\nGenerate a digital operational manual and answer business questions.\")\n            manual_button = gr.Button(\"Start Operational Manual\")\n            manual_button.click(lambda: launch_notebook(\"notebooks/manual_operativo.ipynb\"))\n    \n    return app\n\nif __name__ == \"__main__\":\n    app = create_ui()\n    app.launch()\n```\n\nImplement a consistent UI theme and styling across all Gradio components.\nCreate a navigation system that allows users to move between notebooks.\nImplement state management to pass data between notebooks.\nCreate a help system that explains the purpose of each notebook.",
@@ -504,7 +514,7 @@
         "subtasks": []
       },
       {
-        "id": 14,
+        "id": "14",
         "title": "Implement notebook pipeline orchestration",
         "description": "Create a system to orchestrate the flow between notebooks and maintain state across the entire pipeline.",
         "details": "Create core/notebook_orchestration.py:\n\n```python\nimport json\nimport os\n\nclass NotebookOrchestrator:\n    def __init__(self, data_dir=\"./data\"):\n        self.data_dir = data_dir\n        self.state_file = os.path.join(data_dir, \"notebook_state.json\")\n        self.state = self._load_state()\n    \n    def _load_state(self):\n        if os.path.exists(self.state_file):\n            with open(self.state_file, \"r\") as f:\n                return json.load(f)\n        return {\n            \"current_notebook\": \"bienvenida.ipynb\",\n            \"completed_notebooks\": [],\n            \"restaurant_id\": None,\n            \"data\": {}\n        }\n    \n    def save_state(self):\n        os.makedirs(self.data_dir, exist_ok=True)\n        with open(self.state_file, \"w\") as f:\n            json.dump(self.state, f, indent=2)\n    \n    def update_state(self, key, value):\n        self.state[\"data\"][key] = value\n        self.save_state()\n    \n    def get_state(self, key, default=None):\n        return self.state[\"data\"].get(key, default)\n    \n    def complete_notebook(self, notebook_name):\n        if notebook_name not in self.state[\"completed_notebooks\"]:\n            self.state[\"completed_notebooks\"].append(notebook_name)\n        self.save_state()\n    \n    def set_current_notebook(self, notebook_name):\n        self.state[\"current_notebook\"] = notebook_name\n        self.save_state()\n    \n    def get_next_notebook(self):\n        notebook_sequence = [\n            \"bienvenida.ipynb\",\n            \"Clasificación.ipynb\",\n            \"Configuración_inicial.ipynb\",\n            \"alineamiento.ipynb\",\n            \"Estructura.ipynb\",\n            \"manual_operativo.ipynb\"\n        ]\n        current_index = notebook_sequence.index(self.state[\"current_notebook\"])\n        if current_index < len(notebook_sequence) - 1:\n            return notebook_sequence[current_index + 1]\n        return None\n```\n\nImplement notebook-specific state management functions.\nCreate utility functions for loading and saving data between notebooks.\nImplement a system for tracking progress through the pipeline.\nCreate a mechanism for resuming the pipeline from any point.",
@@ -522,7 +532,7 @@
         "subtasks": []
       },
       {
-        "id": 15,
+        "id": "15",
         "title": "Implement unit and integration tests",
         "description": "Create comprehensive unit and integration tests for all components of the system.",
         "details": "Create tests/ directory with the following structure:\n- tests/unit/ - Unit tests for individual components\n- tests/integration/ - Integration tests for component interactions\n- tests/system/ - End-to-end tests for the complete system\n\nImplement unit tests for all core modules:\n```python\n# tests/unit/test_data_model.py\nimport unittest\nfrom core.data_model import Recipe, Ingredient, RecipeUnit, InventoryItem\n\nclass TestDataModel(unittest.TestCase):\n    def test_recipe_creation(self):\n        recipe = Recipe(\"Pasta Carbonara\", \"Classic Italian pasta dish\", [\"Step 1\", \"Step 2\"], 1)\n        self.assertEqual(recipe.name, \"Pasta Carbonara\")\n        self.assertEqual(recipe.description, \"Classic Italian pasta dish\")\n        self.assertEqual(recipe.steps, [\"Step 1\", \"Step 2\"])\n        self.assertEqual(recipe.category_id, 1)\n        self.assertEqual(recipe.ingredients, [])\n    \n    def test_ingredient_creation(self):\n        ingredient = Ingredient(\"Eggs\", 2, 1)\n        self.assertEqual(ingredient.name, \"Eggs\")\n        self.assertEqual(ingredient.quantity, 2)\n        self.assertEqual(ingredient.unit_id, 1)\n        self.assertIsNone(ingredient.inventory_item_id)\n```\n\nImplement integration tests for agent interactions:\n```python\n# tests/integration/test_agent_workflow.py\nimport unittest\nfrom core.agents.welcome_agent import WelcomeAgent\nfrom core.agents.classification_agent import ClassificationAgent\nfrom core.llm_framework import OpenAiProvider\nfrom core.workflow_engine import Workflow, WorkflowStep\n\nclass TestAgentWorkflow(unittest.TestCase):\n    def test_welcome_to_classification_flow(self):\n        llm_provider = OpenAiProvider()\n        welcome_agent = WelcomeAgent(llm_provider)\n        classification_agent = ClassificationAgent(llm_provider)\n        \n        workflow = Workflow(\"Test Workflow\")\n        workflow.add_step(WorkflowStep(\"Welcome\", welcome_agent, {}, {\"restaurant_info\": \"restaurant_info\"}))\n        workflow.add_step(WorkflowStep(\"Classification\", classification_agent, {\"restaurant_info\": \"restaurant_info\"}, {}))\n        \n        initial_state = {\"restaurant_info\": {\"name\": \"Test Restaurant\", \"type\": \"Italian\"}}\n        results, final_state = workflow.run(initial_state)\n        \n        self.assertEqual(len(results), 2)\n        self.assertIn(\"restaurant_info\", final_state)\n```\n\nImplement system tests for the complete pipeline:\n```python\n# tests/system/test_complete_pipeline.py\nimport unittest\nimport os\nfrom core.notebook_orchestration import NotebookOrchestrator\n\nclass TestCompletePipeline(unittest.TestCase):\n    def setUp(self):\n        self.test_data_dir = \"./test_data\"\n        os.makedirs(self.test_data_dir, exist_ok=True)\n        self.orchestrator = NotebookOrchestrator(self.test_data_dir)\n    \n    def tearDown(self):\n        if os.path.exists(self.test_data_dir):\n            for file in os.listdir(self.test_data_dir):\n                os.remove(os.path.join(self.test_data_dir, file))\n            os.rmdir(self.test_data_dir)\n    \n    def test_complete_pipeline(self):\n        # Simulate complete pipeline run\n        # Test each notebook in sequence\n        pass\n```\n\nImplement a test runner script:\n```python\n# run_tests.py\nimport unittest\nimport sys\n\nif __name__ == \"__main__\":\n    test_suite = unittest.defaultTestLoader.discover(\"tests\")\n    result = unittest.TextTestRunner().run(test_suite)\n    sys.exit(not result.wasSuccessful())\n```",
@@ -548,7 +558,7 @@
         "subtasks": []
       },
       {
-        "id": 16,
+        "id": "16",
         "title": "Create documentation and user guide",
         "description": "Create comprehensive documentation for the system, including a user guide, developer documentation, and API reference.",
         "details": "Create docs/ directory with the following structure:\n- docs/user_guide/ - User guide for restaurant operators\n- docs/developer/ - Developer documentation\n- docs/api/ - API reference\n\nCreate user guide with the following sections:\n1. Introduction to Zenet\n2. Getting started\n3. Onboarding process\n4. Restaurant classification\n5. Initial configuration\n6. Data alignment\n7. Data structuring\n8. Operational manual\n9. Troubleshooting\n10. FAQ\n\nCreate developer documentation with the following sections:\n1. System architecture\n2. Data model\n3. LLM integration\n4. Agent framework\n5. Workflow engine\n6. Notebook orchestration\n7. Contributing guidelines\n8. Testing\n\nCreate API reference with documentation for all public classes and methods.\n\nImplement a documentation generator using Sphinx:\n```python\n# docs/conf.py\nimport os\nimport sys\nsys.path.insert(0, os.path.abspath('..'))\n\nproject = 'Zenet MVP 0.1'\ncopyright = '2026'\nauthor = 'Zenet Team'\n\nextensions = [\n    'sphinx.ext.autodoc',\n    'sphinx.ext.viewcode',\n    'sphinx.ext.napoleon',\n]\n\ntemplates_path = ['_templates']\nexclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']\nhtml_theme = 'sphinx_rtd_theme'\nhtml_static_path = ['_static']\n```\n\nCreate a README.md file with project overview, installation instructions, and quick start guide.",
@@ -577,14 +587,12 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-02-21T00:20:24.867Z",
+      "lastModified": "2026-03-02T08:23:46.528Z",
       "taskCount": 16,
-      "completedCount": 3,
+      "completedCount": 4,
       "tags": [
         "master"
-      ],
-      "created": "2026-02-21T01:31:48.414Z",
-      "description": "Tasks for master context"
+      ]
     }
   }
 }
