@@ -211,14 +211,16 @@ import json
 import time
 ```
 
-**2. Add `_is_retryable` import after existing `core.ai` imports:**
+**2. Add `_is_retryable` import at the end of the import block, after `core.storage`:**
 ```python
 from core.ai.utils import parse_structured_output
-from core.agents.utils import _is_retryable   # <-- add here
+from core.storage.persistence import DataLake
+from core.agents.utils import _is_retryable   # <-- last import, after all others
 ```
 
 Note: this import goes in `base_agent.py`, NOT the other way around. `utils.py` does
 not import from `base_agent` at module level, so no circular import occurs.
+Placing it last keeps `core.ai` and `core.storage` imports grouped together.
 
 **3. Modify `_generate_response()` no-tools path (add retry + empty response check):**
 
@@ -331,9 +333,15 @@ from core.agents.utils import AgentRegistry, _is_retryable, create_agent
 
 ---
 
-### Class: `TestAgentUtils` (5 tests)
+### Class: `TestAgentUtils` (7 tests)
 
-**Test 1: `test_create_agent_returns_correct_instance`**
+**Test 1: `test_is_retryable_returns_true_for_retryable_name`**
+- Assert `_is_retryable(RateLimitError())` is `True`
+
+**Test 2: `test_is_retryable_returns_false_for_non_retryable_name`**
+- Assert `_is_retryable(ValueError("bad input"))` is `False`
+
+**Test 3: `test_create_agent_returns_correct_instance`**
 - Call `create_agent(RestaurantInfoAgent, provider=mock_provider, name="info-agent")`
 - Assert result is `RestaurantInfoAgent` instance
 - Assert `result.name == "info-agent"` and `result.provider is mock_provider`
@@ -360,24 +368,27 @@ from core.agents.utils import AgentRegistry, _is_retryable, create_agent
 
 ### Class: `TestBaseAgentRetry` (4 tests)
 
-All retry tests must patch `time.sleep` to avoid real delays:
+All retry tests must patch `time.sleep` to avoid real delays.
+Use the module-level `RateLimitError` and `AuthenticationError` defined above:
 ```python
 @unittest.mock.patch("core.agents.base_agent.time.sleep")
 def test_...(self, mock_sleep):
     ...
 ```
 
+Define these two exception classes at module level in the test file (Python sets
+`__name__` automatically from the class name — no manual assignment needed):
+```python
+class RateLimitError(Exception):
+    pass
+
+class AuthenticationError(Exception):
+    pass
+```
+
 **Test 6: `test_retry_succeeds_on_transient_error`**
 
 Setup:
-- Define a custom `_RateLimitError` exception with `__name__ == "RateLimitError"`:
-  ```python
-  class _RateLimitError(Exception):
-      pass
-  _RateLimitError.__name__ = "RateLimitError"
-  ```
-  Or simpler: define a class named `RateLimitError` directly (its `__name__` is
-  already `"RateLimitError"`).
 - Subclass `_MockProvider` to raise `RateLimitError` on the first two calls,
   then return a valid JSON string on the third.
 
@@ -397,7 +408,7 @@ Assertions:
 **Test 8: `test_no_retry_on_non_retryable_error`**
 
 Setup:
-- Define `class AuthenticationError(Exception): pass` (name not in `_RETRYABLE_TYPE_NAMES`)
+- Use the module-level `AuthenticationError` defined above (name not in `_RETRYABLE_TYPE_NAMES`).
 - Mock provider raises `AuthenticationError` on first call.
 
 Assertions:
@@ -464,7 +475,7 @@ Assertions:
 
 ### `core/agents/base_agent.py`
 - [ ] `import time` added to stdlib imports block
-- [ ] `from core.agents.utils import _is_retryable` added after `core.ai` imports
+- [ ] `from core.agents.utils import _is_retryable` added after `core.storage.persistence` import (last import in the block)
 - [ ] `_generate_with_retry(*, max_retries=3, **kwargs)` method added
 - [ ] No-tools path in `_generate_response()` calls `_generate_with_retry()` instead of direct `provider.generate()`
 - [ ] Empty response (`not result`) after `_generate_with_retry()` raises `RuntimeError`
@@ -476,8 +487,9 @@ Assertions:
 
 ### `tests/unit/test_agents.py`
 - [ ] `AgentRegistry`, `create_agent` imported at top of file
-- [ ] `TestAgentUtils` class with 5 tests added
+- [ ] `RateLimitError` and `AuthenticationError` defined at module level in test file
+- [ ] `TestAgentUtils` class with 7 tests added (including 2 direct `_is_retryable()` tests)
 - [ ] `TestBaseAgentRetry` class with 4 tests added
 - [ ] All retry tests patch `core.agents.base_agent.time.sleep`
-- [ ] All 9 new tests pass
+- [ ] All 11 new tests pass
 - [ ] Full test suite (including prior subtask tests) passes
