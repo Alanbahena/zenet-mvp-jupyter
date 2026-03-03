@@ -370,8 +370,96 @@
           "5"
         ],
         "status": "in-progress",
-        "subtasks": [],
-        "updatedAt": "2026-03-03T09:04:36.556Z"
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "6.1 Install Gradio and LangGraph dependencies",
+            "description": "Install and verify Gradio and LangGraph using uv (uv add gradio, uv add langgraph) and confirm imports succeed.",
+            "details": "",
+            "status": "in-progress",
+            "dependencies": [],
+            "parentTaskId": 6,
+            "updatedAt": "2026-03-03T22:34:48.270Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "6.2 Session management module (gradio_app/session.py)",
+            "description": "Implement get_data_lake() and create_session(data_lake) to create a JSON DataLake under data/sessions/ and generate UUID4 session IDs.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              "6.1"
+            ],
+            "parentTaskId": 6,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "6.3 Chat panel component (gradio_app/components.py)",
+            "description": "Implement render_chat_panel() that renders a Chatbot + Textbox + Send button and wires them to a chat_fn(message, history, session_id).",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              "6.2"
+            ],
+            "parentTaskId": 6,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "6.4 Gradio shell and section stubs",
+            "description": "Create gradio_app/app.py with Blocks + Tabs and stub render() functions in gradio_app/sections/*.py for all six sections.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              "6.2",
+              "6.3"
+            ],
+            "parentTaskId": 6,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "6.5 LangGraph integration utilities",
+            "description": "Create core/agents/graph_utils.py with BaseGraphState, make_agent_node(), and build_sequential_graph(), plus examples/graph_example.py showing a 2-node graph.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              "6.1"
+            ],
+            "parentTaskId": 6,
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "6.6 Tests for session and graph utils",
+            "description": "Add tests/unit/test_gradio_session.py and tests/unit/test_graph_utils.py covering session_id creation, DataLake factory, and make_agent_node behavior.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              "6.2",
+              "6.5"
+            ],
+            "parentTaskId": 6,
+            "parentId": "undefined"
+          },
+          {
+            "id": 7,
+            "title": "6.7 Gradio and LangGraph architecture docs",
+            "description": "Create docs/Architecture/architecture-gradio-and-langgraph.md and update README architecture table and project structure for gradio_app/.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              "6.4",
+              "6.5",
+              "6.6"
+            ],
+            "parentTaskId": 6,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-03-03T22:34:48.270Z"
       },
       {
         "id": "7",
@@ -589,7 +677,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-03T09:04:36.556Z",
+      "lastModified": "2026-03-03T22:34:48.270Z",
       "taskCount": 16,
       "completedCount": 5,
       "tags": [

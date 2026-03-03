@@ -95,6 +95,29 @@ argument. Section-specific fields are typed explicitly — no untyped dicts.
 
 ### Decision 6: Section form layouts are owned entirely by Tasks 7–12
 
+---
+
+### Decision 7: `make_agent_node()` is always the bridge; graph structure is native LangGraph
+
+**Choice:** Two pieces from `graph_utils.py` are used in every LangGraph graph in this
+project — linear or not:
+- `make_agent_node(agent, input_keys)` — always used to wrap any `BaseAgent` as a node
+- `BaseGraphState` — always used as the base TypedDict for any graph's state schema
+
+`build_sequential_graph()` is a convenience helper for simple linear chains only
+(Tasks 7–9, 12 if they ever need a graph). It is **not** used by Tasks 10 and 11.
+
+For non-linear graphs (conditional routing, validation loops, human-in-the-loop),
+Tasks 10 and 11 build their graph structure directly with native LangGraph
+`StateGraph` API — `add_conditional_edges()`, cycles, interrupts — using
+`make_agent_node()` and `BaseGraphState` as the only project-level abstractions.
+
+**Rationale:** Non-linear graph structure is highly specific to each section.
+Abstracting conditional routing or loop patterns before knowing exactly what
+Alineamiento and Estructura need is premature. Native LangGraph API is not
+complicated for these cases and does not need a wrapper. The only reusable pieces
+are the agent bridge (`make_agent_node`) and the base state (`BaseGraphState`).
+
 **Choice:** Task 6 creates a minimal stub `render()` function for each section in
 `gradio_app/sections/<section>.py`. The stub renders a placeholder markdown only.
 Tasks 7–12 replace it with the real form — dropdowns, text inputs, file uploads,
@@ -179,19 +202,22 @@ def render_chat_panel(
     Renders: gr.Chatbot + gr.Textbox (user input) + Send gr.Button.
     Send button click calls chat_fn and updates the chatbot history.
 
-    chat_fn signature: (message: str, history: list, session_id: str, data_lake)
-                       -> tuple[list, str]
+    chat_fn signature: (message: str, history: list, session_id: str) -> tuple[list, str]
 
-    data_lake_ref is captured as a closure variable from build_app() — it is NOT
-    a gr.State component. Only session_id lives in gr.State.
+    data_lake_ref is NOT a Gradio component and cannot be a Gradio event handler input.
+    render_chat_panel creates an internal closure that captures data_lake_ref and passes
+    it to chat_fn. Gradio wires only [textbox, chatbot, session_id] as component inputs.
+    Tasks 7-12 define chat_fn as receiving (message, history, session_id) — data_lake is
+    already in scope inside chat_fn via the section's own closure over data_lake.
     """
 ```
 
 - `gr.Chatbot`, `gr.Textbox`, and Send `gr.Button` are rendered inside the active column
-- Send button click wires `chat_fn(message, history, session_id, data_lake_ref)`
-- `session_id` comes from `gr.State`; `data_lake_ref` is a plain Python object from closure
+- Send button click: Gradio wires `[textbox, chatbot, session_id]` as component inputs
+- `render_chat_panel` creates an internal closure: `lambda msg, hist, sid: chat_fn(msg, hist, sid)` with `data_lake_ref` already captured by the caller's `chat_fn`
+- `session_id` comes from `gr.State`; `data_lake_ref` reaches `chat_fn` via closure — never via Gradio
 - Each section's `render()` function calls `render_chat_panel()` for its right column
-- Tasks 7–12 provide their own `chat_fn` — this component only handles the UI wiring
+- Tasks 7–12 define `chat_fn` to accept `(message: str, history: list, session_id: str)` and capture `data_lake` in their own closure
 
 ---
 
@@ -305,6 +331,8 @@ def build_sequential_graph(
     Returns:
         Compiled LangGraph graph ready for .invoke().
     """
+    if not nodes:
+        raise ValueError("nodes list must not be empty")
     graph = StateGraph(state_schema)
     for name, fn in nodes:
         graph.add_node(name, fn)
@@ -324,7 +352,6 @@ from gradio_app.session import get_data_lake, create_session
 from core.agents.simple_agent import RestaurantInfoAgent
 from core.agents.graph_utils import BaseGraphState, make_agent_node, build_sequential_graph
 from core.ai.providers import ClaudeProvider
-from typing import TypedDict
 
 class ExampleState(BaseGraphState):
     user_message: str
@@ -353,6 +380,45 @@ print(result)
 - Purpose: validate the full wiring (StateGraph → node → `agent.run()` → state merge)
 - Requires real API keys — run manually, not in the unit test suite
 - Unit tests in `test_graph_utils.py` use mock nodes and do not depend on this file
+
+**Guidance for Tasks 10 and 11 (non-linear graphs):**
+
+Tasks 10 (Alineamiento) and 11 (Estructura) require non-linear graphs. They do NOT
+use `build_sequential_graph()`. Instead they build their graph with native LangGraph:
+
+```python
+# Pattern for Tasks 10 / 11 — non-linear graph
+from langgraph.graph import StateGraph, END
+from core.agents.graph_utils import BaseGraphState, make_agent_node
+
+class SectionState(BaseGraphState):   # extend base — add section-specific fields
+    uploaded_file: str | None
+    extracted_data: list | None
+    validation_passed: bool
+
+graph = StateGraph(SectionState)
+
+# Wrap agents with make_agent_node — same as linear case
+graph.add_node("parse",    make_agent_node(parser_agent,    ["uploaded_file"]))
+graph.add_node("extract",  make_agent_node(extractor_agent, ["uploaded_file"]))
+graph.add_node("validate", make_agent_node(validator_agent, ["extracted_data"]))
+
+graph.set_entry_point("parse")
+graph.add_edge("parse", "extract")
+
+# Conditional edge — native LangGraph, no project wrapper needed
+graph.add_conditional_edges(
+    "validate",
+    lambda state: "done" if state["validation_passed"] else "extract",
+    {"done": END, "extract": "extract"},
+)
+```
+
+Rules:
+- Always use `make_agent_node()` to wrap agents — never call `agent.run()` directly in a node
+- Always extend `BaseGraphState` — never create a TypedDict that omits `session_id` or `data_lake`
+- Tool-equipped agents work unchanged — `BaseAgent` handles the tool loop internally before returning to the graph
+- For human-in-the-loop (interrupt/resume): see Risk #3 — reconstruct `DataLake` from `session_id` inside nodes before enabling LangGraph checkpointing
 
 ---
 
@@ -392,8 +458,9 @@ Sections:
 3. Section ownership model — Task 6 provides stubs; Tasks 7–12 own each section's left column; `render(session_id, data_lake)` contract
 4. Chat panel component — `render_chat_panel()` usage, `chat_fn` signature contract
 5. LangGraph node pattern — `BaseGraphState`, `make_agent_node()`, `build_sequential_graph()`
-6. State schema convention — how complex sections extend `BaseGraphState`
-7. Known limitations — `DataLake` in state breaks LangGraph checkpointing; MVP scope
+6. State schema convention — how sections extend `BaseGraphState`; always include `session_id` and `data_lake`
+7. Non-linear graph patterns (for Tasks 10–11) — conditional routing, validation loops, human-in-the-loop; when to use native LangGraph API vs. `build_sequential_graph()`; tool-equipped agents inside nodes
+8. Known limitations — `DataLake` in state breaks LangGraph checkpointing; when it matters (Tasks 10–11 human-in-the-loop); resolution path
 
 **Update `README.md`:**
 - Add architecture table row: `| Gradio UI foundation and LangGraph pattern | architecture-gradio-and-langgraph.md |`
@@ -421,17 +488,29 @@ Sections:
    must create it or point to an existing `data/` subdirectory. Confirm the path is consistent
    with the DataLake conventions established in Task 3.
 
-3. **`DataLake` instance in LangGraph state.** Putting a `DataLake` object in the TypedDict
-   state works for in-process graphs (MVP) but breaks LangGraph's built-in checkpointing if
-   it is ever enabled (checkpointing tries to serialize the state). Document this as a known
-   limitation in the architecture doc. Resolution: pass `session_id` only and reconstruct
-   `DataLake` inside each node if checkpointing is needed later.
+3. **`DataLake` instance in LangGraph state breaks checkpointing (Tasks 10–11).**
+   Storing a `DataLake` object in `BaseGraphState` works for in-process graphs (all MVP
+   sections) but breaks LangGraph's built-in checkpointing because the object cannot be
+   serialized. This matters specifically for the **human-in-the-loop** pattern in
+   Tasks 10 (Alineamiento) and 11 (Estructura), where the graph must pause for user
+   review and resume after confirmation — that pause requires checkpointing.
+   Resolution (apply in Tasks 10–11 when implementing interrupt/resume): store only
+   `session_id: str` in state; reconstruct `DataLake` inside each node via
+   `get_data_lake()` rather than reading it from state. `BaseGraphState` can be updated
+   at that point to remove the `data_lake` field, or a separate `CheckpointableState`
+   base can be introduced without it.
 
 4. ~~**`gradio/` import path conflict.**~~ Resolved — local package is named `gradio_app/`.
    All imports use `from gradio_app.session import ...`, `from gradio_app.components import ...`,
    etc. No collision with the installed `gradio` package.
 
 ~~**[OPEN] Minimal example graph location**~~ Resolved — example lives in `examples/graph_example.py`. `graph_utils.py` has no concrete agent dependency.
+
+### [OPEN] — `set_entry_point()` deprecated in LangGraph >= 0.2
+**Source:** Validation of task 6
+**Problem:** Both `build_sequential_graph` (6.5) and the non-linear example use `graph.set_entry_point()`. In LangGraph >= 0.2 this is deprecated in favour of `graph.add_edge(START, first_node)` where `START` is imported from `langgraph.graph`. Exact behaviour depends on the version installed in 6.1.
+**Impact:** Deprecation warnings or runtime error if a LangGraph version is installed that removes `set_entry_point` entirely.
+**Suggested action:** In subtask 6.1, after `uv add langgraph`, check the installed version. If >= 0.2, update both code snippets in 6.5 to use `add_edge(START, ...)` and note the change in the architecture doc (section 5).
 
 ---
 
@@ -492,7 +571,8 @@ Sections:
 - [ ] Section 4: Chat panel component
 - [ ] Section 5: LangGraph node pattern
 - [ ] Section 6: State schema convention
-- [ ] Section 7: Known limitations
+- [ ] Section 7: Non-linear graph patterns (conditional routing, validation loops, human-in-the-loop, tool-equipped nodes)
+- [ ] Section 8: Known limitations
 
 ### `README.md`
 - [ ] Architecture table row added for Gradio + LangGraph pattern
