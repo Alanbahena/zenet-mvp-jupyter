@@ -356,6 +356,12 @@ Sections:
    Use `from gradio_app.session import ...` or add `gradio/` to `sys.path` explicitly
    and import as `from session import ...`. Decide and document before implementing.
 
+### [OPEN] — Minimal example graph location is unresolved
+**Source:** Validation of task 6
+**Problem:** Section 6.5 says the 2-node example goes "in `core/agents/graph_utils.py` or a dedicated `examples/graph_example.py`" — the choice is left open. If placed in `graph_utils.py` it imports `RestaurantInfoAgent`, adding a concrete agent dependency to a utility module. If placed in `examples/`, the checklist item "2-node example graph runs end-to-end" needs a test or run script to verify it.
+**Impact:** Implementer of 6.5 must make this call on the spot; placing example code in `graph_utils.py` couples the utility module to a concrete agent, making it harder to test in isolation.
+**Suggested action:** Decide location before implementing 6.5: prefer `examples/graph_example.py` to keep `graph_utils.py` dependency-free; add a corresponding test (extend `test_graph_utils.py`) to the checklist.
+
 ---
 
 ## Deliverable Checklist
