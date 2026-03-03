@@ -19,13 +19,13 @@ passing so the framework can be documented as stable and complete.
 
 | File | Action | Summary |
 |------|--------|---------|
-| `tests/unit/test_agents.py` | Create | 42 mocked tests + 2 live tests across 8 test classes |
+| `tests/unit/test_agents.py` | Verify / Complete | 55 tests already present; verify all pass and fix any failures |
 
 ---
 
 ## Current State (at time of plan creation)
 
-`tests/unit/test_agents.py` was partially created during subtask 5.5 implementation.
+`tests/unit/test_agents.py` was fully created during subtask 5.5 implementation.
 It currently contains **55 tests** (53 mocked + 2 live) across **12 test classes**,
 which exceeds the 44-test target from the parent plan.
 
@@ -37,6 +37,14 @@ coverage is equivalent or greater across all areas.
 1. Run the test suite and confirm all tests pass.
 2. Fix any failures found.
 3. Confirm the full suite (`tests/unit/`) still passes.
+
+---
+
+## Dependencies
+
+- Subtasks 5.1–5.5 all marked done in `tasks.json` (verified)
+- `uv sync` current — all packages installed
+- `ANTHROPIC_API_KEY` set in `.env` — required for `TestLiveRestaurantInfoAgent` (mocked tests run without it)
 
 ---
 
@@ -92,83 +100,83 @@ module-level fixtures.
 ## Test Classes and Coverage
 
 ### `TestBaseAgentInstantiation` (4 tests)
-- `test_concrete_agent_instantiates` — correct fields set on construction
-- `test_base_agent_direct_instantiation_raises` — `TypeError` for abstract class
-- `test_subclass_missing_abstract_methods_raises` — `TypeError` for incomplete subclass
-- `test_empty_name_raises_value_error` — `__post_init__` rejects empty/whitespace name
+- `test_concrete_agent_instantiates` — assert `agent.name == "test-agent"`, `agent.provider is provider`, `isinstance(agent.memory, ConversationMemory)`, `agent.tools is None`
+- `test_base_agent_direct_instantiation_raises` — assert `TypeError` when instantiating `BaseAgent` directly
+- `test_subclass_missing_abstract_methods_raises` — assert `TypeError` when instantiating a subclass that omits `_generate_prompt` and `_process_response`
+- `test_empty_name_raises_value_error` — assert `ValueError` for `name=""` and `name="   "`; message contains "cannot be empty"
 
 ### `TestInputValidation` (3 tests)
-- `test_missing_schema_key_raises_before_api_call` — `ValueError` before any API call; error contains agent name and key
-- `test_extra_keys_accepted_silently` — extra keys in `input_data` do not raise
-- `test_empty_schema_accepts_any_input` — `INPUT_SCHEMA = {}` means no validation
+- `test_missing_schema_key_raises_before_api_call` — assert `ValueError` containing key name and agent name; assert `provider.last_call_kwargs == {}`
+- `test_extra_keys_accepted_silently` — assert `run()` returns expected dict without raising when `input_data` has extra keys
+- `test_empty_schema_accepts_any_input` — assert `run(input_data={})` succeeds when `INPUT_SCHEMA = {}`
 
 ### `TestRunLifecycle` (4 tests)
-- `test_run_returns_expected_output` — `run()` returns `_process_response()` dict
-- `test_run_populates_memory_in_order` — user then assistant message after `run()`
-- `test_run_passes_context_to_generate_prompt` — context dict passed through unchanged
-- `test_run_none_context_normalized_to_empty_dict` — `context=None` becomes `{}`
+- `test_run_returns_expected_output` — assert `result == {"reply": "mock-response"}`
+- `test_run_populates_memory_in_order` — assert `message_count == 2`, `messages[0]["role"] == "user"`, `messages[1]["role"] == "assistant"`
+- `test_run_passes_context_to_generate_prompt` — assert `received_context == {"step": "onboarding"}`
+- `test_run_none_context_normalized_to_empty_dict` — assert `received_context[0] == {}`
 
 ### `TestResetMemory` (1 test)
-- `test_reset_memory_clears_history` — message count drops to 0 after `reset_memory()`
+- `test_reset_memory_clears_history` — assert `message_count == 2` before; `message_count == 0` and `get_messages() == []` after `reset_memory()`
 
-### `TestStatePersistence` (2 tests)
-- `test_save_and_load_state_round_trip` — memory preserved across fresh agent instance
-- `test_load_state_unknown_session_is_noop` — missing session_id leaves state unchanged
+### `TestStatepersistence` (2 tests)
+- `test_save_and_load_state_round_trip` — assert `messages_a == messages_b` after save on agent_a and load into fresh agent_b
+- `test_load_state_unknown_session_is_noop` — assert `message_count == 1` unchanged after `load_state()` with unknown session_id
 
 ### `TestStructuredOutput` (7 tests)
-- `test_response_model_passes_structured_output_true`
-- `test_no_response_model_passes_structured_output_false`
-- `test_parse_response_validates_against_response_model`
-- `test_parse_response_invalid_json_returns_empty_dict`
-- `test_parse_response_validation_failure_returns_raw_dict`
-- `test_parse_response_no_response_model_returns_raw_dict`
-- `test_prompt_none_passed_to_provider` — `prompt=None` prevents message duplication
+- `test_response_model_passes_structured_output_true` — assert `provider.last_call_kwargs["structured_output"] is True`
+- `test_no_response_model_passes_structured_output_false` — assert `provider.last_call_kwargs["structured_output"] is False`
+- `test_parse_response_validates_against_response_model` — assert `result == {"reply": "hello", "confidence": 0.9}`
+- `test_parse_response_invalid_json_returns_empty_dict` — assert `result == {}`
+- `test_parse_response_validation_failure_returns_raw_dict` — assert `result == {"other_key": "value"}` when Pydantic validation fails
+- `test_parse_response_no_response_model_returns_raw_dict` — assert `result == {"key": "value"}`
+- `test_prompt_none_passed_to_provider` — assert `provider.last_call_kwargs["prompt"] is None` and `len(messages) > 0`
 
 ### `TestToolCalling` (8 tests)
-- `test_register_tool_creates_registry_when_none`
-- `test_register_tool_reuses_existing_registry`
-- `test_execute_tool_returns_result_for_valid_tool`
-- `test_execute_tool_returns_error_string_for_unknown_tool`
-- `test_execute_tool_returns_error_string_when_tool_raises`
-- `test_multi_turn_tool_loop_returns_final_text`
-- `test_memory_contains_tool_call_and_result_after_tool_use`
-- `test_exceeding_max_tool_rounds_raises_runtime_error`
+- `test_register_tool_creates_registry_when_none` — assert `agent.tools is None` before; `isinstance(agent.tools, ToolRegistry)` after
+- `test_register_tool_reuses_existing_registry` — assert `agent.tools is registry` after second `register_tool()` call
+- `test_execute_tool_returns_result_for_valid_tool` — assert `result == "7"` for `add(3, 4)`
+- `test_execute_tool_returns_error_string_for_unknown_tool` — assert `"Error" in result` and `"unknown_tool" in result`; no exception raised
+- `test_execute_tool_returns_error_string_when_tool_raises` — assert `"Error" in result` and `"bad_tool" in result`; no exception raised
+- `test_multi_turn_tool_loop_returns_final_text` — assert `result == {"reply": "final answer"}` and `provider.call_count == 2`
+- `test_memory_contains_tool_call_and_result_after_tool_use` — assert `"tool" in roles`, tool call message present, `tool_result_msgs[0]["content"] == "42"`
+- `test_exceeding_max_tool_rounds_raises_runtime_error` — assert `RuntimeError`; message contains agent name and `str(_MAX_TOOL_ROUNDS)`
 
 ### `TestBaseAgentStateManagement` (7 tests)
-- `test_store_and_retrieve_round_trip`
-- `test_retrieve_missing_key_returns_none_by_default`
-- `test_retrieve_missing_key_returns_explicit_default`
-- `test_clear_store_empties_store_and_leaves_memory_unchanged`
-- `test_reset_memory_clears_memory_and_leaves_store_unchanged`
-- `test_save_and_load_state_round_trip_preserves_memory_and_store`
-- `test_load_state_unknown_session_is_noop`
+- `test_store_and_retrieve_round_trip` — assert `retrieve("restaurant_name") == "La Palapa"`
+- `test_retrieve_missing_key_returns_none_by_default` — assert `retrieve("nonexistent_key") is None`
+- `test_retrieve_missing_key_returns_explicit_default` — assert `retrieve("nonexistent_key", "fallback") == "fallback"`
+- `test_clear_store_empties_store_and_leaves_memory_unchanged` — assert `retrieve("restaurant_name") is None`; assert `len(memory.get_messages()) == 1`
+- `test_reset_memory_clears_memory_and_leaves_store_unchanged` — assert `retrieve("restaurant_name") == "La Palapa"`; assert `len(memory.get_messages()) == 0`
+- `test_save_and_load_state_round_trip_preserves_memory_and_store` — assert `fresh.retrieve("restaurant_name") == "La Palapa"`, `fresh.retrieve("restaurant_type") == "casual"`, `len(messages) == 2`
+- `test_load_state_unknown_session_is_noop` — assert `retrieve("key") == "value"` and `len(memory.get_messages()) == 0` unchanged
 
 ### `TestRestaurantInfoAgent` (6 tests)
-- `test_run_returns_correct_output_structure`
-- `test_run_populates_memory`
-- `test_missing_user_message_raises_before_api_call`
-- `test_malformed_response_handled_gracefully`
-- `test_multi_turn_accumulates_memory`
-- `test_data_store_populated_after_run`
+- `test_run_returns_correct_output_structure` — assert all three keys present; `result["restaurant_name"] == "La Palapa"`, `result["restaurant_type"] == "casual"`, `result["raw_response"] == valid_response`
+- `test_run_populates_memory` — assert `len(messages) == 2`, `messages[0]["content"] == "My restaurant is La Palapa."`, `messages[1]["content"] == valid_response`
+- `test_missing_user_message_raises_before_api_call` — assert `ValueError` containing `"user_message"`; assert `provider.last_call_kwargs == {}`
+- `test_malformed_response_handled_gracefully` — assert `result["restaurant_name"] is None`, `result["restaurant_type"] is None`, `result["raw_response"] == "Sorry, I could not understand that."`
+- `test_multi_turn_accumulates_memory` — assert `len(messages) == 4`, `messages[0]["content"] == "First message."`, `messages[2]["content"] == "Second message."`
+- `test_data_store_populated_after_run` — assert `retrieve("restaurant_name") == "La Palapa"` and `retrieve("restaurant_type") == "casual"`
 
 ### `TestAgentUtils` (7 tests)
-- `test_is_retryable_returns_true_for_retryable_name`
-- `test_is_retryable_returns_false_for_non_retryable_name`
-- `test_create_agent_returns_correct_instance`
-- `test_create_agent_with_non_baseagent_class_raises_type_error`
-- `test_agent_registry_register_and_get`
-- `test_agent_registry_get_unknown_name_returns_none`
-- `test_agent_registry_list_names_reflects_registered_agents`
+- `test_is_retryable_returns_true_for_retryable_name` — assert `_is_retryable(RateLimitError()) is True`
+- `test_is_retryable_returns_false_for_non_retryable_name` — assert `_is_retryable(ValueError()) is False`
+- `test_create_agent_returns_correct_instance` — assert `isinstance(agent, RestaurantInfoAgent)`, `agent.name == "info-agent"`, `agent.provider is provider`
+- `test_create_agent_with_non_baseagent_class_raises_type_error` — assert `TypeError` for `create_agent(str, provider=provider, name="x")`
+- `test_agent_registry_register_and_get` — assert `registry.get("agent-a") is agent_a` and `registry.get("agent-b") is agent_b`
+- `test_agent_registry_get_unknown_name_returns_none` — assert `registry.get("nonexistent") is None`
+- `test_agent_registry_list_names_reflects_registered_agents` — assert `"alpha" in names` and `"beta" in names`
 
 ### `TestBaseAgentRetry` (4 tests, all patch `core.agents.base_agent.time.sleep`)
-- `test_retry_succeeds_on_transient_error` — fails twice then succeeds; `sleep` called 2 times
-- `test_retry_raises_after_max_retries_exhausted` — always fails; `sleep` called 2 times
-- `test_no_retry_on_non_retryable_error` — raises immediately; `sleep` never called
-- `test_empty_response_raises_runtime_error` — `RuntimeError` contains agent name
+- `test_retry_succeeds_on_transient_error` — assert `result["restaurant_name"] == "El Cielo"`, `provider._call_count == 3`, `mock_sleep.call_count == 2`
+- `test_retry_raises_after_max_retries_exhausted` — assert `RateLimitError` raised, `provider._call_count == 3`, `mock_sleep.call_count == 2`
+- `test_no_retry_on_non_retryable_error` — assert `AuthenticationError` raised, `provider._call_count == 1`, `mock_sleep.assert_not_called()`
+- `test_empty_response_raises_runtime_error` — assert `RuntimeError`; message contains `"retry-test"` (agent name)
 
 ### `TestLiveRestaurantInfoAgent` (2 tests, `@skipUnless ANTHROPIC_API_KEY`)
-- `test_live_extracts_restaurant_info` — real Claude call returns non-None name and type
-- `test_live_multi_turn_extracts_across_turns` — two turns accumulate 4 messages; type extracted in turn 2
+- `test_live_extracts_restaurant_info` — assert `result["restaurant_name"] is not None` and `result["restaurant_type"] is not None`
+- `test_live_multi_turn_extracts_across_turns` — assert `len(messages) == 4`, `messages[0]["content"] == "My restaurant is called El Fogón."`, `result2["restaurant_type"] is not None`
 
 ---
 
@@ -180,7 +188,7 @@ module-level fixtures.
 | TestInputValidation | 3 | 0 |
 | TestRunLifecycle | 4 | 0 |
 | TestResetMemory | 1 | 0 |
-| TestStatePersistence | 2 | 0 |
+| TestStatepersistence | 2 | 0 |
 | TestStructuredOutput | 7 | 0 |
 | TestToolCalling | 8 | 0 |
 | TestBaseAgentStateManagement | 7 | 0 |
@@ -246,7 +254,7 @@ python -m pytest tests/unit/ -v
 - [ ] `TestInputValidation` — 3 tests
 - [ ] `TestRunLifecycle` — 4 tests
 - [ ] `TestResetMemory` — 1 test
-- [ ] `TestStatePersistence` — 2 tests
+- [ ] `TestStatepersistence` — 2 tests
 - [ ] `TestStructuredOutput` — 7 tests
 - [ ] `TestToolCalling` — 8 tests
 - [ ] `TestBaseAgentStateManagement` — 7 tests

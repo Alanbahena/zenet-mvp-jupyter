@@ -778,6 +778,16 @@ Task 5 is complete when:
 
 ---
 
+## Risks and Open Questions
+
+### [OPEN] — `_generate_with_retry()` type annotation imprecise for `max_retries=0`
+**Source:** Validation of subtask 5.6
+**Problem:** `_generate_with_retry()` in `core/agents/base_agent.py` is annotated `-> str` but implicitly returns `None` when called with `max_retries=0` (the `for` loop over `range(0)` never executes). The call site always uses the default of 3, so this is not a runtime risk today — but the annotation is technically incorrect.
+**Impact:** Type checkers (mypy/pyright) will not catch callers passing `max_retries=0`. If such a call were made, `None` would propagate silently to `_generate_response()` and raise a confusing `AttributeError` instead of a clear, traceable error.
+**Suggested action:** In subtask 5.7, add a note to the architecture doc under "Error handling — edge cases". Optionally add a one-line guard `if max_retries < 1: raise ValueError("max_retries must be >= 1")` to `base_agent.py` as a small defensive fix.
+
+---
+
 ## Note on External Frameworks (LangGraph, CrewAI, LangChain, Autogen)
 
 External framework integration is **not in scope for Task 5**.
