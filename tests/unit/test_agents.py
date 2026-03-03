@@ -1,5 +1,6 @@
-"""Unit tests for BaseAgent (subtask 5.1). No API calls -- all LLM calls are mocked."""
+"""Unit tests for BaseAgent and RestaurantInfoAgent. No API calls -- all LLM calls are mocked."""
 
+import os
 import tempfile
 import unittest
 from typing import Any
@@ -7,8 +8,9 @@ from typing import Any
 from pydantic import BaseModel
 
 from core.agents.base_agent import BaseAgent
+from core.agents.simple_agent import RestaurantInfoAgent
 from core.ai.memory import ConversationMemory
-from core.ai.providers import LlmProvider, ProviderResponse, ToolRegistry
+from core.ai.providers import ClaudeProvider, LlmProvider, ProviderResponse, ToolRegistry
 from core.storage.persistence import DataLake
 
 
@@ -586,6 +588,109 @@ class TestBaseAgentStateManagement(unittest.TestCase):
 
             self.assertEqual(self.agent.retrieve("key"), "value")
             self.assertEqual(len(self.agent.memory.get_messages()), 0)
+
+
+class TestRestaurantInfoAgent(unittest.TestCase):
+    """6 mocked tests for RestaurantInfoAgent end-to-end behaviour."""
+
+    def setUp(self) -> None:
+        self.valid_response = '{"restaurant_name": "La Palapa", "restaurant_type": "casual"}'
+        self.provider = _MockProvider(response=self.valid_response)
+        self.agent = RestaurantInfoAgent(name="test-restaurant-agent", provider=self.provider)
+
+    def test_run_returns_correct_output_structure(self) -> None:
+        """run() returns all three OUTPUT_SCHEMA keys with correct extracted values."""
+        result = self.agent.run(input_data={"user_message": "My restaurant is La Palapa, casual dining."})
+
+        self.assertIn("restaurant_name", result)
+        self.assertIn("restaurant_type", result)
+        self.assertIn("raw_response", result)
+        self.assertEqual(result["restaurant_name"], "La Palapa")
+        self.assertEqual(result["restaurant_type"], "casual")
+        self.assertEqual(result["raw_response"], self.valid_response)
+
+    def test_run_populates_memory(self) -> None:
+        """run() adds user message and assistant response to conversation memory."""
+        self.agent.run(input_data={"user_message": "My restaurant is La Palapa."})
+
+        messages = self.agent.memory.get_messages()
+        self.assertEqual(len(messages), 2)
+        self.assertEqual(messages[0]["role"], "user")
+        self.assertEqual(messages[0]["content"], "My restaurant is La Palapa.")
+        self.assertEqual(messages[1]["role"], "assistant")
+        self.assertEqual(messages[1]["content"], self.valid_response)
+
+    def test_missing_user_message_raises_before_api_call(self) -> None:
+        """run() with missing user_message raises ValueError; provider never called."""
+        with self.assertRaises(ValueError) as ctx:
+            self.agent.run(input_data={})
+
+        self.assertIn("user_message", str(ctx.exception))
+        self.assertEqual(self.provider.last_call_kwargs, {})
+
+    def test_malformed_response_handled_gracefully(self) -> None:
+        """Non-JSON LLM response does not crash; extracted values default to None."""
+        provider = _MockProvider(response="Sorry, I could not understand that.")
+        agent = RestaurantInfoAgent(name="test", provider=provider)
+
+        result = agent.run(input_data={"user_message": "hello"})
+
+        self.assertIn("restaurant_name", result)
+        self.assertIsNone(result["restaurant_name"])
+        self.assertIsNone(result["restaurant_type"])
+        self.assertEqual(result["raw_response"], "Sorry, I could not understand that.")
+
+    def test_multi_turn_accumulates_memory(self) -> None:
+        """Two consecutive run() calls accumulate four messages in memory."""
+        self.agent.run(input_data={"user_message": "First message."})
+        self.agent.run(input_data={"user_message": "Second message."})
+
+        messages = self.agent.memory.get_messages()
+        self.assertEqual(len(messages), 4)
+        self.assertEqual(messages[0]["content"], "First message.")
+        self.assertEqual(messages[2]["content"], "Second message.")
+
+    def test_data_store_populated_after_run(self) -> None:
+        """_process_response() calls store() so retrieve() returns extracted values."""
+        self.agent.run(input_data={"user_message": "My restaurant is La Palapa, casual dining."})
+
+        self.assertEqual(self.agent.retrieve("restaurant_name"), "La Palapa")
+        self.assertEqual(self.agent.retrieve("restaurant_type"), "casual")
+
+
+@unittest.skipUnless(os.getenv("ANTHROPIC_API_KEY"), "ANTHROPIC_API_KEY not set")
+class TestLiveRestaurantInfoAgent(unittest.TestCase):
+    """Live tests against the Claude API. Skipped if ANTHROPIC_API_KEY is not set."""
+
+    def setUp(self) -> None:
+        self.provider = ClaudeProvider(model_name="claude-haiku-4-5-20251001")
+        self.agent = RestaurantInfoAgent(name="live-test", provider=self.provider)
+
+    def test_live_extracts_restaurant_info(self) -> None:
+        """Real LLM call returns non-None restaurant name and type for a clear message."""
+        result = self.agent.run(
+            input_data={"user_message": "My restaurant is called Tacos El Gordo, it's a fast casual taco spot."}
+        )
+
+        self.assertIn("restaurant_name", result)
+        self.assertIn("restaurant_type", result)
+        self.assertIsNotNone(result["restaurant_name"])
+        self.assertIsNotNone(result["restaurant_type"])
+
+    def test_live_multi_turn_extracts_across_turns(self) -> None:
+        """Real LLM extracts restaurant_type from second turn; memory accumulates correctly."""
+        self.agent.run(
+            input_data={"user_message": "My restaurant is called El Fogón."}
+        )
+        result2 = self.agent.run(
+            input_data={"user_message": "It's a full-service Mexican restaurant."}
+        )
+
+        messages = self.agent.memory.get_messages()
+        self.assertEqual(len(messages), 4)
+        self.assertEqual(messages[0]["content"], "My restaurant is called El Fogón.")
+        self.assertEqual(messages[2]["content"], "It's a full-service Mexican restaurant.")
+        self.assertIsNotNone(result2["restaurant_type"])
 
 
 if __name__ == "__main__":
