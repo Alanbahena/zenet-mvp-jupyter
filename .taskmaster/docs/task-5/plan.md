@@ -786,6 +786,12 @@ Task 5 is complete when:
 **Impact:** Type checkers (mypy/pyright) will not catch callers passing `max_retries=0`. If such a call were made, `None` would propagate silently to `_generate_response()` and raise a confusing `AttributeError` instead of a clear, traceable error.
 **Suggested action:** In subtask 5.7, add a note to the architecture doc under "Error handling — edge cases". Optionally add a one-line guard `if max_retries < 1: raise ValueError("max_retries must be >= 1")` to `base_agent.py` as a small defensive fix.
 
+### [OPEN] — README test coverage table row arithmetic gap
+**Source:** Validation of subtask 5.7
+**Problem:** README test coverage table rows currently sum to 404 (88+54+18+42+42+70+29+8+7+33+13), but Total shows 407 — a pre-existing 3-test gap. After subtask 5.7 adds the agent framework row (55), rows sum to 459 while Total becomes 462 — the same 3-test gap persists unchanged.
+**Impact:** An implementer who verifies the addition will see rows sum to 459 ≠ 462. A future maintainer adding more rows may propagate the error further.
+**Suggested action:** When any later task updates the README, identify the 3 uncounted tests (likely in a file not listed in the table) and reconcile the row entries.
+
 ---
 
 ## Note on External Frameworks (LangGraph, CrewAI, LangChain, Autogen)

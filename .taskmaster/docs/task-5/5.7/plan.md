@@ -429,6 +429,12 @@ from core.agents import BaseAgent, RestaurantInfoAgent, create_agent, AgentRegis
    `cat`. If the team reviews docs outside those environments, diagrams
    will appear as raw code blocks. No action needed now — note it.
 
+### [OPEN] — "Live Tests" README row does not reflect agent live tests after 5.7
+**Source:** Validation of subtask 5.7
+**Problem:** The README coverage table has a cross-module "Live Tests | 13" row for LLM provider live tests. Subtask 5.6 added 2 agent live tests (`TestLiveRestaurantInfoAgent`). The plan adds "Agent framework | 55" (which includes the 2 live tests) but does not update "Live Tests | 13" to 15. After 5.7, total live tests in the suite are 15 but the README still shows 13.
+**Impact:** Live test count in the README is misleading. Anyone running only the live tests with `-k Live` will see 15 run, not 13.
+**Suggested action:** During implementation, decide: either update "Live Tests" row from 13 → 15 (and note in the agent framework row description that it includes 53 mocked + 2 live), or accept that "Live Tests" tracks only provider-level live tests and add a note clarifying the distinction.
+
 ---
 
 ## Deliverable Checklist
