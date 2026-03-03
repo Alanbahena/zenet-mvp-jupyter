@@ -322,25 +322,26 @@
             "title": "Utilities and error handling",
             "description": "Create core/agents/utils.py: create_agent() factory, AgentRegistry, _generate_with_retry() with exponential backoff. Retry on retryable errors.",
             "details": "",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               "5.4"
             ],
             "parentTaskId": 5,
             "parentId": "undefined",
-            "updatedAt": "2026-03-03T03:44:37.136Z"
+            "updatedAt": "2026-03-03T05:55:08.928Z"
           },
           {
             "id": 6,
             "title": "Tests (unit and live)",
             "description": "Full test coverage in tests/unit/test_agents.py: unit tests mocked, plus live tests (skip if no API key). All tests pass.",
             "details": "",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [
               "5.5"
             ],
             "parentTaskId": 5,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-03-03T05:55:10.123Z"
           },
           {
             "id": 7,
@@ -355,7 +356,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-03-03T03:44:37.136Z"
+        "updatedAt": "2026-03-03T05:55:10.123Z"
       },
       {
         "id": "6",
@@ -588,7 +589,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-03T03:44:37.136Z",
+      "lastModified": "2026-03-03T05:55:10.123Z",
       "taskCount": 16,
       "completedCount": 4,
       "tags": [
