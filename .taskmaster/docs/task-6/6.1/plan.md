@@ -120,21 +120,21 @@ None — this is a pure installation subtask. No unit tests.
 
 ## Risks and Open Questions
 
-1. **Gradio version compatibility (Risk #1 from parent plan).** Gradio < 4.0 may
-   lack `gr.State` or `gr.Blocks.load()`. Step 2 catches this. Fix: pin a minimum
-   version with `uv add "gradio>=4.0"` if needed.
+1. ~~**Gradio version compatibility.**~~ Resolved — gradio 6.8.0 installed; `gr.State` and `gr.Blocks` confirmed present.
 
-2. **`set_entry_point()` deprecation (OPEN #1 from parent plan).** LangGraph >= 0.2
-   deprecates `set_entry_point()` in favour of `add_edge(START, ...)`. Step 5 resolves
-   this at install time — update the plan snippets before writing any code in 6.5.
+2. ~~**`set_entry_point()` deprecation.**~~ Resolved — LangGraph 1.0.10 installed; both 6.5 snippets updated to `graph.add_edge(START, ...)` with `START` imported from `langgraph.graph`.
+
+3. **`gradio/` namespace collision (encountered during execution).** The local `gradio/` directory (no `__init__.py`) acted as a Python 3.3+ namespace package, shadowing the installed `gradio`. Fix: renamed `gradio/` → `gradio_app/` before verification. All subsequent subtasks must use `gradio_app/` as the directory name.
+
+4. **`uv run python` required for verification.** System `python` resolves to Anaconda (`/opt/anaconda3/bin/python`), not the project `.venv`. All verification and test commands in Tasks 6–16 must use `uv run python` or activate the venv explicitly.
 
 ---
 
 ## Deliverable Checklist
 
-- [ ] Install Gradio: `uv add gradio`
-- [ ] Verify: `python -c "import gradio as gr; _ = gr.State; _ = gr.Blocks; print(f'gradio {gr.__version__} — gr.State and gr.Blocks OK')"` prints without error
-- [ ] Install LangGraph: `uv add langgraph`
-- [ ] Verify: `python -c "from langgraph.graph import StateGraph; print('ok')"`
-- [ ] LangGraph version checked; 6.5 plan snippets updated if version >= 0.2
-- [ ] Both `gradio` and `langgraph` appear in `pyproject.toml` under `dependencies`
+- [x] Install Gradio: `uv add gradio` — gradio 6.8.0
+- [x] Verify: `uv run python -c "import gradio as gr; _ = gr.State; _ = gr.Blocks; print(f'gradio {gr.__version__} — gr.State and gr.Blocks OK')"` — OK
+- [x] Install LangGraph: `uv add langgraph` — langgraph 1.0.10
+- [x] Verify: `uv run python -c "from langgraph.graph import StateGraph, END, START; print('ok')"` — OK
+- [x] LangGraph version checked (1.0.10 >= 0.2); 6.5 plan snippets updated to `add_edge(START, ...)`
+- [x] Both `gradio>=6.8.0` and `langgraph>=1.0.10` appear in `pyproject.toml` under `dependencies`

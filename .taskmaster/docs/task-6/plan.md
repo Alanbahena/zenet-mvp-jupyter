@@ -282,7 +282,7 @@ def render(session_id: gr.State, data_lake) -> None:
 
 ```python
 from typing import TypedDict, Callable, Any
-from langgraph.graph import StateGraph, END
+from langgraph.graph import StateGraph, END, START
 from core.agents.base_agent import BaseAgent
 from core.storage.persistence import DataLake
 
@@ -336,7 +336,7 @@ def build_sequential_graph(
     graph = StateGraph(state_schema)
     for name, fn in nodes:
         graph.add_node(name, fn)
-    graph.set_entry_point(nodes[0][0])
+    graph.add_edge(START, nodes[0][0])
     for i in range(len(nodes) - 1):
         graph.add_edge(nodes[i][0], nodes[i + 1][0])
     graph.add_edge(nodes[-1][0], END)
@@ -388,7 +388,7 @@ use `build_sequential_graph()`. Instead they build their graph with native LangG
 
 ```python
 # Pattern for Tasks 10 / 11 — non-linear graph
-from langgraph.graph import StateGraph, END
+from langgraph.graph import StateGraph, END, START
 from core.agents.graph_utils import BaseGraphState, make_agent_node
 
 class SectionState(BaseGraphState):   # extend base — add section-specific fields
@@ -403,7 +403,7 @@ graph.add_node("parse",    make_agent_node(parser_agent,    ["uploaded_file"]))
 graph.add_node("extract",  make_agent_node(extractor_agent, ["uploaded_file"]))
 graph.add_node("validate", make_agent_node(validator_agent, ["extracted_data"]))
 
-graph.set_entry_point("parse")
+graph.add_edge(START, "parse")
 graph.add_edge("parse", "extract")
 
 # Conditional edge — native LangGraph, no project wrapper needed
@@ -506,11 +506,7 @@ Sections:
 
 ~~**[OPEN] Minimal example graph location**~~ Resolved — example lives in `examples/graph_example.py`. `graph_utils.py` has no concrete agent dependency.
 
-### [OPEN] — `set_entry_point()` deprecated in LangGraph >= 0.2
-**Source:** Validation of task 6
-**Problem:** Both `build_sequential_graph` (6.5) and the non-linear example use `graph.set_entry_point()`. In LangGraph >= 0.2 this is deprecated in favour of `graph.add_edge(START, first_node)` where `START` is imported from `langgraph.graph`. Exact behaviour depends on the version installed in 6.1.
-**Impact:** Deprecation warnings or runtime error if a LangGraph version is installed that removes `set_entry_point` entirely.
-**Suggested action:** In subtask 6.1, after `uv add langgraph`, check the installed version. If >= 0.2, update both code snippets in 6.5 to use `add_edge(START, ...)` and note the change in the architecture doc (section 5).
+~~**[OPEN] — `set_entry_point()` deprecated in LangGraph >= 0.2**~~ Resolved in subtask 6.1 — LangGraph 1.0.10 installed. Both snippets in 6.5 updated to `graph.add_edge(START, ...)` with `START` imported from `langgraph.graph`.
 
 ---
 
