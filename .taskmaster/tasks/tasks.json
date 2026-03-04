@@ -400,7 +400,7 @@
             "title": "6.3 Chat panel component (gradio_app/components.py)",
             "description": "Implement render_chat_panel() that renders a Chatbot + Textbox + Send button and wires them to a chat_fn(message, history, session_id).",
             "details": "",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               "6.2"
             ],

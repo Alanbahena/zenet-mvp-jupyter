@@ -187,10 +187,10 @@ all 6 tabs must render — this confirms `render_chat_panel` wires correctly in 
 
 ## Deliverable Checklist
 
-- [ ] `gradio_app/components.py` created
-- [ ] `render_chat_panel(chat_fn, session_id, data_lake_ref)` renders `gr.Chatbot` + `gr.Textbox` + Send button
-- [ ] Send button click calls `chat_fn(message, history, session_id)` and updates chatbot
-- [ ] `outputs=[chatbot, textbox]` — chatbot updated, textbox cleared on submit
-- [ ] Docstring documents `data_lake_ref` is a closure variable, not a `gr.State`
-- [ ] Docstring documents Gradio 6.x messages format for `chat_fn` return value
-- [ ] Docstring references bottom row pattern (Decision 6 in parent plan)
+- [x] `gradio_app/components.py` created
+- [x] `render_chat_panel(chat_fn, session_id, data_lake_ref)` renders `gr.Chatbot` + `gr.Textbox` + Send button
+- [x] Send button click calls `chat_fn(message, history, session_id)` and updates chatbot
+- [x] `outputs=[chatbot, textbox]` — chatbot updated, textbox cleared on submit
+- [x] Docstring documents `data_lake_ref` is a closure variable, not a `gr.State`
+- [x] Docstring documents Gradio 6.x messages format for `chat_fn` return value
+- [x] Docstring references bottom row pattern (Decision 6 in parent plan)
