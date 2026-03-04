@@ -202,11 +202,11 @@ during 6.2 validation).
 
 ## Deliverable Checklist
 
-- [ ] `gradio_app/__init__.py` exists (empty)
-- [ ] `get_data_lake()` returns a `DataLake` instance pointed at `data/sessions/`
-- [ ] `create_session(data_lake)` returns a unique UUID4 string
-- [ ] `test_create_session_returns_string` passes
-- [ ] `test_create_session_returns_valid_uuid` passes
-- [ ] `test_create_session_is_unique` passes
-- [ ] `test_get_data_lake_returns_data_lake_instance` passes
-- [ ] Full suite passes: `uv run python -m pytest tests/unit/ -v`
+- [x] `gradio_app/__init__.py` exists (empty)
+- [x] `get_data_lake()` returns a `DataLake` instance pointed at `data/sessions/`
+- [x] `create_session(data_lake)` returns a unique UUID4 string
+- [x] `test_create_session_returns_string` passes
+- [x] `test_create_session_returns_valid_uuid` passes
+- [x] `test_create_session_is_unique` passes
+- [x] `test_get_data_lake_returns_data_lake_instance` passes
+- [x] Full suite passes: 449 passed, 17 deselected (live tests)
