@@ -129,6 +129,13 @@ has a structured data editor). A shared form abstraction would either be too rig
 cover all cases or too generic to be useful. Letting each section own its layout
 eliminates coupling between Task 6 and the section tasks.
 
+**Layout pattern for section tasks:** The base layout is two columns — left form,
+right chat panel (`render_chat_panel`). Sections that need to display data or tables
+(e.g. Alineamiento extraction results, Estructura inventory grid) may add a **third
+bottom row** below the two columns using a `gr.Row` after the columns block. Task 6
+does not implement this — each section task decides whether it needs a bottom row and
+owns its full layout including that row.
+
 ---
 
 ## Files to Create
