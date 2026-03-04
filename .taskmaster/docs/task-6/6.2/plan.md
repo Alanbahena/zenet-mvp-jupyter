@@ -180,7 +180,8 @@ if __name__ == "__main__":
 Live tests: None.
 
 Note: `test_get_data_lake_returns_data_lake_instance` will create `data/sessions/` on disk
-during the test run. This is acceptable — the directory is gitignored via `data/`.
+during the test run. This is acceptable — `data/sessions/` is gitignored (added to `.gitignore`
+during 6.2 validation).
 
 ---
 
