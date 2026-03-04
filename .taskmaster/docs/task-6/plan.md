@@ -500,7 +500,16 @@ Sections:
    at that point to remove the `data_lake` field, or a separate `CheckpointableState`
    base can be introduced without it.
 
-4. ~~**`gradio/` import path conflict.**~~ Resolved — local package is named `gradio_app/`.
+4. **Session resume — `session_id` is not persisted to disk (deferred).** `session_id` lives
+   only in `gr.State` for the lifetime of the app. When the app restarts, a new `session_id`
+   is generated and the operator cannot resume a previous session. The data files on disk
+   survive, but nothing points to them from a new session.
+   Resolution (when needed, post-MVP): in `get_data_lake()` or a new `load_or_create_session()`
+   function in `gradio_app/session.py`, write the current `session_id` to a known file at
+   session creation (e.g. `data/sessions/.last_session`) and reload it on the next launch
+   instead of generating a new UUID4. No changes to `DataLake` or any section are required.
+
+5. ~~**`gradio/` import path conflict.**~~ Resolved — local package is named `gradio_app/`.
    All imports use `from gradio_app.session import ...`, `from gradio_app.components import ...`,
    etc. No collision with the installed `gradio` package.
 
