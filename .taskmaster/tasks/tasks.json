@@ -413,25 +413,27 @@
             "title": "6.4 Gradio shell and section stubs",
             "description": "Create gradio_app/app.py with Blocks + Tabs and stub render() functions in gradio_app/sections/*.py for all six sections.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "6.2",
               "6.3"
             ],
             "parentTaskId": 6,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-03-04T07:10:13.629Z"
           },
           {
             "id": 5,
             "title": "6.5 LangGraph integration utilities",
             "description": "Create core/agents/graph_utils.py with BaseGraphState, make_agent_node(), and build_sequential_graph(), plus examples/graph_example.py showing a 2-node graph.",
             "details": "",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [
               "6.1"
             ],
             "parentTaskId": 6,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-03-04T07:44:06.708Z"
           },
           {
             "id": 6,
@@ -461,7 +463,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-03-04T06:40:03.817Z"
+        "updatedAt": "2026-03-04T07:44:06.708Z"
       },
       {
         "id": "7",
@@ -679,7 +681,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-04T06:40:03.817Z",
+      "lastModified": "2026-03-04T07:44:06.708Z",
       "taskCount": 16,
       "completedCount": 5,
       "tags": [
