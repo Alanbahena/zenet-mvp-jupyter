@@ -303,19 +303,19 @@ Listed here for forward reference:
 ## Deliverable Checklist
 
 ### `core/agents/graph_utils.py`
-- [ ] `BaseGraphState` is a `TypedDict` with `session_id: str` and `data_lake: DataLake`
-- [ ] `make_agent_node(agent, input_keys)` returns a callable node function
-- [ ] Node function injects `session_id` from state automatically
-- [ ] Node function silently ignores missing `input_keys`
-- [ ] Node function merges agent result into state with `{**state, **result}`
-- [ ] Node function calls `agent.run(input_data=input_data)` using keyword argument
-- [ ] `build_sequential_graph(nodes, state_schema)` raises `ValueError` on empty nodes
-- [ ] `build_sequential_graph` uses `add_edge(START, nodes[0][0])` (not `set_entry_point`)
-- [ ] Import check passes: `from core.agents.graph_utils import BaseGraphState, make_agent_node, build_sequential_graph`
+- [x] `BaseGraphState` is a `TypedDict` with `session_id: str` and `data_lake: DataLake`
+- [x] `make_agent_node(agent, input_keys)` returns a callable node function
+- [x] Node function injects `session_id` from state automatically
+- [x] Node function silently ignores missing `input_keys`
+- [x] Node function merges agent result into state with `{**state, **result}`
+- [x] Node function calls `agent.run(input_data=input_data)` using keyword argument
+- [x] `build_sequential_graph(nodes, state_schema)` raises `ValueError` on empty nodes
+- [x] `build_sequential_graph` uses `add_edge(START, nodes[0][0])` (not `set_entry_point`)
+- [x] Import check passes: `from core.agents.graph_utils import BaseGraphState, make_agent_node, build_sequential_graph`
 
 ### `examples/graph_example.py`
-- [ ] Uses `create_agent()` factory, not direct `RestaurantInfoAgent(...)` instantiation
-- [ ] `ExampleState` extends `BaseGraphState` with `user_message`, `restaurant_name`, `restaurant_type`
-- [ ] Single shared `ClaudeProvider()` instance for both agents
-- [ ] 2-node graph constructed with `build_sequential_graph`
-- [ ] `graph.invoke()` call includes `session_id`, `data_lake`, `user_message` in initial state
+- [x] Uses `create_agent()` factory, not direct `RestaurantInfoAgent(...)` instantiation
+- [x] `ExampleState` extends `BaseGraphState` with `user_message`, `restaurant_name`, `restaurant_type`
+- [x] Single shared `ClaudeProvider()` instance for both agents
+- [x] 2-node graph constructed with `build_sequential_graph`
+- [x] `graph.invoke()` call includes `session_id`, `data_lake`, `user_message` in initial state

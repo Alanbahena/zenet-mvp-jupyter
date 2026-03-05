@@ -427,7 +427,7 @@
             "title": "6.5 LangGraph integration utilities",
             "description": "Create core/agents/graph_utils.py with BaseGraphState, make_agent_node(), and build_sequential_graph(), plus examples/graph_example.py showing a 2-node graph.",
             "details": "",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               "6.1"
             ],
