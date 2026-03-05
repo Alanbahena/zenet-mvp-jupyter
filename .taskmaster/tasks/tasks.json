@@ -363,13 +363,13 @@
         "id": "6",
         "title": "Gradio UI foundation and LangGraph integration pattern",
         "description": "Build the Gradio multi-section shell with navigation, reusable form+chat layout, session management (session_id threaded through DataLake), and stub screens for all 6 sections. Establish the BaseAgent to LangGraph node integration pattern to be reused by complex sections (Alineamiento, Estructura).",
+        "status": "done",
         "details": "Create core/workflow_engine.py with classes for workflow management:\n\n```python\nclass WorkflowState:\n    def __init__(self, initial_state=None):\n        self.state = initial_state or {}\n    \n    def update(self, key, value):\n        self.state[key] = value\n    \n    def get(self, key, default=None):\n        return self.state.get(key, default)\n\nclass WorkflowStep:\n    def __init__(self, name, agent, input_mapping=None, output_mapping=None):\n        self.name = name\n        self.agent = agent\n        self.input_mapping = input_mapping or {}\n        self.output_mapping = output_mapping or {}\n    \n    def execute(self, workflow_state):\n        # Map inputs from workflow state\n        inputs = {}\n        for target_key, source_key in self.input_mapping.items():\n            inputs[target_key] = workflow_state.get(source_key)\n        \n        # Run the agent\n        result = self.agent.run(inputs, workflow_state.state)\n        \n        # Map outputs to workflow state\n        for target_key, source_key in self.output_mapping.items():\n            if source_key in result:\n                workflow_state.update(target_key, result[source_key])\n        \n        return result\n\nclass Workflow:\n    def __init__(self, name, steps=None):\n        self.name = name\n        self.steps = steps or []\n        self.state = WorkflowState()\n    \n    def add_step(self, step):\n        self.steps.append(step)\n    \n    def run(self, initial_state=None):\n        if initial_state:\n            self.state = WorkflowState(initial_state)\n        \n        results = []\n        for step in self.steps:\n            result = step.execute(self.state)\n            results.append(result)\n        \n        return results, self.state.state\n```\n\nImplement state management for passing data between workflow steps.\nCreate a mechanism for conditional branching in workflows.\nImplement error handling and recovery for workflow execution.\nCreate utilities for workflow visualization and monitoring.",
         "testStrategy": "Launch the Gradio app and verify all 6 tabs render without errors. Verify session_id is created on start and accessible in all tabs. Test DataLake read/write through the session. Verify the LangGraph example graph runs end-to-end with BaseAgent nodes.",
         "priority": "high",
         "dependencies": [
           "5"
         ],
-        "status": "in-progress",
         "subtasks": [
           {
             "id": 1,
@@ -453,7 +453,7 @@
             "title": "6.7 Gradio and LangGraph architecture docs",
             "description": "Create docs/Architecture/architecture-gradio-and-langgraph.md and update README architecture table and project structure for gradio_app/.",
             "details": "",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               "6.4",
               "6.5",
