@@ -161,10 +161,10 @@ Tasks and subtasks are tracked in `.taskmaster/tasks/tasks.json`.
 | 3 | Data persistence layer | done |
 | 4 | LLM integration framework | done |
 | 5 | Agent framework | done |
-| 6 | Gradio UI foundation and LangGraph integration | **in-progress** |
+| 6 | Gradio UI foundation and LangGraph integration | **done** |
 | 7–16 | Section agents, workflow engine, notebooks, tests, docs | pending |
 
-**Task 6** (Gradio UI + LangGraph) is the active task. Subtasks 6.1–6.5 are done. Remaining: 6.6 (tests), 6.7 (architecture doc).
+**Task 7** (Bienvenida section agent) is the next task.
 
 ### TaskMaster docs
 
@@ -216,7 +216,7 @@ Detailed docs in `docs/Architecture/`:
 | Format, validation, resolution helpers | `architecture-data-model-utils.md` |
 | Readiness report schema and KPIs | `architecture-readiness-kpis.md` |
 | Storage layer (JSON/SQLite/DataLake) | `architecture-persistence.md` |
-| Gradio UI and LangGraph integration | `architecture-gradio-and-langgraph.md` (subtask 6.7) |
+| Gradio UI and LangGraph integration | `architecture-gradio-and-langgraph.md` |
 
 Project-wide references:
 - `.taskmaster/docs/prd.txt` — Product Requirements Document

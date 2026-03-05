@@ -472,6 +472,12 @@ Sections:
 **Update `README.md`:**
 - Add architecture table row: `| Gradio UI foundation and LangGraph pattern | architecture-gradio-and-langgraph.md |`
 - Update project structure to show `gradio_app/` with `app.py`, `session.py`, `components.py`, `sections/`
+- Fix "Basic usage" Gradio launch commands: `python gradio/app.py` → `python -m gradio_app.app`
+
+**Update `CLAUDE.md`:**
+- Task status table line 164: Task 6 `**in-progress**` → `**done**`
+- Active task note line 167: update to say Task 7 is the active task
+- Architecture table line 219: remove `(subtask 6.7)` annotation from `architecture-gradio-and-langgraph.md` row
 
 ---
 
@@ -523,6 +529,12 @@ Sections:
 ~~**[OPEN] Minimal example graph location**~~ Resolved — example lives in `examples/graph_example.py`. `graph_utils.py` has no concrete agent dependency.
 
 ~~**[OPEN] — `set_entry_point()` deprecated in LangGraph >= 0.2**~~ Resolved in subtask 6.1 — LangGraph 1.0.10 installed. Both snippets in 6.5 updated to `graph.add_edge(START, ...)` with `START` imported from `langgraph.graph`.
+
+### [OPEN] — README "Basic usage" section shows stale Gradio launch commands
+**Source:** Validation of subtask 6.7
+**Problem:** README.md lines 135–138 show `python gradio/app.py` and `gradio run gradio/app.py`. The actual package is `gradio_app/`, not `gradio/`. These commands fail.
+**Impact:** Anyone following the README to run the Gradio UI gets a module-not-found error.
+**Suggested action:** Fix in the same README edit as the 6.7 architecture table + project structure update. Update both commands to `python -m gradio_app.app`.
 
 ---
 
@@ -589,3 +601,9 @@ Sections:
 ### `README.md`
 - [ ] Architecture table row added for Gradio + LangGraph pattern
 - [ ] `gradio_app/` block updated in project structure (shows `app.py`, `session.py`, `components.py`, `sections/`)
+- [ ] "Basic usage" Gradio launch commands corrected to `python -m gradio_app.app`
+
+### `CLAUDE.md`
+- [ ] Task 6 status updated to `done` in task status table
+- [ ] Active task note updated to point to Task 7
+- [ ] `(subtask 6.7)` annotation removed from architecture table row

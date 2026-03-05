@@ -440,7 +440,7 @@
             "title": "6.6 Tests for session and graph utils",
             "description": "Add tests/unit/test_gradio_session.py and tests/unit/test_graph_utils.py covering session_id creation, DataLake factory, and make_agent_node behavior.",
             "details": "",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               "6.2",
               "6.5"
@@ -453,7 +453,7 @@
             "title": "6.7 Gradio and LangGraph architecture docs",
             "description": "Create docs/Architecture/architecture-gradio-and-langgraph.md and update README architecture table and project structure for gradio_app/.",
             "details": "",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [
               "6.4",
               "6.5",

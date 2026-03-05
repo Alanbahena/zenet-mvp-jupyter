@@ -131,11 +131,10 @@ Build the **cognitive-operational core** of Zenet:
   ```
   Open notebooks from the `notebooks/` directory.
 
-- **Gradio UI** (when implemented):
+- **Gradio UI:**
   ```bash
-  python gradio/app.py
+  python -m gradio_app.app
   ```
-  Or from the project root: `gradio run gradio/app.py`.
 
 ### Development workflow
 
@@ -178,6 +177,7 @@ See `docs/Architecture/` for detailed documentation:
 | Readiness report (schema, KPIs, recommendations) | [architecture-readiness-kpis.md](docs/Architecture/architecture-readiness-kpis.md) |
 | **Persistence (storage layer, JSON/SQLite, DataLake API)** | **[architecture-persistence.md](docs/Architecture/architecture-persistence.md)** |
 | Agent framework (BaseAgent, tool calling, memory, state, retry) | [architecture-agent-framework.md](docs/Architecture/architecture-agent-framework.md) |
+| Gradio UI foundation and LangGraph pattern | [architecture-gradio-and-langgraph.md](docs/Architecture/architecture-gradio-and-langgraph.md) |
 
 ---
 
@@ -206,32 +206,56 @@ MVP Jupyter/
 │
 ├── core/
 │   ├── __init__.py
-│   ├── data_model.py        # Entities, registries, templates
-│   ├── data_model_utils.py  # Format, validation, resolution helpers
-│   ├── normalization.py     # Equivalence, conversion, deduction
-│   ├── taxonomy.py          # Ingredient / inventory / recipe taxonomies
-│   ├── readiness_kpis.py    # Readiness report and KPI computation
-│   ├── persistence.py       # JsonStorage, SqliteStorage, DataLake (save/load)
-│   ├── schema.py            # SQLite schema (tables, FKs)
-│   ├── serialization.py     # Entity ↔ dict (to_dict / from_dict)
+│   ├── domain/
+│   │   ├── data_model.py        # Entities and registries (Recipe, Restaurant, InventoryItem, etc.)
+│   │   ├── data_model_utils.py  # Format, validation, and resolution helpers
+│   │   ├── serialization.py     # Entity ↔ dict (to_dict / from_dict pairs)
+│   │   └── taxonomy.py          # Ingredient / inventory / recipe hierarchies
+│   ├── operations/
+│   │   ├── normalization.py     # Unit equivalence, conversion, deduction logic
+│   │   └── readiness_kpis.py    # Readiness report and KPI computation
+│   ├── storage/
+│   │   ├── persistence.py       # JsonStorage, SqliteStorage, DataLake (save/load API)
+│   │   └── schema.py            # SQLite schema (CREATE TABLE statements)
+│   ├── ai/
+│   │   ├── providers.py         # LlmProvider, OpenAiProvider, ClaudeProvider, ToolRegistry
+│   │   ├── memory.py            # ConversationMemory
+│   │   ├── prompts.py           # Prompt engineering utilities
+│   │   └── utils.py             # parse_structured_output and helpers
 │   └── agents/
-│       ├── __init__.py
-│       ├── base_agent.py        # BaseAgent abstract class
-│       ├── simple_agent.py      # RestaurantInfoAgent (framework validation)
-│       └── utils.py             # create_agent(), AgentRegistry, retry helpers
+│       ├── base_agent.py        # BaseAgent abstract class (run, validate, tool loop, memory)
+│       ├── simple_agent.py      # RestaurantInfoAgent — minimal concrete agent
+│       ├── utils.py             # create_agent() factory, AgentRegistry
+│       └── graph_utils.py       # BaseGraphState, make_agent_node(), build_sequential_graph()
+│
+├── gradio_app/
+│   ├── app.py                   # build_app() — gr.Blocks with 6 tabs
+│   ├── session.py               # get_data_lake(), create_session()
+│   ├── components.py            # render_chat_panel()
+│   └── sections/                # One stub per pipeline section (replaced by Tasks 7–12)
+│       ├── bienvenida.py
+│       ├── clasificacion.py
+│       ├── configuracion.py
+│       ├── alineamiento.py
+│       ├── estructura.py
+│       └── manual_operativo.py
+│
+├── examples/
+│   ├── quickstart.py
+│   ├── tortilla_example.py
+│   └── graph_example.py         # Minimal 2-node LangGraph example
 │
 ├── docs/
-│   └── Architecture/        # architecture-data-model, normalization, taxonomy, persistence, etc.
+│   └── Architecture/            # Detailed architecture docs (see table above)
 │
 ├── .taskmaster/
-│   └── docs/                # Task plans: README (conventions), project-level docs, task-2/2.x/, task-3/3.x/
+│   └── docs/                    # Task plans: README (conventions), project-level docs, task-N/subtask/
 │
 ├── tests/
-│   └── unit/                # test_data_model, test_normalization, test_taxonomy, test_persistence, test_serialization, etc.
+│   └── unit/                    # Unit tests for every core module and gradio_app
 │
-├── notebooks/               # Jupyter notebooks (context, ingestion, normalization, etc.)
-├── gradio/                  # Gradio UI (e.g. app.py)
-├── data/                    # raw, processed, normalized, outputs
+├── notebooks/                   # Jupyter notebooks (pipeline stages)
+├── data/                        # raw, processed, normalized, outputs, sessions/
 ├── main.py
 └── README.md
 ```
