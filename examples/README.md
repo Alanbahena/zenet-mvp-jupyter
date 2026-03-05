@@ -44,3 +44,24 @@ python examples/tortilla_example.py
 ```
 
 **Expected output:** Recipe ingredients (3 pza Tortilla, 100 g Salsa), deduction lines (0.15 kg Tortilla, 100 g Salsa), and a readiness report (status, grade, sample KPIs).
+
+---
+
+## graph_example.py
+
+Shows the **LangGraph integration pattern** — wrapping `BaseAgent` instances as LangGraph nodes and wiring them into a sequential graph.
+
+- **Agents** — Two `RestaurantInfoAgent` instances (`extractor`, `confirmer`) created via `create_agent()`.
+- **Graph** — A 2-node sequential graph built with `build_sequential_graph()`.
+- **State** — `ExampleState` extends `BaseGraphState` with section-specific fields (`user_message`, `restaurant_name`, `restaurant_type`).
+- **Full pipeline** — `graph.invoke()` runs both nodes; each node's output is merged back into state.
+
+**Requires:** `ANTHROPIC_API_KEY` in `.env` (makes real API calls).
+
+**Run from project root:**
+
+```bash
+PYTHONPATH=. uv run python examples/graph_example.py
+```
+
+**Expected output:** Final graph state dict with `session_id`, `data_lake`, `user_message`, `restaurant_name`, and `restaurant_type` extracted by Claude.
