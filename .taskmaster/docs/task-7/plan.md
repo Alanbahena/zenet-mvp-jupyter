@@ -322,6 +322,18 @@ Create `.taskmaster/docs/task-7/plan.md` (this file). No subtask-level plan file
 
 ## Risks and Open Questions
 
+### [OPEN] — WelcomeAgent import path in bienvenida.py not specified
+**Source:** Validation of Task 7
+**Problem:** Subtask 7.3 uses `WelcomeAgent` in `bienvenida.py` but the plan does not specify whether to import from `core.agents.welcome_agent` (direct) or `core` (re-export added in 7.5). If 7.3 runs before 7.5, `from core import WelcomeAgent` will raise `ImportError`.
+**Impact:** Runtime `ImportError` if implementer uses the re-export path before 7.5 is complete.
+**Suggested action:** `bienvenida.py` should import `from core.agents.welcome_agent import WelcomeAgent` directly (independent of 7.5 execution order).
+
+### [OPEN] — gr.Chatbot message format not specified in render_chat_panel update
+**Source:** Validation of Task 7
+**Problem:** The plan uses dict-format chat history `{"role": ..., "content": ...}` but subtask 7.2 does not add `type="messages"` to `gr.Chatbot(...)` in `components.py`. Older Gradio defaults to tuple format.
+**Impact:** Chat history may not render if installed Gradio version expects tuple format by default.
+**Suggested action:** Add `type="messages"` to `gr.Chatbot(label="Asistente Zenet", type="messages", value=initial_messages)` in subtask 7.2, or verify the installed Gradio version uses dict format by default.
+
 1. **`User.email` non-optional.** `email: str` at line 393 of `data_model.py` is required.
    Placeholder `{session_id}@zenet.local` satisfies the contract. If Task 8+ requires a real
    email, the form must be updated.
