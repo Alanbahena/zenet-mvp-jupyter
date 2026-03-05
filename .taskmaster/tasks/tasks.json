@@ -477,7 +477,78 @@
           "5",
           "6"
         ],
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "7.1 WelcomeAgent (core/agents/welcome_agent.py)",
+            "description": "Create the WelcomeAgent class following the RestaurantInfoAgent pattern. INPUT_SCHEMA, OUTPUT_SCHEMA, RESPONSE_MODEL=None, _SYSTEM_PROMPT in Spanish, _generate_prompt(), _process_response().",
+            "details": "See .taskmaster/docs/task-7/plan.md § 7.1.",
+            "status": "in-progress",
+            "dependencies": [],
+            "parentTaskId": 7,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "7.2 Chat panel update (gradio_app/components.py)",
+            "description": "Add optional initial_messages parameter to render_chat_panel(); pass value=initial_messages to gr.Chatbot. Default None for backwards compatibility.",
+            "details": "See .taskmaster/docs/task-7/plan.md § 7.2.",
+            "status": "pending",
+            "dependencies": ["7.1"],
+            "parentTaskId": 7,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "7.3 Bienvenida section UI (gradio_app/sections/bienvenida.py)",
+            "description": "Replace stub with full render(): two-column layout (form + chat), save handler persisting Restaurant and User to DataLake, chat_fn with load_state/save_state and _load_form_context.",
+            "details": "See .taskmaster/docs/task-7/plan.md § 7.3.",
+            "status": "pending",
+            "dependencies": ["7.1", "7.2"],
+            "parentTaskId": 7,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "7.4 Error handling and validation",
+            "description": "Chat: try/except around agent.run() with friendly Spanish error message. Form: validate user name and restaurant name required; Spanish validation messages.",
+            "details": "Integrated in _make_chat_fn and _make_save_fn. See .taskmaster/docs/task-7/plan.md § 7.4.",
+            "status": "pending",
+            "dependencies": ["7.3"],
+            "parentTaskId": 7,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "7.5 Exports and task status",
+            "description": "Add WelcomeAgent to core/__init__.py re-exports. Update tasks.json and CLAUDE.md task status when task 7 is complete.",
+            "details": "See .taskmaster/docs/task-7/plan.md § 7.5.",
+            "status": "pending",
+            "dependencies": ["7.4"],
+            "parentTaskId": 7,
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "7.6 Tests (mocked + live)",
+            "description": "Create tests/unit/test_welcome_agent.py: _MockProvider, 18 mocked tests, 3 live tests (skip unless ANTHROPIC_API_KEY).",
+            "details": "See .taskmaster/docs/task-7/plan.md § 7.6.",
+            "status": "pending",
+            "dependencies": ["7.5"],
+            "parentTaskId": 7,
+            "parentId": "undefined"
+          },
+          {
+            "id": 7,
+            "title": "7.7 Documentation",
+            "description": "Ensure .taskmaster/docs/task-7/plan.md exists (this plan). No subtask-level plan files.",
+            "details": "See .taskmaster/docs/task-7/plan.md § 7.7.",
+            "status": "pending",
+            "dependencies": ["7.6"],
+            "parentTaskId": 7,
+            "parentId": "undefined"
+          }
+        ]
       },
       {
         "id": "8",
