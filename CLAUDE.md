@@ -28,16 +28,19 @@ uv add <package-name>
 uv export --no-dev -o requirements.txt
 
 # Run tests
-python -m pytest tests/
+uv run python -m pytest tests/
 
 # Run a specific test file
-python -m pytest tests/unit/test_data_model.py
+uv run python -m pytest tests/unit/test_data_model.py
 
 # Run main entry point
-python main.py
+uv run python main.py
 
 # Launch Jupyter
 jupyter notebook
+
+# Run examples (PYTHONPATH required — gradio_app and core are not installed packages)
+PYTHONPATH=. uv run python examples/graph_example.py
 ```
 
 ### Environment variables
@@ -52,25 +55,45 @@ API keys live in `.env` (never commit this file):
 
 ```
 core/                    # All business logic — the cognitive core
-  data_model.py          # Entities and registries (Recipe, Restaurant, InventoryItem, etc.)
-  data_model_utils.py    # Format, validation, and resolution helpers
-  normalization.py       # Unit equivalence, conversion, deduction logic
-  taxonomy.py            # Ingredient / inventory / recipe hierarchies
-  readiness_kpis.py      # Readiness report and KPI computation
-  persistence.py         # JsonStorage, SqliteStorage, DataLake (save/load API)
-  schema.py              # SQLite schema (CREATE TABLE statements)
-  serialization.py       # Entity ↔ dict (to_dict / from_dict pairs)
-  __init__.py            # Re-exports everything from all core modules
+  domain/                # Data model layer
+    data_model.py        # Entities and registries (Recipe, Restaurant, InventoryItem, etc.)
+    data_model_utils.py  # Format, validation, and resolution helpers
+    serialization.py     # Entity ↔ dict (to_dict / from_dict pairs)
+    taxonomy.py          # Ingredient / inventory / recipe hierarchies
+  operations/            # Business logic layer
+    normalization.py     # Unit equivalence, conversion, deduction logic
+    readiness_kpis.py    # Readiness report and KPI computation
+  storage/               # Persistence layer
+    persistence.py       # JsonStorage, SqliteStorage, DataLake (save/load API)
+    schema.py            # SQLite schema (CREATE TABLE statements)
+  ai/                    # LLM integration layer
+    providers.py         # LlmProvider, OpenAiProvider, ClaudeProvider, ToolRegistry
+    memory.py            # ConversationMemory
+    prompts.py           # Prompt engineering utilities
+    utils.py             # parse_structured_output and helpers
+  agents/                # Agent framework
+    base_agent.py        # BaseAgent abstract class (run, validate, tool loop, memory)
+    simple_agent.py      # RestaurantInfoAgent — minimal concrete agent for validation
+    utils.py             # create_agent() factory, AgentRegistry
+    graph_utils.py       # BaseGraphState, make_agent_node(), build_sequential_graph()
+  __init__.py            # Re-exports from all core subpackages
+
+gradio_app/              # Gradio UI layer
+  app.py                 # build_app() — gr.Blocks with 6 tabs
+  session.py             # get_data_lake(), create_session()
+  components.py          # render_chat_panel()
+  sections/              # One file per pipeline section (stubs — replaced by Tasks 7–12)
+    bienvenida.py, clasificacion.py, configuracion.py,
+    alineamiento.py, estructura.py, manual_operativo.py
 
 tests/
-  unit/                  # Unit tests for every core module
+  unit/                  # Unit tests for every core module and gradio_app session
 
-docs/Architecture/       # Detailed architecture docs (data model, normalization, taxonomy, etc.)
+docs/Architecture/       # Detailed architecture docs
 .taskmaster/             # Task management: tasks.json, subtask plans, PRD, docs
 notebooks/               # Jupyter notebooks (pipeline stages)
-gradio/                  # Gradio UI components (not yet implemented)
-data/                    # raw, processed, normalized, outputs
-examples/                # quickstart.py, tortilla_example.py
+data/                    # raw, processed, normalized, outputs, sessions/
+examples/                # quickstart.py, tortilla_example.py, graph_example.py
 ```
 
 ---
@@ -104,7 +127,7 @@ Every entity has a pair of functions in `serialization.py`: `<entity>_to_dict(en
 
 ### Persistence through DataLake
 
-Always use the `DataLake` abstraction (`core/persistence.py`) as the unified interface. `JsonStorage` and `SqliteStorage` are backends; calling code should not depend on which backend is active.
+Always use the `DataLake` abstraction (`core/storage/persistence.py`) as the unified interface. `JsonStorage` and `SqliteStorage` are backends; calling code should not depend on which backend is active.
 
 ### Unit equivalences
 
@@ -136,10 +159,12 @@ Tasks and subtasks are tracked in `.taskmaster/tasks/tasks.json`.
 | 1 | Project setup | done |
 | 2 | Data model and ontology | done |
 | 3 | Data persistence layer | done |
-| 4 | LLM integration framework | **in-progress** |
-| 5–16 | Agent framework, workflow engine, notebooks, UI, tests, docs | pending |
+| 4 | LLM integration framework | done |
+| 5 | Agent framework | done |
+| 6 | Gradio UI foundation and LangGraph integration | **done** |
+| 7–16 | Section agents, workflow engine, notebooks, tests, docs | pending |
 
-**Task 4** (LLM integration framework) is the active task. It must be completed before the agent framework (Task 5) and the entire notebook pipeline can proceed.
+**Task 7** (Bienvenida section agent) is the next task.
 
 ### TaskMaster docs
 
@@ -147,19 +172,22 @@ Each task and subtask has a plan file under `.taskmaster/docs/task-<id>/<subtask
 
 ---
 
-## LLM Integration (Task 4 — active)
+## LLM and Agent Framework (Tasks 4–5 — done)
 
-The framework lives in `core/llm_framework.py` (to be created). It must provide:
+The framework lives in `core/ai/` and `core/agents/`:
 
-- `LlmProvider` base class with `generate(prompt, tools, structured_output)` interface
-- `OpenAiProvider` — wraps `openai` SDK
-- `ClaudeProvider` — wraps `anthropic` SDK
-- Prompt engineering utilities in `core/prompts.py`
-- `ToolRegistry` for function calling / tool use
-- Structured output parsing and validation
-- Conversation memory system
+- `core/ai/providers.py` — `LlmProvider` (abstract), `OpenAiProvider`, `ClaudeProvider`, `ToolRegistry`
+- `core/ai/memory.py` — `ConversationMemory` for conversation history
+- `core/ai/prompts.py` — prompt engineering utilities
+- `core/ai/utils.py` — `parse_structured_output` and helpers
+- `core/agents/base_agent.py` — `BaseAgent` abstract class (run loop, tool calling, memory, retry)
+- `core/agents/simple_agent.py` — `RestaurantInfoAgent` (minimal concrete agent)
+- `core/agents/utils.py` — `create_agent()` factory, `AgentRegistry`
+- `core/agents/graph_utils.py` — `BaseGraphState`, `make_agent_node()`, `build_sequential_graph()`
 
-Default to the latest Claude models: Sonnet 4.6 (`claude-sonnet-4-6`), Opus 4.6 (`claude-opus-4-6`), Haiku 4.5 (`claude-haiku-4-5-20251001`).
+Default Claude models: Sonnet 4.6 (`claude-sonnet-4-6`), Opus 4.6 (`claude-opus-4-6`), Haiku 4.5 (`claude-haiku-4-5-20251001`).
+
+Always use `create_agent(AgentClass, provider=provider, name="...")` — never instantiate agents directly.
 
 ---
 
@@ -188,6 +216,7 @@ Detailed docs in `docs/Architecture/`:
 | Format, validation, resolution helpers | `architecture-data-model-utils.md` |
 | Readiness report schema and KPIs | `architecture-readiness-kpis.md` |
 | Storage layer (JSON/SQLite/DataLake) | `architecture-persistence.md` |
+| Gradio UI and LangGraph integration | `architecture-gradio-and-langgraph.md` |
 
 Project-wide references:
 - `.taskmaster/docs/prd.txt` — Product Requirements Document

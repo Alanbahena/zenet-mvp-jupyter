@@ -10,4 +10,6 @@ dependencies = [
     "anthropic>=0.40.0",
     "pytest>=8.0.0",
     "pydantic>=2.12.5",
+    "gradio>=6.8.0",
+    "langgraph>=1.0.10",
 ]

@@ -60,6 +60,9 @@ Thumbs.db
 # !data/normalized/.gitkeep
 # !data/outputs/.gitkeep
 
+# Session data written by gradio_app (created at runtime)
+data/sessions/
+
 # Logs and temp
 *.log
 .cache/
