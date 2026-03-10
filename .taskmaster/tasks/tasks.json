@@ -534,7 +534,7 @@
             "title": "7.5 Exports and task status",
             "description": "Add WelcomeAgent to core/__init__.py re-exports. Update tasks.json and CLAUDE.md task status when task 7 is complete.",
             "details": "See .taskmaster/docs/task-7/plan.md § 7.5.",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               "7.4"
             ],
