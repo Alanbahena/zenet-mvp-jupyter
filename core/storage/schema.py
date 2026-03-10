@@ -141,6 +141,14 @@ def _create_tables(conn: sqlite3.Connection) -> None:
         )
     """)
 
+    # 9. Agent conversation state (text blob, keyed by agent-scoped session string)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS agent_state (
+            session_id TEXT PRIMARY KEY,
+            data TEXT NOT NULL
+        )
+    """)
+
     # Indexes
     cursor.execute(
         "CREATE INDEX IF NOT EXISTS idx_recipe_category_id ON recipe(category_id)"

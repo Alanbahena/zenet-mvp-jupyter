@@ -109,6 +109,7 @@ _SQLITE_ENTITY_TYPES = frozenset({
     "inventory_item",
     "recipe",
     "inventory_unit_equivalence",
+    "agent_state",
 })
 
 
@@ -323,6 +324,16 @@ class SqliteStorage:
                         data_dict["factor_to_base"],
                     ),
                 )
+            elif entity_type == "agent_state":
+                cursor.execute(
+                    """
+                    INSERT INTO agent_state (session_id, data)
+                    VALUES (?, ?)
+                    ON CONFLICT(session_id) DO UPDATE SET
+                        data = excluded.data
+                    """,
+                    (str(entity_id), json.dumps(data_dict)),
+                )
             self._conn.commit()
         except sqlite3.IntegrityError as e:
             raise ValueError(f"Cannot save {entity_type} {entity_id}: {e}") from e
@@ -405,6 +416,12 @@ class SqliteStorage:
                 )
                 row = cursor.fetchone()
                 return dict(row) if row else None
+            elif entity_type == "agent_state":
+                cursor.execute(
+                    "SELECT data FROM agent_state WHERE session_id = ?", (str(entity_id),)
+                )
+                row = cursor.fetchone()
+                return json.loads(row[0]) if row else None
             return None
         except sqlite3.OperationalError as e:
             raise OSError(f"Database error loading {entity_type} {entity_id}: {e}") from e
@@ -426,6 +443,10 @@ class SqliteStorage:
                     """,
                     (unit_id, inventory_item_id),
                 )
+            elif entity_type == "agent_state":
+                cursor.execute(
+                    "DELETE FROM agent_state WHERE session_id = ?", (str(entity_id),)
+                )
             else:
                 table = entity_type
                 cursor.execute("DELETE FROM " + table + " WHERE id = ?", (entity_id,))
@@ -442,6 +463,9 @@ class SqliteStorage:
             if entity_type == "inventory_unit_equivalence":
                 cursor.execute("SELECT unit_id, inventory_item_id FROM inventory_unit_equivalence")
                 return [f"{row[0]}_{row[1]}" for row in cursor.fetchall()]
+            elif entity_type == "agent_state":
+                cursor.execute("SELECT session_id FROM agent_state")
+                return [row[0] for row in cursor.fetchall()]
             table = entity_type
             cursor.execute("SELECT id FROM " + table)
             return [str(row[0]) for row in cursor.fetchall()]

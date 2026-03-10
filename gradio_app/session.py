@@ -1,26 +1,22 @@
-import uuid
+import os
+
 from core.storage.persistence import DataLake
 
 
 def get_data_lake() -> DataLake:
-    """Create a JSON DataLake instance for session storage.
+    """Create a SQLite DataLake instance for session storage.
 
-    Storage root: data/sessions/ (created automatically on first call).
+    Database path: data/zenet.db (created automatically on first call).
     """
-    return DataLake(data_dir="data/sessions/")
+    os.makedirs("data", exist_ok=True)
+    return DataLake(db_path="data/zenet.db")
 
 
 def create_session(data_lake: DataLake) -> str:
-    """Generate a unique session_id (UUID4) for a new operator session.
+    """Return the fixed session key for this MVP install.
 
-    The session_id is not persisted to disk — it lives in gr.State for
-    the app lifetime. See Risk #4 in the Task 6 plan for resume behavior.
-
-    Args:
-        data_lake: The active DataLake instance (reserved for future use
-                   when session persistence is added).
-
-    Returns:
-        A UUID4 string, e.g. "a3f8bc12-4491-9e00-f991-003211223344".
+    MVP design: one install = one restaurant = one session key.
+    Data persists across app restarts. To wipe and start fresh,
+    run reset_session.py from the project root.
     """
-    return str(uuid.uuid4())
+    return "primary_session"

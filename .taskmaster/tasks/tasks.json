@@ -494,20 +494,20 @@
             "title": "7.2 Chat panel update (gradio_app/components.py)",
             "description": "Add optional initial_messages parameter to render_chat_panel(); pass value=initial_messages to gr.Chatbot. Default None for backwards compatibility.",
             "details": "See .taskmaster/docs/task-7/plan.md § 7.2.",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               "7.1"
             ],
             "parentTaskId": 7,
             "parentId": "undefined",
-            "updatedAt": "2026-03-10T01:04:48.365Z"
+            "updatedAt": "2026-03-10T04:45:07.378Z"
           },
           {
             "id": 3,
             "title": "7.3 Bienvenida section UI (gradio_app/sections/bienvenida.py)",
             "description": "Replace stub with full render(): two-column layout (form + chat), save handler persisting Restaurant and User to DataLake, chat_fn with load_state/save_state and _load_form_context.",
             "details": "See .taskmaster/docs/task-7/plan.md § 7.3.",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               "7.1",
               "7.2"
@@ -565,7 +565,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-03-10T02:02:14.909Z"
+        "updatedAt": "2026-03-10T04:45:07.378Z"
       },
       {
         "id": "8",
@@ -769,7 +769,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-10T02:02:14.910Z",
+      "lastModified": "2026-03-10T04:45:07.380Z",
       "taskCount": 16,
       "completedCount": 6,
       "tags": [
