@@ -354,6 +354,12 @@ Create `.taskmaster/docs/task-7/plan.md` (this file). No subtask-level plan file
    `tools`, `structured_output`, `messages`, `max_tokens`, `temperature`). Tests must
    replicate this exactly. Verified against `tests/unit/test_agents.py:43`.
 
+### [OPEN] — Textbox Enter-key submit not wired
+**Source:** Validation of subtask 7.2
+**Problem:** `render_chat_panel()` in `components.py` only wires `send_btn.click()`. `textbox.submit()` is not wired, so pressing Enter in the textbox does not trigger `chat_fn`. Pre-existing — not introduced by 7.2.
+**Impact:** Operators must click "Enviar" to submit every message. Common UX expectation (Enter to submit) is unmet across all 6 sections that use `render_chat_panel()`.
+**Suggested action:** Add `textbox.submit()` wiring (same fn/inputs/outputs as `send_btn.click()`) to subtask 7.3's scope, or open a dedicated subtask before 7.3 is implemented.
+
 ---
 
 ## Deliverable Checklist
