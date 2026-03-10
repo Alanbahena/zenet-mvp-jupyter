@@ -56,8 +56,11 @@ def _make_save_fn(data_lake):
             email=f"{session_id}@zenet.local",
             role="admin",
         )
-        data_lake.save_entity("restaurant", entity_id, restaurant_to_dict(restaurant))
-        data_lake.save_entity("user", entity_id, user_to_dict(user))
+        try:
+            data_lake.save_entity("restaurant", entity_id, restaurant_to_dict(restaurant))
+            data_lake.save_entity("user", entity_id, user_to_dict(user))
+        except Exception:
+            return "Error al guardar el registro. Por favor, intenta de nuevo.", gr.update()
         return (
             f"Registro guardado. Bienvenido, {user.name}.",
             gr.update(value="Registro guardado", interactive=False),

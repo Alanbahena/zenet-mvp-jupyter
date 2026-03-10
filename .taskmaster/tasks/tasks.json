@@ -521,7 +521,7 @@
             "title": "7.4 Error handling and validation",
             "description": "Chat: try/except around agent.run() with friendly Spanish error message. Form: validate user name and restaurant name required; Spanish validation messages.",
             "details": "Integrated in _make_chat_fn and _make_save_fn. See .taskmaster/docs/task-7/plan.md § 7.4.",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               "7.3"
             ],
@@ -534,12 +534,13 @@
             "title": "7.5 Exports and task status",
             "description": "Add WelcomeAgent to core/__init__.py re-exports. Update tasks.json and CLAUDE.md task status when task 7 is complete.",
             "details": "See .taskmaster/docs/task-7/plan.md § 7.5.",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [
               "7.4"
             ],
             "parentTaskId": 7,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-03-10T06:26:47.194Z"
           },
           {
             "id": 6,
@@ -566,7 +567,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-03-10T06:03:26.871Z"
+        "updatedAt": "2026-03-10T06:26:47.194Z"
       },
       {
         "id": "8",
@@ -770,7 +771,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-10T06:03:26.872Z",
+      "lastModified": "2026-03-10T06:26:47.195Z",
       "taskCount": 16,
       "completedCount": 6,
       "tags": [
