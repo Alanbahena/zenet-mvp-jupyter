@@ -162,13 +162,13 @@ def _make_data_lake() -> DataLake:
 | `test_response_model_is_none` | `WelcomeAgent.RESPONSE_MODEL is None` |
 | `test_input_schema_has_user_message` | `"user_message" in WelcomeAgent.INPUT_SCHEMA` |
 | `test_run_returns_reply_and_raw_response` | `result["reply"] == "Hola, soy Zeni."` and `result["raw_response"] == "Hola, soy Zeni."` |
-| `test_run_adds_messages_to_memory` | `len(agent.memory.messages) == 2` after one `run()` |
+| `test_run_adds_messages_to_memory` | `agent.memory.message_count == 2` after one `run()` |
 | `test_missing_user_message_raises` | `run(input_data={})` raises `ValueError` |
 | `test_response_is_plain_text` | `result["reply"]` equals mock string verbatim |
 | `test_context_with_operator_name` | `provider.last_call_kwargs["system"]` contains `"Juan"` |
 | `test_context_empty_uses_base_prompt` | `run(context={})` does not raise |
-| `test_multi_turn_accumulates_memory` | Two `run()` calls → `len(agent.memory.messages) == 4` |
-| `test_save_load_state_round_trip` | After save+load, memory messages preserved in new agent instance |
+| `test_multi_turn_accumulates_memory` | Two `run()` calls → `agent.memory.message_count == 4` |
+| `test_save_load_state_round_trip` | After save+load, `agent2.memory.message_count == 2` in new agent instance |
 
 ---
 
@@ -243,7 +243,7 @@ def setUpClass(cls):
 |------|--------|
 | `test_live_responds_in_spanish` | reply contains at least one Spanish word (e.g. "hola", "bienvenido", "restaurante", "zenet") — case-insensitive |
 | `test_live_warm_tone` | reply does not contain JSON brackets `{` or `}` |
-| `test_live_multi_turn_context` | second turn reply is non-empty and memory has 4 messages |
+| `test_live_multi_turn_context` | second turn reply is non-empty and `agent.memory.message_count == 4` |
 
 ---
 
@@ -275,3 +275,16 @@ PYTHONPATH=. uv run python -m pytest tests/unit/ -v
 - [ ] 3 `TestWelcomeAgentLive` tests guarded by `ANTHROPIC_API_KEY`
 - [ ] All mocked tests pass: `uv run python -m pytest tests/unit/test_welcome_agent.py -k "not live"`
 - [ ] Full suite passes: `uv run python -m pytest tests/unit/ -v`
+
+---
+
+## Risks and Open Questions
+
+### [OPEN] — "Casual" may not match any DEFAULT_RESTAURANT_TYPES name
+**Source:** Validation of subtask 7.6
+**Problem:** `test_save_fn_persists_entities` calls `save_fn("Juan", "Tacos El Güero", "Casual", "test_session")`. If "Casual" is not in `DEFAULT_RESTAURANT_TYPES`, `restaurant_type_id` resolves silently to `None`. The test still passes (only asserts `name` and `role`), so the type mapping is never validated.
+**Impact:** Test gives false confidence that the restaurant_type label→id lookup works correctly.
+**Suggested action:** Before implementing, check `DEFAULT_RESTAURANT_TYPES` names in `core/domain/data_model.py` and use a real type name, or add `assert restaurant["restaurant_type_id"] is not None` to the test.
+
+### Fix applied during validation
+- `ConversationMemory` has no public `.messages` attribute. All plan references to `len(agent.memory.messages)` corrected to `agent.memory.message_count` (int property — no `len()` needed).
