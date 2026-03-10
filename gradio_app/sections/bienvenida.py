@@ -38,11 +38,11 @@ def _load_form_context(data_lake, session_id: str) -> dict:
 def _make_save_fn(data_lake):
     def save_fn(user_name, restaurant_name, restaurant_type_label, session_id):
         if not session_id:
-            return "Sesión no iniciada. Recarga la página e intenta de nuevo."
+            return "Sesión no iniciada. Recarga la página e intenta de nuevo.", gr.update()
         if not (user_name or "").strip():
-            return "El nombre del operador es obligatorio."
+            return "El nombre del operador es obligatorio.", gr.update()
         if not (restaurant_name or "").strip():
-            return "El nombre del restaurante es obligatorio."
+            return "El nombre del restaurante es obligatorio.", gr.update()
         entity_id = abs(hash(session_id)) % (2**31 - 1)
         restaurant_type_id = _RESTAURANT_TYPE_NAME_TO_ID.get(restaurant_type_label)
         restaurant = Restaurant(
@@ -58,7 +58,10 @@ def _make_save_fn(data_lake):
         )
         data_lake.save_entity("restaurant", entity_id, restaurant_to_dict(restaurant))
         data_lake.save_entity("user", entity_id, user_to_dict(user))
-        return f"Registro guardado. Bienvenido, {user.name}."
+        return (
+            f"Registro guardado. Bienvenido, {user.name}.",
+            gr.update(value="Registro guardado", interactive=False),
+        )
     return save_fn
 
 
@@ -114,5 +117,12 @@ def render(session_id: gr.State, data_lake) -> None:
     save_btn.click(
         fn=_make_save_fn(data_lake),
         inputs=[name_input, restaurant_input, type_dropdown, session_id],
-        outputs=[save_status],
+        outputs=[save_status, save_btn],
     )
+
+    for field in [name_input, restaurant_input, type_dropdown]:
+        field.change(
+            fn=lambda: gr.update(value="Guardar registro", interactive=True),
+            inputs=[],
+            outputs=[save_btn],
+        )

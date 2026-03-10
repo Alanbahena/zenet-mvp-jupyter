@@ -36,7 +36,7 @@ def render_chat_panel(
     Layout note: sections that need a bottom data/table row may add a gr.Row after the
     two-column block in their render() function. See Decision 6 in the Task 6 plan.
     """
-    chatbot = gr.Chatbot(label="Asistente Zenet", value=initial_messages)
+    chatbot = gr.Chatbot(label="Asistente Zenet", value=initial_messages, height="70vh")
     textbox = gr.Textbox(placeholder="Escribe tu mensaje...", show_label=False)
     send_btn = gr.Button("Enviar")
 

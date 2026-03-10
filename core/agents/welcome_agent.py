@@ -133,8 +133,13 @@ class WelcomeAgent(BaseAgent):
         context: dict[str, Any],
     ) -> tuple[str, str]:
         system = _SYSTEM_PROMPT
+        context_lines = []
         if context.get("operator_name"):
-            system = f"{system}\n\nEl operador se llama {context['operator_name']}."
+            context_lines.append(f"El operador se llama {context['operator_name']}.")
+        if context.get("restaurant_name"):
+            context_lines.append(f"El restaurante se llama {context['restaurant_name']}.")
+        if context_lines:
+            system = f"{system}\n\n" + " ".join(context_lines)
         return system, input_data["user_message"]
 
     def _process_response(self, response: str) -> dict[str, Any]:
