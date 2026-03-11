@@ -6,6 +6,7 @@ def render_chat_panel(
     chat_fn: Callable,
     session_id: gr.State,
     data_lake_ref: object,
+    initial_messages: list[dict[str, str]] | None = None,
 ) -> None:
     """
     Render the right-column chat panel inside an active gr.Column context.
@@ -27,10 +28,15 @@ def render_chat_panel(
     Tasks 7-12 define chat_fn as receiving (message, history, session_id) — data_lake is
     already in scope inside chat_fn via the section's own closure over data_lake.
 
+    initial_messages: Optional list of pre-loaded chat messages in Gradio messages format:
+      [{"role": "assistant", "content": "..."}]. When provided, the chatbot renders these
+      messages on load (used for Bienvenida's static auto-greeting). Default None — chatbot
+      starts empty for all other sections.
+
     Layout note: sections that need a bottom data/table row may add a gr.Row after the
     two-column block in their render() function. See Decision 6 in the Task 6 plan.
     """
-    chatbot = gr.Chatbot(label="Asistente Zenet")
+    chatbot = gr.Chatbot(label="Asistente Zenet", value=initial_messages, height="70vh")
     textbox = gr.Textbox(placeholder="Escribe tu mensaje...", show_label=False)
     send_btn = gr.Button("Enviar")
 

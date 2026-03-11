@@ -1,4 +1,3 @@
-import uuid
 import unittest
 from unittest.mock import MagicMock
 from core.storage.persistence import DataLake
@@ -15,15 +14,14 @@ class TestCreateSession(unittest.TestCase):
         self.assertIsInstance(result, str)
         self.assertTrue(len(result) > 0)
 
-    def test_create_session_returns_valid_uuid(self):
+    def test_create_session_returns_primary_session(self):
         result = create_session(self.mock_data_lake)
-        # Should not raise
-        uuid.UUID(result)
+        self.assertEqual(result, "primary_session")
 
-    def test_create_session_is_unique(self):
+    def test_create_session_is_deterministic(self):
         result_a = create_session(self.mock_data_lake)
         result_b = create_session(self.mock_data_lake)
-        self.assertNotEqual(result_a, result_b)
+        self.assertEqual(result_a, result_b)
 
 
 class TestGetDataLake(unittest.TestCase):
