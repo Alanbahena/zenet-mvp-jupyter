@@ -314,6 +314,30 @@ via `.then()` to the send button. This is a new Gradio pattern not established i
 `_process_response()` must merge only non-None fields without wiping prior entries.
 **Suggested action:** Use `if value is not None: self.store(key, value)` pattern.
 
+### [OPEN] — `render_chat_panel` incompatible with 3-output chat_fn
+**Source:** Validation of Task 8
+**Problem:** `render_chat_panel` hardwires `outputs=[chatbot, textbox]`. clasificacion.py's `chat_fn` must return `(history, "", draft_dict)` to update draft state. There is no hook for a 3rd output through the existing component.
+**Impact:** Draft gr.State never updates; preview never re-renders; confirm button stays disabled regardless of conversation.
+**Suggested action:** In 8.4, build the chat panel inline in `clasificacion.py` (not via `render_chat_panel`) and wire `outputs=[chatbot, textbox, draft_state]` directly. Do NOT modify `render_chat_panel`.
+
+### [OPEN] — `confirm_fn` signature inconsistency
+**Source:** Validation of Task 8
+**Problem:** Plan spec says "Confirm button wired to `confirm_fn(session_id)`" but `_make_confirm_fn` description says it "reads current draft from gr.State". Only session_id as input makes the draft dict inaccessible.
+**Impact:** `confirm_fn` cannot build `use_templates` mapping — the core output of the Clasificación section — without the draft dict.
+**Suggested action:** In 8.3/8.4, wire confirm button with `inputs=[draft, session_id]` and use `confirm_fn(draft_dict, session_id) -> str` as the signature.
+
+### [OPEN] — `sections` deep-merge underspecified
+**Source:** Validation of Task 8
+**Problem:** Plan says "use `if value is not None: self.store(key, value)` pattern" for sections. For a dict value, `store("sections", new_dict)` replaces the entire dict, wiping data from prior turns.
+**Impact:** Multi-turn section accumulation silently loses early-turn section data.
+**Suggested action:** In 8.1 `_process_response()`, for `sections` specifically: `existing = self.retrieve("sections") or {}; existing.update(new_sections); self.store("sections", existing)`.
+
+### [OPEN] — No type validation on sections dict content
+**Source:** Validation of Task 8
+**Problem:** `sections: dict | None` accepts any dict. LLM could return unexpected keys or values missing `has_data`.
+**Impact:** `use_templates` derivation in `_make_confirm_fn` silently defaults to `True` for malformed sections, persisting wrong routing config.
+**Suggested action:** In 8.4, guard `_make_confirm_fn` with explicit per-key `.get("has_data", False)` defaults before computing `use_templates`.
+
 ---
 
 ## Verification
