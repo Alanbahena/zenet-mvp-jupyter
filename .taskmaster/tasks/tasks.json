@@ -547,28 +547,29 @@
             "title": "7.6 Tests (mocked + live)",
             "description": "Create tests/unit/test_welcome_agent.py: _MockProvider, 18 mocked tests, 3 live tests (skip unless ANTHROPIC_API_KEY).",
             "details": "See .taskmaster/docs/task-7/plan.md § 7.6.",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               "7.5"
             ],
             "parentTaskId": 7,
             "parentId": "undefined",
-            "updatedAt": "2026-03-10T06:38:56.597Z"
+            "updatedAt": "2026-03-11T04:53:40.143Z"
           },
           {
             "id": 7,
             "title": "7.7 Documentation",
             "description": "Ensure .taskmaster/docs/task-7/plan.md exists (this plan). No subtask-level plan files.",
             "details": "See .taskmaster/docs/task-7/plan.md § 7.7.",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [
               "7.6"
             ],
             "parentTaskId": 7,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-03-11T04:53:41.247Z"
           }
         ],
-        "updatedAt": "2026-03-10T06:38:56.597Z"
+        "updatedAt": "2026-03-11T04:53:41.247Z"
       },
       {
         "id": "8",
@@ -772,7 +773,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-10T06:38:56.597Z",
+      "lastModified": "2026-03-11T04:53:41.247Z",
       "taskCount": 16,
       "completedCount": 6,
       "tags": [

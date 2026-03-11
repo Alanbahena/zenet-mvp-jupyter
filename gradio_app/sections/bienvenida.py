@@ -62,7 +62,7 @@ def _make_save_fn(data_lake):
         except Exception:
             return "Error al guardar el registro. Por favor, intenta de nuevo.", gr.update()
         return (
-            f"Registro guardado. Bienvenido, {user.name}.",
+            f"Bienvenido, {user.name}. A partir de hoy, **{restaurant.name}** empieza a operar como sistema inteligente.\n\nCuando estés listo, continúa con **2. Clasificación** en la barra de navegación.",
             gr.update(value="Registro guardado", interactive=False),
         )
     return save_fn
