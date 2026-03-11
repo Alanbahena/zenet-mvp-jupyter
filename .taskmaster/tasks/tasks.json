@@ -468,7 +468,7 @@
       {
         "id": "7",
         "title": "Bienvenida section — Welcome Agent and Gradio UI",
-        "status": "in-progress",
+        "status": "done",
         "description": "Implement the Bienvenida section: form fields (restaurant name input, restaurant type dropdown) plus a single BaseAgent conversational chat to assist the operator. Agent helps if the user is unsure about restaurant type. Confirmed data is saved to DataLake using the session_id established in Task 6.",
         "details": "Create core/agents/welcome_agent.py:\n\n```python\nfrom core.agents.base_agent import BaseAgent\n\nclass WelcomeAgent(BaseAgent):\n    def __init__(self, llm_provider):\n        tools = [\n            # Define tools for information capture\n            # Define tools for emotional support\n        ]\n        super().__init__(\"Welcome Agent\", llm_provider, tools)\n    \n    def run(self, input_data, context=None):\n        prompt = self._generate_prompt(input_data, context)\n        response = self.llm_provider.generate(prompt, tools=self.tools)\n        return self._process_response(response)\n    \n    def _generate_prompt(self, input_data, context):\n        # Create prompt for welcome, onboarding, and emotional support\n        return f\"\"\"You are Zenet's Welcome Agent. Your role is to onboard new restaurant operators,\n        capture initial information about their restaurant, and provide emotional support.\n        \n        User information: {input_data.get('user_info', '')}\n        Restaurant information: {input_data.get('restaurant_info', '')}\n        \n        Please welcome the user, ask for essential information about their restaurant,\n        and address any anxiety they might have about organizing their restaurant data.\"\"\"\n    \n    def _process_response(self, response):\n        # Process the LLM response and extract structured information\n        # Return a dictionary with captured information\n        return {\n            \"restaurant_name\": extracted_name,\n            \"restaurant_type\": extracted_type,\n            \"user_concerns\": extracted_concerns,\n            \"next_steps\": next_steps\n        }\n```\n\nCreate notebooks/bienvenida.ipynb with the following structure:\n1. Introduction to Zenet and the onboarding process\n2. Initialization of the Welcome Agent\n3. Interactive cells for user input\n4. Display of agent responses\n5. Capture of restaurant information\n6. Transition to the next notebook\n\nImplement Gradio UI components for the Welcome notebook in gradio/welcome_ui.py.",
         "testStrategy": "Test the Welcome Agent with various restaurant types and user inputs. Verify it correctly captures restaurant information. Test emotional support responses for different anxiety scenarios. Ensure the notebook runs without errors and correctly initializes the agent.",
@@ -560,7 +560,7 @@
             "title": "7.7 Documentation",
             "description": "Ensure .taskmaster/docs/task-7/plan.md exists (this plan). No subtask-level plan files.",
             "details": "See .taskmaster/docs/task-7/plan.md § 7.7.",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               "7.6"
             ],
@@ -582,7 +582,75 @@
           "7"
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "8.1 ClassificationAgent (core/agents/classification_agent.py)",
+            "description": "Create ClassificationAgent with hybrid RESPONSE_MODEL: reply (shown to operator) + standardization_level + sections. _generate_prompt() injects restaurant context and current _data_store draft. _process_response() merges new structured fields into _data_store incrementally without overwriting prior turns.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 8
+          },
+          {
+            "id": 2,
+            "title": "8.2 Classification persistence (schema.py + persistence.py)",
+            "description": "Add classification table to schema.py (id INTEGER PRIMARY KEY, data TEXT NOT NULL). Add 'classification' to _SQLITE_ENTITY_TYPES and implement save/load/delete/list_ids handlers using the JSON blob pattern from agent_state.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 8
+          },
+          {
+            "id": 3,
+            "title": "8.3 Draft preview component (gradio_app/components.py)",
+            "description": "Add render_draft_preview() to components.py. Renders a dict as a live table with a Confirm button. Reusable by Tasks 9-12. No-op render when draft is empty.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 8
+          },
+          {
+            "id": 4,
+            "title": "8.4 Clasificación section UI (gradio_app/sections/clasificacion.py)",
+            "description": "Replace stub with full render(): chat (left) + draft preview (right). Chat wired to ClassificationAgent with load_state/run/save_state per turn. Preview re-renders after each turn. Confirm button calls _make_confirm_fn() to save classification entity to DataLake.",
+            "status": "pending",
+            "dependencies": [
+              "8.1",
+              "8.2",
+              "8.3"
+            ],
+            "parentTaskId": 8
+          },
+          {
+            "id": 5,
+            "title": "8.5 Exports (core/agents/__init__.py + core/__init__.py)",
+            "description": "Add ClassificationAgent to the two-level export chain: core/agents/__init__.py and core/__init__.py. Follow the WelcomeAgent pattern from Task 7.5.",
+            "status": "pending",
+            "dependencies": [
+              "8.4"
+            ],
+            "parentTaskId": 8
+          },
+          {
+            "id": 6,
+            "title": "8.6 Tests (tests/unit/test_classification_agent.py)",
+            "description": "Create test file with _MockProvider, 12 mocked tests covering agent logic, _data_store accumulation, confirm_fn persistence, and error handling. 3 live tests guarded by ANTHROPIC_API_KEY.",
+            "status": "pending",
+            "dependencies": [
+              "8.5"
+            ],
+            "parentTaskId": 8
+          },
+          {
+            "id": 7,
+            "title": "8.7 Documentation and task closure",
+            "description": "Create .taskmaster/docs/task-8/plan.md and docs/Architecture/sections/clasificacion.md. Mark Task 8 done in tasks.json and CLAUDE.md.",
+            "status": "pending",
+            "dependencies": [
+              "8.6"
+            ],
+            "parentTaskId": 8
+          }
+        ],
+        "updatedAt": "2026-03-11T06:02:27.529Z"
       },
       {
         "id": "9",
@@ -773,9 +841,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-11T04:53:41.247Z",
+      "lastModified": "2026-03-11T06:02:27.529Z",
       "taskCount": 16,
-      "completedCount": 6,
+      "completedCount": 7,
       "tags": [
         "master"
       ]
