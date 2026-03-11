@@ -15,15 +15,15 @@ def build_app() -> gr.Blocks:
         demo.load(fn=lambda: create_session(data_lake), outputs=[session_id])
 
         with gr.Tabs():
-            with gr.Tab("Bienvenida"):
+            with gr.Tab("1. Bienvenida"):
                 bienvenida.render(session_id, data_lake)
-            with gr.Tab("Clasificación"):
+            with gr.Tab("2. Clasificación"):
                 clasificacion.render(session_id, data_lake)
-            with gr.Tab("Configuración"):
+            with gr.Tab("3. Configuración"):
                 configuracion.render(session_id, data_lake)
-            with gr.Tab("Alineamiento"):
+            with gr.Tab("4. Alineamiento"):
                 alineamiento.render(session_id, data_lake)
-            with gr.Tab("Estructura"):
+            with gr.Tab("5. Estructura"):
                 estructura.render(session_id, data_lake)
             with gr.Tab("Manual operativo"):
                 manual_operativo.render(session_id, data_lake)
