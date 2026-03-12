@@ -587,20 +587,21 @@
             "id": 1,
             "title": "8.1 ClassificationAgent (core/agents/classification_agent.py)",
             "description": "Create ClassificationAgent with hybrid RESPONSE_MODEL: reply (shown to operator) + standardization_level + sections. _generate_prompt() injects restaurant context and current _data_store draft. _process_response() merges new structured fields into _data_store incrementally without overwriting prior turns.",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 8,
-            "updatedAt": "2026-03-12T04:31:40.639Z",
+            "updatedAt": "2026-03-12T07:07:57.389Z",
             "parentId": "undefined"
           },
           {
             "id": 2,
             "title": "8.2 Classification persistence (schema.py + persistence.py)",
             "description": "Add classification table to schema.py (id INTEGER PRIMARY KEY, data TEXT NOT NULL). Add 'classification' to _SQLITE_ENTITY_TYPES and implement save/load/delete/list_ids handlers using the JSON blob pattern from agent_state.",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [],
             "parentTaskId": 8,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-03-12T07:08:00.996Z"
           },
           {
             "id": 3,
@@ -742,7 +743,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-03-12T04:31:40.639Z"
+        "updatedAt": "2026-03-12T07:08:00.996Z"
       },
       {
         "id": "9",
@@ -933,7 +934,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-12T04:31:40.645Z",
+      "lastModified": "2026-03-12T07:08:00.997Z",
       "taskCount": 16,
       "completedCount": 7,
       "tags": [
