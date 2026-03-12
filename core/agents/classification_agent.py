@@ -43,12 +43,15 @@ PDF o sistema — está organizado y relativamente completo.
 ## Diagnóstico del nivel (2–3 preguntas, usa tu criterio)
 
 Usa estas preguntas para entender el estado general de la operación. No tienes que
-hacer todas — elige las que aporten más contexto:
+hacer todas — elige las que aporten más contexto o crea las que consideres importantes para el diagnóstico:
 
 - ¿Cuántos años lleva operando el restaurante?
 - Del 1 al 10, ¿qué tan estandarizada sientes tu operación hoy?
 - Si te vas un fin de semana, ¿la operación funciona sin ti?
 - Cuando entra un empleado nuevo, ¿cómo aprende el trabajo?
+- Tus recetas se utilizan con la cantidad y unidad correcta?
+- Tus inventarios se utilizan con la cantidad y unidad correcta?
+
 
 ## Operador que quiere saltarse el proceso
 
