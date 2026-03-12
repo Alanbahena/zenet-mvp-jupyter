@@ -607,24 +607,25 @@
             "id": 3,
             "title": "8.3 Draft preview component (gradio_app/components.py)",
             "description": "Add render_draft_preview() to components.py. Renders a dict as a live table with a Confirm button. Reusable by Tasks 9-12. No-op render when draft is empty.",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 8,
             "parentId": "undefined",
-            "updatedAt": "2026-03-12T07:22:04.081Z"
+            "updatedAt": "2026-03-12T08:20:49.967Z"
           },
           {
             "id": 4,
             "title": "8.4 Clasificación section UI (gradio_app/sections/clasificacion.py)",
             "description": "Replace stub with full render(): chat (left) + draft preview (right). Chat wired to ClassificationAgent with load_state/run/save_state per turn. Preview re-renders after each turn. Confirm button calls _make_confirm_fn() to save classification entity to DataLake.",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [
               "8.1",
               "8.2",
               "8.3"
             ],
             "parentTaskId": 8,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-03-12T08:20:50.107Z"
           },
           {
             "id": 5,
@@ -744,7 +745,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-03-12T07:22:04.081Z"
+        "updatedAt": "2026-03-12T08:20:50.107Z"
       },
       {
         "id": "9",
@@ -935,7 +936,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-12T07:22:04.081Z",
+      "lastModified": "2026-03-12T08:20:50.108Z",
       "taskCount": 16,
       "completedCount": 7,
       "tags": [
