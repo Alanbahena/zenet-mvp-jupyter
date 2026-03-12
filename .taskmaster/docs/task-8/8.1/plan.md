@@ -228,22 +228,11 @@ Always use the deep-merge pattern above.
 
 ## Risks and Open Questions
 
-### [OPEN] — sections type validation
-**Problem:** `sections: dict | None` accepts any structure from the LLM.
-**Impact:** Malformed sections silently default to `has_data: false` in `_make_confirm_fn`.
-**Suggested action:** Guard in 8.4's `_make_confirm_fn` with explicit `.get("has_data", False)` per section key. No change needed in 8.1.
-
 ### [OPEN] — Level 1 fallback wording
 **Problem:** The exact phrasing the agent uses to signal the impatient fallback is not
 defined — the system prompt author decides at implementation time.
 **Impact:** Inconsistent tone if not aligned with the rest of Zenet's voice.
 **Suggested action:** Use the same warm, non-judgmental tone as WelcomeAgent's system prompt.
-
-### [OPEN] — standardization_level range not validated
-**Source:** Validation of subtask 8.1
-**Problem:** `_ClassificationResponse` declares `standardization_level: int | None` with no range constraint. The LLM could return 0, 4, or any integer. No Pydantic validator or guard in `_process_response()` enforces the {1, 2, 3} set.
-**Impact:** 8.3's preview renderer maps level → "Nivel 1/2/3" label. An out-of-range value produces a blank or broken label. The wrong level would also be persisted to SQLite via confirm_fn.
-**Suggested action:** Add a Pydantic `field_validator` in `_ClassificationResponse` clamping `standardization_level` to `{1, 2, 3}` or `None`, OR handle unknown values gracefully in 8.3's Markdown renderer. Address before implementing 8.3.
 
 ---
 

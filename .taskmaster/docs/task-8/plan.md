@@ -378,6 +378,12 @@ via `.then()` to the send button. This is a new Gradio pattern not established i
 **Impact:** `use_templates` derivation in `_make_confirm_fn` silently defaults to `True` for malformed sections, persisting wrong routing config.
 **Suggested action:** In 8.4, guard `_make_confirm_fn` with explicit per-key `.get("has_data", False)` defaults before computing `use_templates`.
 
+### [OPEN] — standardization_level range not validated
+**Source:** Validation of subtask 8.1
+**Problem:** `_ClassificationResponse` declares `standardization_level: int | None` with no range constraint. The LLM could return 0, 4, or any integer.
+**Impact:** 8.3's preview renderer maps level → "Nivel 1/2/3" label — an out-of-range value produces a blank or broken label. The wrong level would also be persisted to SQLite via confirm_fn.
+**Suggested action:** Before implementing 8.3, add a Pydantic `field_validator` in `_ClassificationResponse` clamping `standardization_level` to `{1, 2, 3}` or `None`, OR handle unknown values gracefully in 8.3's Markdown renderer.
+
 ---
 
 ## Verification
