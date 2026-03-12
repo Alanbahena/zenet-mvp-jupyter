@@ -2,10 +2,14 @@
 
 ## Context
 
-Creates `ClassificationAgent` — the only agent in the Clasificación section. It drives
-the propose→preview→confirm flow through conversation. Nothing is persisted to DataLake
-until the operator clicks Confirm (8.4). This subtask delivers the agent only; exports
-(8.5), tests (8.6), and section UI (8.4) are handled separately.
+Creates `ClassificationAgent` — the only agent in the Clasificación section. It diagnoses
+the operator's standardization level (1–3) through a short conversation. Nothing is persisted
+to DataLake until the operator clicks Confirm (8.4). This subtask delivers the agent only;
+exports (8.5), tests (8.6), and section UI (8.4) are handled separately.
+
+The diagnosed level is stored in `_data_store` and later written to DataLake as
+`{"standardization_level": 2}`. Tasks 9–12 load this value to calibrate their agents'
+tone, suggestions, and approach for each section.
 
 **Prior:** Task 7 delivered `BaseAgent`, `WelcomeAgent`, and the `save_state`/`load_state`
 session pattern this agent inherits directly.
@@ -33,56 +37,54 @@ session pattern this agent inherits directly.
 
 ## Design Decisions
 
-### Decision 1: Hybrid RESPONSE_MODEL
+### Decision 1: Hybrid RESPONSE_MODEL — level only
 
 `_ClassificationResponse` has `reply: str` (shown to operator) plus
-`standardization_level: int | None` and `sections: dict | None` (silently merged into
-draft). One LLM call per turn produces both outputs.
+`standardization_level: int | None`. One LLM call per turn produces both outputs.
+Per-section `has_data` questions are handled by each section's own agent in Tasks 9–12.
 
-### Decision 2: Incremental _data_store merge
+### Decision 2: Level stored incrementally
 
-`_process_response()` skips `None` fields entirely. For `sections` specifically, it
-deep-merges at the key level — never replaces the whole dict. This preserves section
-data from prior turns when the LLM only returns partial sections on a given turn.
+`_process_response()` stores `standardization_level` only when non-None. Early turns
+may return `None` — the stored value from a prior turn is preserved.
 
 ### Decision 3: Draft injected into system prompt
 
-On every turn, the current `_data_store` content is appended to the system prompt as
-JSON. The agent sees what has already been captured and avoids re-asking answered
-questions.
+On every turn, the current `standardization_level` from `_data_store` is appended to
+the system prompt. The agent knows what has already been captured and avoids re-proposing.
 
 ### Decision 4: No JSON format instructions in system prompt
 
 `RESPONSE_MODEL is not None` automatically enables `structured_output=True` at the
 provider level. The system prompt describes behavior only, not output format.
 
-### Decision 5: Two-phase conversation structure
+### Decision 5: Level diagnosis only (no per-section questions)
 
-The system prompt guides the agent through two phases:
-- Phase 1 (2–3 broad questions) — diagnoses the standardization level
-- Phase 2 (4 focused questions) — confirms `has_data` for each section
-
-All 4 sections must be resolved before the agent proposes a final classification.
-The agent may blend the two phases naturally rather than treating them as explicit rounds.
+The agent asks 2–3 broad questions to diagnose the standardization level. It does not
+ask about documentation per section — that happens contextually in each section (Tasks 9–12).
 
 ### Decision 6: Impatient operator fallback
 
-If the operator signals they want to skip ahead ("just set it up for me"), the agent
-proposes Level 1 with all sections `has_data: false` as a safe default and communicates
-this is a starting point they can correct later. This ensures the confirm button always
-becomes reachable.
+If the operator signals they want to skip ahead, the agent proposes Level 1 as a safe
+default and communicates that Zenet will guide them step by step from base templates.
 
 ---
 
 ## _ClassificationResponse
 
 ```python
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 class _ClassificationResponse(BaseModel):
     reply: str
     standardization_level: int | None = None
-    sections: dict | None = None
+
+    @field_validator("standardization_level")
+    @classmethod
+    def validate_level(cls, v: int | None) -> int | None:
+        if v is not None and v not in {1, 2, 3}:
+            return None
+        return v
 ```
 
 ---
@@ -96,7 +98,6 @@ INPUT_SCHEMA = {
 OUTPUT_SCHEMA = {
     "reply":                 "Conversational response shown to the operator.",
     "standardization_level": "Diagnosed level (1/2/3) or None if not yet determined.",
-    "sections":              "Dict of section has_data flags or None.",
     "raw_response":          "Full LLM response string.",
 }
 RESPONSE_MODEL = _ClassificationResponse
@@ -108,35 +109,25 @@ RESPONSE_MODEL = _ClassificationResponse
 
 The `_SYSTEM_PROMPT` constant (module-level) must cover:
 
-**Role:** Diagnose the operator's standardization level and determine which sections
-have existing documentation.
+**Role:** Diagnose the operator's standardization level. This level will calibrate
+Zenet's suggestions and approach in every section of the pipeline.
 
 **Standardization levels:**
-- Level 1 — Everything in the operator's head. No documentation. Use all base templates.
-- Level 2 — Partially documented. Has some Excel, notes, photos, or partial recipes. Use
-  templates where documentation is missing.
-- Level 3 — Structured operation. Most categories, recipes, and inventory documented.
-  Import and normalize existing information.
+- Level 1 — Everything in the operator's head. No documentation. Zenet builds from base templates and guides each step.
+- Level 2 — Partially documented. Has some Excel, notes, photos, or partial recipes. Zenet uses what exists and fills gaps with templates.
+- Level 3 — Structured operation. Most categories, recipes, and inventory documented. Zenet imports and normalizes existing information.
 
-**Phase 1 — Level diagnosis questions (2–3, use judgment on which apply):**
+**Diagnosis questions (2–3, use judgment on which apply):**
 - How many years has the restaurant been operating?
 - On a scale of 1–10, how standardized do you feel your operation is?
 - Can you leave for a weekend without the operation falling apart?
 - When a new employee joins, how do they learn the job?
 
-**Phase 2 — Section documentation check (all 4 required):**
-The agent must determine `has_data` for each section before proposing a final
-classification. It may blend these questions into the conversation naturally:
-- `recipe_categories`: Do you have your recipe categories defined? (e.g. Entradas, Platos fuertes)
-- `inventory_families`: Do you have inventory families defined? (e.g. Carnes, Lácteos)
-- `recipes`: Do you have recipes written down with ingredients and quantities?
-- `inventory`: Do you have an inventory list with units and suppliers?
-
 **Impatient operator fallback:**
 If the operator signals they want to skip ahead or says something like "just set it
 up for me" or "I don't know, just start", the agent must:
-1. Propose Level 1 with all sections as `has_data: false`
-2. Explain this is a safe starting point — all templates will be available
+1. Propose Level 1 as a safe starting point
+2. Explain that Zenet will guide them step by step from base templates
 3. Invite them to correct it if something seems wrong
 
 **Communication rules:**
@@ -162,19 +153,13 @@ def _generate_prompt(self, input_data, context) -> tuple[str, str]:
     if context_lines:
         system = system + "\n\n## Contexto del restaurante\n" + "\n".join(context_lines)
 
-    # 2. Inject current draft so agent knows what's already captured
-    current_draft = {}
+    # 2. Inject current level if already captured
     level = self.retrieve("standardization_level")
-    sections = self.retrieve("sections")
     if level is not None:
-        current_draft["standardization_level"] = level
-    if sections is not None:
-        current_draft["sections"] = sections
-    if current_draft:
         system = (
             system
             + "\n\n## Borrador actual (ya capturado en esta conversación)\n"
-            + json.dumps(current_draft, ensure_ascii=False, indent=2)
+            + json.dumps({"standardization_level": level}, ensure_ascii=False)
         )
 
     return system, input_data["user_message"]
@@ -188,28 +173,17 @@ def _generate_prompt(self, input_data, context) -> tuple[str, str]:
 def _process_response(self, response: str) -> dict[str, Any]:
     data = self._parse_response(response)
 
-    # standardization_level: simple store, only if non-None
+    # standardization_level: store only if non-None
     level = data.get("standardization_level")
     if level is not None:
         self.store("standardization_level", level)
 
-    # sections: deep-merge at key level — never replace whole dict
-    sections = data.get("sections")
-    if sections is not None:
-        existing = self.retrieve("sections") or {}
-        existing.update(sections)
-        self.store("sections", existing)
-
     return {
         "reply":                 data.get("reply", ""),
         "standardization_level": data.get("standardization_level"),
-        "sections":              data.get("sections"),
         "raw_response":          response,
     }
 ```
-
-Key constraint: `self.store("sections", new_sections)` directly would wipe prior turns.
-Always use the deep-merge pattern above.
 
 ---
 
@@ -238,11 +212,11 @@ defined — the system prompt author decides at implementation time.
 
 ## Deliverable Checklist
 
-- [ ] `_ClassificationResponse` Pydantic model with `reply`, `standardization_level`, `sections`
+- [ ] `_ClassificationResponse` Pydantic model with `reply` and `standardization_level`
+- [ ] `field_validator` clamping `standardization_level` to `{1, 2, 3}` or `None`
 - [ ] `ClassificationAgent` with correct `INPUT_SCHEMA`, `OUTPUT_SCHEMA`, `RESPONSE_MODEL`
-- [ ] `_generate_prompt()` injects restaurant context + current `_data_store` draft
-- [ ] System prompt includes Phase 1 broad questions (level diagnosis)
-- [ ] System prompt includes Phase 2 section-by-section documentation check (all 4 sections)
-- [ ] System prompt includes impatient operator fallback (Level 1 default)
-- [ ] `_process_response()` skips `None` fields
-- [ ] `_process_response()` deep-merges `sections` dict (not simple store)
+- [ ] `_generate_prompt()` injects restaurant context + current level from `_data_store`
+- [ ] System prompt covers level diagnosis questions (2–3 broad questions)
+- [ ] System prompt covers impatient operator fallback (Level 1 default)
+- [ ] `_process_response()` stores level only if non-None
+- [ ] No `sections` field anywhere in the agent

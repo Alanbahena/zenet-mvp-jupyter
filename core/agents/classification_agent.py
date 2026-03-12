@@ -1,10 +1,10 @@
 """
 ClassificationAgent -- conversational diagnosis agent for the Clasificación section.
 
-Identifies the operator's standardization level (1–3) and which of the four sections
-(recipe_categories, inventory_families, recipes, inventory) have existing documentation.
-Accumulates a classification draft across turns via _data_store. Nothing is persisted
-to DataLake until the operator confirms via the UI (subtask 8.4).
+Identifies the operator's standardization level (1–3) through a short conversation.
+The diagnosed level is stored in _data_store and persisted to DataLake only when the
+operator confirms via the UI (subtask 8.4). Tasks 9–12 load this level to calibrate
+their agents' tone, suggestions, and approach.
 """
 
 from __future__ import annotations
@@ -20,15 +20,15 @@ from core.agents.base_agent import BaseAgent
 _SYSTEM_PROMPT = """Eres Zeni, el asistente de clasificación de Zenet.
 
 Tu objetivo es entender cómo opera el restaurante hoy para asignarle un nivel de
-estandarización (1, 2 o 3) y determinar qué información ya tiene documentada en cada
-una de las cuatro secciones del sistema.
+estandarización (1, 2 o 3). Este nivel le permitirá a Zenet calibrar su enfoque
+y sugerencias en cada sección del sistema.
 
 ## Los tres niveles de estandarización
 
 **Nivel 1 — Operación en la cabeza**
 Todo está en la memoria del operador o del equipo. No hay recetas escritas, ni listas
 de inventario, ni procesos documentados. El equipo trabaja por costumbre.
-→ Zenet construirá todo desde plantillas base.
+→ Zenet construirá todo desde plantillas base y guiará cada paso.
 
 **Nivel 2 — Parcialmente documentado**
 Existe algo escrito: un Excel, fotos de recetas, notas sueltas, listas parciales de
@@ -40,43 +40,22 @@ La mayoría de categorías, recetas e inventario están documentados. Puede ser 
 PDF o sistema — está organizado y relativamente completo.
 → Zenet importará y normalizará la información existente.
 
-## Las cuatro secciones que debes evaluar
+## Diagnóstico del nivel (2–3 preguntas, usa tu criterio)
 
-Para cada una necesitas determinar si el operador ya tiene información (has_data: true)
-o si necesitará usar las plantillas base de Zenet (has_data: false):
-
-- **recipe_categories**: Categorías de recetas (ej. Entradas, Platos fuertes, Postres, Bebidas)
-- **inventory_families**: Familias de inventario (ej. Carnes, Lácteos, Verduras, Abarrotes)
-- **recipes**: Recetas con ingredientes y cantidades documentadas
-- **inventory**: Artículos de inventario con unidades y proveedores
-
-## Fase 1 — Diagnóstico del nivel (2–3 preguntas, usa tu criterio)
-
-Usa estas preguntas para entender el estado general de la operación antes de entrar
-al detalle por sección. No tienes que hacer todas — elige las que aporten más contexto:
+Usa estas preguntas para entender el estado general de la operación. No tienes que
+hacer todas — elige las que aporten más contexto:
 
 - ¿Cuántos años lleva operando el restaurante?
 - Del 1 al 10, ¿qué tan estandarizada sientes tu operación hoy?
 - Si te vas un fin de semana, ¿la operación funciona sin ti?
 - Cuando entra un empleado nuevo, ¿cómo aprende el trabajo?
 
-## Fase 2 — Verificación por sección (las 4 son obligatorias)
-
-Antes de proponer una clasificación final, debes tener un valor has_data para cada
-una de las cuatro secciones. Puedes mezclar estas preguntas con las de la Fase 1
-de forma natural — no tiene que ser en dos rondas separadas:
-
-- ¿Tienes tus categorías de recetas definidas? (ej. Entradas, Platos fuertes)
-- ¿Tienes familias de inventario definidas? (ej. Carnes, Lácteos, Verduras)
-- ¿Tienes recetas escritas con ingredientes, cantidades y unidades?
-- ¿Tienes una lista de inventario con unidades y proveedores?
-
 ## Operador que quiere saltarse el proceso
 
 Si el operador señala que quiere avanzar sin responder preguntas — por ejemplo dice
 "no sé, configúralo tú" o "empieza ya" o "no tengo tiempo" — debes:
-1. Proponer Nivel 1 con todas las secciones como has_data: false
-2. Explicar que este es un punto de partida seguro — todas las plantillas base estarán disponibles
+1. Proponer Nivel 1 como punto de partida seguro
+2. Explicar que Zenet lo acompañará paso a paso desde las plantillas base
 3. Invitarlo a corregirlo si algo no cuadra con su realidad
 
 ## Reglas de comunicación
@@ -90,18 +69,11 @@ Si el operador señala que quiere avanzar sin responder preguntas — por ejempl
 """
 
 
-class _SectionStatus(BaseModel):
-    """Documentation status for a single section."""
-
-    has_data: bool
-
-
 class _ClassificationResponse(BaseModel):
-    """Hybrid response: conversational reply + structured classification fields."""
+    """Hybrid response: conversational reply + structured standardization level."""
 
     reply: str
     standardization_level: int | None = None
-    sections: dict[str, _SectionStatus] | None = None
 
     @field_validator("standardization_level")
     @classmethod
@@ -115,11 +87,12 @@ class ClassificationAgent(BaseAgent):
     """
     Conversational diagnosis agent for the Clasificación section.
 
-    Identifies the operator's standardization level (1–3) and which sections
-    have existing documentation. Accumulates a draft in _data_store across turns
-    via two-phase conversation: level diagnosis (broad questions) followed by
-    section-by-section documentation check. Nothing is persisted to DataLake
-    until the operator confirms via the Confirm button in the UI.
+    Identifies the operator's standardization level (1–3) through a short conversation.
+    Accumulates the diagnosed level in _data_store across turns. Nothing is persisted
+    to DataLake until the operator confirms via the Confirm button in the UI.
+
+    The diagnosed level is used by Tasks 9–12 agents to calibrate their tone,
+    suggestions, and approach for each section of the pipeline.
 
     Input:
         user_message: A message from the restaurant operator.
@@ -127,7 +100,6 @@ class ClassificationAgent(BaseAgent):
     Output:
         reply:                 Conversational response shown to the operator.
         standardization_level: Diagnosed level (1/2/3) or None if not yet determined.
-        sections:              Dict of section has_data flags or None.
         raw_response:          Full LLM response string.
     """
 
@@ -137,7 +109,6 @@ class ClassificationAgent(BaseAgent):
     OUTPUT_SCHEMA: ClassVar[dict[str, str]] = {
         "reply":                 "Conversational response shown to the operator.",
         "standardization_level": "Diagnosed level (1/2/3) or None if not yet determined.",
-        "sections":              "Dict of section has_data flags or None.",
         "raw_response":          "Full LLM response string.",
     }
     RESPONSE_MODEL: ClassVar[type[BaseModel] | None] = _ClassificationResponse
@@ -159,18 +130,12 @@ class ClassificationAgent(BaseAgent):
             system = system + "\n\n## Contexto del restaurante\n" + "\n".join(context_lines)
 
         # 2. Inject current draft so agent knows what has already been captured
-        current_draft: dict[str, Any] = {}
         level = self.retrieve("standardization_level")
-        sections = self.retrieve("sections")
         if level is not None:
-            current_draft["standardization_level"] = level
-        if sections is not None:
-            current_draft["sections"] = sections
-        if current_draft:
             system = (
                 system
                 + "\n\n## Borrador actual (ya capturado en esta conversación)\n"
-                + json.dumps(current_draft, ensure_ascii=False, indent=2)
+                + json.dumps({"standardization_level": level}, ensure_ascii=False)
             )
 
         return system, input_data["user_message"]
@@ -183,18 +148,8 @@ class ClassificationAgent(BaseAgent):
         if level is not None:
             self.store("standardization_level", level)
 
-        # sections: deep-merge at key level — never replace the whole dict
-        # Serialize _SectionStatus objects to plain dicts for storage
-        sections = data.get("sections")
-        if sections is not None:
-            sections_plain = {k: {"has_data": v.has_data} for k, v in sections.items()}
-            existing = self.retrieve("sections") or {}
-            existing.update(sections_plain)
-            self.store("sections", existing)
-
         return {
             "reply":                 data.get("reply", ""),
             "standardization_level": data.get("standardization_level"),
-            "sections":              data.get("sections"),
             "raw_response":          response,
         }

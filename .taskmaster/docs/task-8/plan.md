@@ -106,29 +106,14 @@ file ingestion and handles upload natively.
 
 ```python
 {
-    "standardization_level": 2,       # 1, 2, or 3
-    "sections": {
-        "recipe_categories": {
-            "has_data": True,
-        },
-        "inventory_families": {
-            "has_data": False,
-        },
-        "recipes": {
-            "has_data": True,
-        },
-        "inventory": {
-            "has_data": False,
-        },
-    },
-    "use_templates": {
-        "recipe_categories": False,   # has data → don't use template
-        "inventory_families": True,   # no data → use base template
-        "recipes": False,
-        "inventory": True,
-    }
+    "standardization_level": 2,   # 1, 2, or 3
 }
 ```
+
+The `sections` and `use_templates` fields have been removed. Per-section `has_data`
+decisions are now handled contextually by each section's own agent in Tasks 9–12.
+The standardization level is loaded by Tasks 9–12 agents to calibrate their tone,
+suggestions, and approach.
 
 ---
 
@@ -349,34 +334,11 @@ Requires `gr.State` holding the draft dict to be updated by `chat_fn` return val
 via `.then()` to the send button. This is a new Gradio pattern not established in Task 7.
 **Suggested action:** Spike this in 8.3/8.4 before committing to the component API.
 
-### [OPEN] — `_ClassificationResponse` None handling
-**Problem:** Early turns may return `None` for `standardization_level` and `sections`.
-`_process_response()` must merge only non-None fields without wiping prior entries.
-**Suggested action:** Use `if value is not None: self.store(key, value)` pattern.
-
 ### [OPEN] — `render_chat_panel` incompatible with 3-output chat_fn
 **Source:** Validation of Task 8
 **Problem:** `render_chat_panel` hardwires `outputs=[chatbot, textbox]`. clasificacion.py's `chat_fn` must return `(history, "", draft_dict)` to update draft state. There is no hook for a 3rd output through the existing component.
 **Impact:** Draft gr.State never updates; preview never re-renders; confirm button stays disabled regardless of conversation.
 **Suggested action:** In 8.4, build the chat panel inline in `clasificacion.py` (not via `render_chat_panel`) and wire `outputs=[chatbot, textbox, draft_state]` directly. Do NOT modify `render_chat_panel`.
-
-### [OPEN] — `confirm_fn` signature inconsistency
-**Source:** Validation of Task 8
-**Problem:** Plan spec says "Confirm button wired to `confirm_fn(session_id)`" but `_make_confirm_fn` description says it "reads current draft from gr.State". Only session_id as input makes the draft dict inaccessible.
-**Impact:** `confirm_fn` cannot build `use_templates` mapping — the core output of the Clasificación section — without the draft dict.
-**Suggested action:** In 8.3/8.4, wire confirm button with `inputs=[draft, session_id]` and use `confirm_fn(draft_dict, session_id) -> str` as the signature.
-
-### [OPEN] — `sections` deep-merge underspecified
-**Source:** Validation of Task 8
-**Problem:** Plan says "use `if value is not None: self.store(key, value)` pattern" for sections. For a dict value, `store("sections", new_dict)` replaces the entire dict, wiping data from prior turns.
-**Impact:** Multi-turn section accumulation silently loses early-turn section data.
-**Suggested action:** In 8.1 `_process_response()`, for `sections` specifically: `existing = self.retrieve("sections") or {}; existing.update(new_sections); self.store("sections", existing)`.
-
-### [OPEN] — No type validation on sections dict content
-**Source:** Validation of Task 8
-**Problem:** `sections: dict | None` accepts any dict. LLM could return unexpected keys or values missing `has_data`.
-**Impact:** `use_templates` derivation in `_make_confirm_fn` silently defaults to `True` for malformed sections, persisting wrong routing config.
-**Suggested action:** In 8.4, guard `_make_confirm_fn` with explicit per-key `.get("has_data", False)` defaults before computing `use_templates`.
 
 ### [OPEN] — standardization_level range not validated
 **Source:** Validation of subtask 8.1

@@ -607,10 +607,11 @@
             "id": 3,
             "title": "8.3 Draft preview component (gradio_app/components.py)",
             "description": "Add render_draft_preview() to components.py. Renders a dict as a live table with a Confirm button. Reusable by Tasks 9-12. No-op render when draft is empty.",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [],
             "parentTaskId": 8,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-03-12T07:22:04.081Z"
           },
           {
             "id": 4,
@@ -743,7 +744,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-03-12T07:08:00.996Z"
+        "updatedAt": "2026-03-12T07:22:04.081Z"
       },
       {
         "id": "9",
@@ -934,7 +935,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-12T07:08:00.997Z",
+      "lastModified": "2026-03-12T07:22:04.081Z",
       "taskCount": 16,
       "completedCount": 7,
       "tags": [
