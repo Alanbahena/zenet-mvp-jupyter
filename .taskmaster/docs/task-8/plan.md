@@ -145,6 +145,7 @@ file ingestion and handles upload natively.
 | `core/__init__.py` | Modify | Export `ClassificationAgent` |
 | `tests/unit/test_classification_agent.py` | Create | 12 mocked + 3 live tests |
 | `docs/Architecture/sections/clasificacion.md` | Create | Section architecture doc |
+| `docs/Architecture/architecture-persistence.md` | Modify | Update SQLite table count (9 → 10) + add `classification` to entity type list |
 | `.taskmaster/tasks/tasks.json` | Modify | Subtask status tracking |
 | `CLAUDE.md` | Modify | Task 8 status updates |
 
@@ -280,6 +281,9 @@ Follow the WelcomeAgent pattern from Task 7.5:
 
 - Create `docs/Architecture/sections/clasificacion.md` — documents propose→preview→confirm
   as the canonical pattern for Tasks 9–12
+- Update `docs/Architecture/architecture-persistence.md`:
+  - Change "9 entity tables" → "10 entity tables" in the SqliteStorage section
+  - Add `classification` to the `_SQLITE_ENTITY_TYPES` list and note the JSON blob pattern
 - Mark subtask 8.7 and Task 8 parent `done` in `tasks.json`
 - Update `CLAUDE.md` task status table
 
@@ -395,6 +399,10 @@ PYTHONPATH=. uv run python -c "from gradio_app.app import build_app; build_app()
 
 ### `docs/Architecture/sections/clasificacion.md`
 - [ ] Propose→preview→confirm pattern documented as canonical reference for Tasks 9–12
+
+### `docs/Architecture/architecture-persistence.md`
+- [ ] SQLite table count updated (9 → 10)
+- [ ] `classification` added to entity type list with JSON blob pattern noted
 
 ### `.taskmaster/tasks/tasks.json` + `CLAUDE.md`
 - [ ] All subtask statuses tracked
