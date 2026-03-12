@@ -384,6 +384,18 @@ via `.then()` to the send button. This is a new Gradio pattern not established i
 **Impact:** 8.3's preview renderer maps level → "Nivel 1/2/3" label — an out-of-range value produces a blank or broken label. The wrong level would also be persisted to SQLite via confirm_fn.
 **Suggested action:** Before implementing 8.3, add a Pydantic `field_validator` in `_ClassificationResponse` clamping `standardization_level` to `{1, 2, 3}` or `None`, OR handle unknown values gracefully in 8.3's Markdown renderer.
 
+### [OPEN] — Entity type count in architecture-persistence.md
+**Source:** Validation of subtask 8.2
+**Problem:** Parent plan says "9 entity tables → 10" for the 8.7 doc update. `_SQLITE_ENTITY_TYPES` currently has 10 entries. Adding `classification` makes 11, not 10.
+**Impact:** `architecture-persistence.md` will be incorrect on first write in 8.7.
+**Suggested action:** In 8.7, update `architecture-persistence.md` to read "10 → 11", not "9 → 10". Correct the 8.7 section description in this plan accordingly.
+
+### [OPEN] — No direct SqliteStorage round-trip test for classification
+**Source:** Validation of subtask 8.2
+**Problem:** 8.6 test table covers `confirm_fn_persists_classification` (DataLake path) but not `SqliteStorage.save/load` directly for `classification`.
+**Impact:** A SQL typo or wrong `int()` cast in the new handlers only surfaces at UI test time, not unit test time.
+**Suggested action:** Add `test_classification_save_load_round_trip` to 8.6 test plan: `storage.save("classification", 1, dict)` → `storage.load("classification", 1) == dict`.
+
 ---
 
 ## Verification
