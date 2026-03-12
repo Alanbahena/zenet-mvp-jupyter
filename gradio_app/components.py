@@ -1,6 +1,35 @@
 import gradio as gr
 from typing import Callable
 
+_LEVEL_LABELS = {
+    1: "Nivel 1 — Operación en la cabeza",
+    2: "Nivel 2 — Parcialmente documentado",
+    3: "Nivel 3 — Operación estructurada",
+}
+_LEVEL_DESCRIPTIONS = {
+    1: "Zenet construirá todo desde plantillas base y te guiará en cada paso.",
+    2: "Zenet usará lo que tengas y complementará con plantillas donde falte.",
+    3: "Zenet importará y normalizará la información existente.",
+}
+_DRAFT_PLACEHOLDER = "El asistente irá completando esta sección durante la conversación."
+
+
+def _format_draft(draft: dict) -> tuple[str, dict]:
+    """
+    Convert a classification draft dict to a Markdown string and a button update.
+
+    Returns (markdown_str, gr.update(interactive=bool)).
+    Shows the diagnosed level label and a one-line contextual description.
+    Returns placeholder text and a disabled button when draft is empty or level is not yet set.
+    """
+    level = (draft or {}).get("standardization_level")
+    if level is None:
+        return _DRAFT_PLACEHOLDER, gr.update(interactive=False)
+    label = _LEVEL_LABELS.get(level, f"Nivel {level}")
+    description = _LEVEL_DESCRIPTIONS.get(level, "")
+    markdown = f"**{label}**\n{description}"
+    return markdown, gr.update(interactive=True)
+
 
 def render_chat_panel(
     chat_fn: Callable,
@@ -48,3 +77,42 @@ def render_chat_panel(
         inputs=[textbox, chatbot, session_id],
         outputs=[chatbot, textbox],
     )
+
+
+def render_draft_preview(
+    draft: gr.State,
+    confirm_fn: Callable,
+    session_id: gr.State,
+) -> gr.Button:
+    """
+    Render the right-column draft preview panel inside an active gr.Column context.
+
+    Renders: gr.Markdown (live classification draft) + Confirm gr.Button.
+    The Markdown re-renders automatically whenever the draft gr.State changes.
+    The Confirm button is disabled until standardization_level is set in the draft.
+
+    draft: gr.State holding the current classification draft dict
+           (keys: standardization_level).
+    confirm_fn signature: (draft_dict: dict, session_id: str) -> str
+      - receives the draft dict and session_id values (not State components)
+      - returns a status message string
+    session_id: gr.State holding the current session identifier.
+
+    Returns the Confirm button so the calling section can chain .then() for
+    additional outputs (e.g. status message display).
+    """
+    markdown = gr.Markdown(value=_DRAFT_PLACEHOLDER)
+    confirm_btn = gr.Button("Confirmar clasificación", interactive=False)
+
+    draft.change(
+        fn=_format_draft,
+        inputs=[draft],
+        outputs=[markdown, confirm_btn],
+    )
+    confirm_btn.click(
+        fn=confirm_fn,
+        inputs=[draft, session_id],
+        outputs=[],
+    )
+
+    return confirm_btn
