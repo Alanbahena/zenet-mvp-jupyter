@@ -149,6 +149,14 @@ def _create_tables(conn: sqlite3.Connection) -> None:
         )
     """)
 
+    # 10. Classification entity (JSON blob, keyed by integer session-derived id)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS classification (
+            id INTEGER PRIMARY KEY,
+            data TEXT NOT NULL
+        )
+    """)
+
     # Indexes
     cursor.execute(
         "CREATE INDEX IF NOT EXISTS idx_recipe_category_id ON recipe(category_id)"

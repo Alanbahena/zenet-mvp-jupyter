@@ -110,6 +110,7 @@ _SQLITE_ENTITY_TYPES = frozenset({
     "recipe",
     "inventory_unit_equivalence",
     "agent_state",
+    "classification",
 })
 
 
@@ -334,6 +335,12 @@ class SqliteStorage:
                     """,
                     (str(entity_id), json.dumps(data_dict)),
                 )
+            elif entity_type == "classification":
+                cursor.execute(
+                    "INSERT INTO classification (id, data) VALUES (?, ?) "
+                    "ON CONFLICT(id) DO UPDATE SET data = excluded.data",
+                    (int(entity_id), json.dumps(data_dict)),
+                )
             self._conn.commit()
         except sqlite3.IntegrityError as e:
             raise ValueError(f"Cannot save {entity_type} {entity_id}: {e}") from e
@@ -419,6 +426,12 @@ class SqliteStorage:
             elif entity_type == "agent_state":
                 cursor.execute(
                     "SELECT data FROM agent_state WHERE session_id = ?", (str(entity_id),)
+                )
+                row = cursor.fetchone()
+                return json.loads(row[0]) if row else None
+            elif entity_type == "classification":
+                cursor.execute(
+                    "SELECT data FROM classification WHERE id = ?", (int(entity_id),)
                 )
                 row = cursor.fetchone()
                 return json.loads(row[0]) if row else None
