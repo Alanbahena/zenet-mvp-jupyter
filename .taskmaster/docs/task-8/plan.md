@@ -169,6 +169,25 @@ and `sections: dict | None`. Create `ClassificationAgent(BaseAgent)` with
 - **Level 2** — Partially documented: has some Excel, notes, photos, or partial recipes
 - **Level 3** — Structured operation: has most categories, recipes, and inventory documented
 
+**Two-phase conversation structure (system prompt must enforce):**
+
+Phase 1 — Level diagnosis (2–3 broad questions):
+- How many years has the restaurant been operating?
+- On a scale of 1–10, how standardized do you feel your operation is?
+- Can you leave for a weekend without the operation falling apart?
+- When a new employee joins, how do they learn?
+
+Phase 2 — Section-by-section documentation check (required, drives `use_templates`):
+- All 4 sections must be resolved before the agent proposes a final classification
+- `recipe_categories`, `inventory_families`, `recipes`, `inventory` — each needs a `has_data` value
+- The agent may blend phase 1 and phase 2 questions naturally in conversation
+
+**Impatient operator fallback (system prompt must include):**
+- If the operator wants to skip ahead or says "just set it up for me", the agent proposes
+  Level 1 with all sections as `has_data: false` as a safe default
+- The agent communicates this is a starting point and they can correct it later
+- This ensures the confirm button always becomes available even if the conversation is short
+
 ---
 
 ### 8.2 — Classification persistence (`schema.py` + `persistence.py`)
@@ -205,9 +224,26 @@ def render_draft_preview(
     ...
 ```
 
-- Renders `draft` dict as `gr.JSON` (or `gr.Dataframe` for tabular data)
-- Confirm `gr.Button` wired to `confirm_fn(session_id)`
-- No-op / greyed-out Confirm button when draft is empty
+- Renders `draft` dict as a human-readable `gr.Markdown` block — NOT `gr.JSON`
+- The Markdown renderer should translate the raw dict into operator-friendly language:
+  - Level shown as "Nivel 1 / 2 / 3" with a one-line description of what that means
+  - Each section shown as a labeled row with a plain-language status:
+    - `has_data: true` → "Tienes información"
+    - `has_data: false` → "Usarás plantilla base"
+  - Example output:
+    ```
+    **Nivel de estandarización:** Nivel 2 — Parcialmente documentado
+
+    | Sección | Estado |
+    |---------|--------|
+    | Categorías de recetas | Tienes información |
+    | Familias de inventario | Usarás plantilla base |
+    | Recetas | Tienes información |
+    | Inventario | Usarás plantilla base |
+    ```
+  - When draft is empty or incomplete: show a neutral placeholder ("El asistente irá completando esta sección durante la conversación.")
+- Confirm `gr.Button` wired to `confirm_fn(draft_dict, session_id)`
+- No-op / greyed-out Confirm button when `standardization_level` is not yet set
 - Returns the Confirm button so the calling section can wire additional outputs
 
 ---
@@ -378,8 +414,9 @@ PYTHONPATH=. uv run python -c "from gradio_app.app import build_app; build_app()
 - [ ] save/load/delete/list_ids handlers for `classification` (JSON blob pattern)
 
 ### `gradio_app/components.py`
-- [ ] `render_draft_preview()` renders draft dict as live table with Confirm button
-- [ ] No-op / greyed-out when draft is empty
+- [ ] `render_draft_preview()` renders draft dict as human-readable `gr.Markdown` (level + section table in Spanish)
+- [ ] Empty/incomplete draft shows neutral placeholder text
+- [ ] No-op / greyed-out Confirm button when `standardization_level` is not yet set
 - [ ] Returns Confirm button for external wiring
 
 ### `gradio_app/sections/clasificacion.py`

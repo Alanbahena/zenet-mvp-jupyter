@@ -581,15 +581,17 @@
         "dependencies": [
           "7"
         ],
-        "status": "pending",
+        "status": "in-progress",
         "subtasks": [
           {
             "id": 1,
             "title": "8.1 ClassificationAgent (core/agents/classification_agent.py)",
             "description": "Create ClassificationAgent with hybrid RESPONSE_MODEL: reply (shown to operator) + standardization_level + sections. _generate_prompt() injects restaurant context and current _data_store draft. _process_response() merges new structured fields into _data_store incrementally without overwriting prior turns.",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [],
-            "parentTaskId": 8
+            "parentTaskId": 8,
+            "updatedAt": "2026-03-12T04:31:40.639Z",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -597,7 +599,8 @@
             "description": "Add classification table to schema.py (id INTEGER PRIMARY KEY, data TEXT NOT NULL). Add 'classification' to _SQLITE_ENTITY_TYPES and implement save/load/delete/list_ids handlers using the JSON blob pattern from agent_state.",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 8
+            "parentTaskId": 8,
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -605,7 +608,8 @@
             "description": "Add render_draft_preview() to components.py. Renders a dict as a live table with a Confirm button. Reusable by Tasks 9-12. No-op render when draft is empty.",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 8
+            "parentTaskId": 8,
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -617,7 +621,8 @@
               "8.2",
               "8.3"
             ],
-            "parentTaskId": 8
+            "parentTaskId": 8,
+            "parentId": "undefined"
           },
           {
             "id": 5,
@@ -627,7 +632,8 @@
             "dependencies": [
               "8.4"
             ],
-            "parentTaskId": 8
+            "parentTaskId": 8,
+            "parentId": "undefined"
           },
           {
             "id": 6,
@@ -637,7 +643,8 @@
             "dependencies": [
               "8.5"
             ],
-            "parentTaskId": 8
+            "parentTaskId": 8,
+            "parentId": "undefined"
           },
           {
             "id": 7,
@@ -647,10 +654,95 @@
             "dependencies": [
               "8.6"
             ],
-            "parentTaskId": 8
+            "parentTaskId": 8,
+            "parentId": "undefined"
+          },
+          {
+            "id": 8,
+            "title": "8.1 ClassificationAgent (core/agents/classification_agent.py)",
+            "description": "Create _ClassificationResponse(BaseModel) and ClassificationAgent(BaseAgent) with RESPONSE_MODEL, INPUT_SCHEMA, OUTPUT_SCHEMA; _generate_prompt() injects restaurant context and current _data_store; _process_response() merges non-None fields into _data_store.",
+            "details": "See .taskmaster/docs/task-8/plan.md § 8.1. Standardization levels 1–3. Hybrid reply + structured fields.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 8,
+            "parentId": "undefined"
+          },
+          {
+            "id": 9,
+            "title": "8.2 Classification persistence (schema.py + persistence.py)",
+            "description": "Add classification table in schema.py (id INTEGER PRIMARY KEY, data TEXT NOT NULL). Add \"classification\" to _SQLITE_ENTITY_TYPES and save/load/delete/list_ids handlers (JSON blob pattern) in persistence.py.",
+            "details": "See .taskmaster/docs/task-8/plan.md § 8.2.",
+            "status": "pending",
+            "dependencies": [
+              "8.1"
+            ],
+            "parentTaskId": 8,
+            "parentId": "undefined"
+          },
+          {
+            "id": 10,
+            "title": "8.3 Draft preview component (gradio_app/components.py)",
+            "description": "Add render_draft_preview(draft, confirm_fn, session_id): render draft dict as gr.JSON/live table, Confirm button wired to confirm_fn; greyed-out when draft empty; return Confirm button for wiring.",
+            "details": "See .taskmaster/docs/task-8/plan.md § 8.3.",
+            "status": "pending",
+            "dependencies": [
+              "8.1"
+            ],
+            "parentTaskId": 8,
+            "parentId": "undefined"
+          },
+          {
+            "id": 11,
+            "title": "8.4 Clasificación section UI (gradio_app/sections/clasificacion.py)",
+            "description": "Replace stub with full render(): chat column + draft preview column; _make_chat_fn (load_state/run/save_state, update draft State); _make_confirm_fn (persist classification to DataLake); _load_classification_context (Restaurant).",
+            "details": "See .taskmaster/docs/task-8/plan.md § 8.4. Propose → preview → confirm pattern.",
+            "status": "pending",
+            "dependencies": [
+              "8.1",
+              "8.2",
+              "8.3"
+            ],
+            "parentTaskId": 8,
+            "parentId": "undefined"
+          },
+          {
+            "id": 12,
+            "title": "8.5 Exports (core/agents/__init__.py + core/__init__.py)",
+            "description": "Add ClassificationAgent to core/agents/__init__.py and core/__init__.py re-exports (same pattern as Task 7.5).",
+            "details": "See .taskmaster/docs/task-8/plan.md § 8.5.",
+            "status": "pending",
+            "dependencies": [
+              "8.4"
+            ],
+            "parentTaskId": 8,
+            "parentId": "undefined"
+          },
+          {
+            "id": 13,
+            "title": "8.6 Tests (tests/unit/test_classification_agent.py)",
+            "description": "Create test file: 12 mocked tests (factory, RESPONSE_MODEL, run reply, _data_store accumulation, context injection, save/load state, confirm_fn); 3 live tests guarded by ANTHROPIC_API_KEY.",
+            "details": "See .taskmaster/docs/task-8/plan.md § 8.6.",
+            "status": "pending",
+            "dependencies": [
+              "8.5"
+            ],
+            "parentTaskId": 8,
+            "parentId": "undefined"
+          },
+          {
+            "id": 14,
+            "title": "8.7 Documentation and task closure",
+            "description": "Create docs/Architecture/sections/clasificacion.md (propose→preview→confirm). Update architecture-persistence.md (10 tables, classification entity). Update tasks.json and CLAUDE.md when task 8 complete.",
+            "details": "See .taskmaster/docs/task-8/plan.md § 8.7.",
+            "status": "pending",
+            "dependencies": [
+              "8.6"
+            ],
+            "parentTaskId": 8,
+            "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-03-11T06:02:27.529Z"
+        "updatedAt": "2026-03-12T04:31:40.639Z"
       },
       {
         "id": "9",
@@ -841,7 +933,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-11T06:02:27.529Z",
+      "lastModified": "2026-03-12T04:31:40.645Z",
       "taskCount": 16,
       "completedCount": 7,
       "tags": [
