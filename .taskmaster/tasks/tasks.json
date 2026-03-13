@@ -581,7 +581,7 @@
         "dependencies": [
           "7"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -597,7 +597,7 @@
             "id": 2,
             "title": "8.2 Classification persistence (schema.py + persistence.py)",
             "description": "Add classification table to schema.py (id INTEGER PRIMARY KEY, data TEXT NOT NULL). Add 'classification' to _SQLITE_ENTITY_TYPES and implement save/load/delete/list_ids handlers using the JSON blob pattern from agent_state.",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 8,
             "parentId": "undefined",
@@ -617,7 +617,7 @@
             "id": 4,
             "title": "8.4 Clasificación section UI (gradio_app/sections/clasificacion.py)",
             "description": "Replace stub with full render(): chat (left) + draft preview (right). Chat wired to ClassificationAgent with load_state/run/save_state per turn. Preview re-renders after each turn. Confirm button calls _make_confirm_fn() to save classification entity to DataLake.",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               "8.1",
               "8.2",
@@ -631,7 +631,7 @@
             "id": 5,
             "title": "8.5 Exports (core/agents/__init__.py + core/__init__.py)",
             "description": "Add ClassificationAgent to the two-level export chain: core/agents/__init__.py and core/__init__.py. Follow the WelcomeAgent pattern from Task 7.5.",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               "8.4"
             ],
@@ -643,7 +643,7 @@
             "id": 6,
             "title": "8.6 Tests (tests/unit/test_classification_agent.py)",
             "description": "Create test file with _MockProvider, 12 mocked tests covering agent logic, _data_store accumulation, confirm_fn persistence, and error handling. 3 live tests guarded by ANTHROPIC_API_KEY.",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               "8.5"
             ],
@@ -655,19 +655,20 @@
             "id": 7,
             "title": "8.7 Documentation and task closure",
             "description": "Create .taskmaster/docs/task-8/plan.md and docs/Architecture/sections/clasificacion.md. Mark Task 8 done in tasks.json and CLAUDE.md.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "8.6"
             ],
             "parentTaskId": 8,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-03-13T19:40:59.375Z"
           },
           {
             "id": 8,
             "title": "8.1 ClassificationAgent (core/agents/classification_agent.py)",
             "description": "Create _ClassificationResponse(BaseModel) and ClassificationAgent(BaseAgent) with RESPONSE_MODEL, INPUT_SCHEMA, OUTPUT_SCHEMA; _generate_prompt() injects restaurant context and current _data_store; _process_response() merges non-None fields into _data_store.",
             "details": "See .taskmaster/docs/task-8/plan.md § 8.1. Standardization levels 1–3. Hybrid reply + structured fields.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 8,
             "parentId": "undefined"
@@ -677,7 +678,7 @@
             "title": "8.2 Classification persistence (schema.py + persistence.py)",
             "description": "Add classification table in schema.py (id INTEGER PRIMARY KEY, data TEXT NOT NULL). Add \"classification\" to _SQLITE_ENTITY_TYPES and save/load/delete/list_ids handlers (JSON blob pattern) in persistence.py.",
             "details": "See .taskmaster/docs/task-8/plan.md § 8.2.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "8.1"
             ],
@@ -689,7 +690,7 @@
             "title": "8.3 Draft preview component (gradio_app/components.py)",
             "description": "Add render_draft_preview(draft, confirm_fn, session_id): render draft dict as gr.JSON/live table, Confirm button wired to confirm_fn; greyed-out when draft empty; return Confirm button for wiring.",
             "details": "See .taskmaster/docs/task-8/plan.md § 8.3.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "8.1"
             ],
@@ -701,7 +702,7 @@
             "title": "8.4 Clasificación section UI (gradio_app/sections/clasificacion.py)",
             "description": "Replace stub with full render(): chat column + draft preview column; _make_chat_fn (load_state/run/save_state, update draft State); _make_confirm_fn (persist classification to DataLake); _load_classification_context (Restaurant).",
             "details": "See .taskmaster/docs/task-8/plan.md § 8.4. Propose → preview → confirm pattern.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "8.1",
               "8.2",
@@ -715,7 +716,7 @@
             "title": "8.5 Exports (core/agents/__init__.py + core/__init__.py)",
             "description": "Add ClassificationAgent to core/agents/__init__.py and core/__init__.py re-exports (same pattern as Task 7.5).",
             "details": "See .taskmaster/docs/task-8/plan.md § 8.5.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "8.4"
             ],
@@ -727,7 +728,7 @@
             "title": "8.6 Tests (tests/unit/test_classification_agent.py)",
             "description": "Create test file: 12 mocked tests (factory, RESPONSE_MODEL, run reply, _data_store accumulation, context injection, save/load state, confirm_fn); 3 live tests guarded by ANTHROPIC_API_KEY.",
             "details": "See .taskmaster/docs/task-8/plan.md § 8.6.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "8.5"
             ],
@@ -739,7 +740,7 @@
             "title": "8.7 Documentation and task closure",
             "description": "Create docs/Architecture/sections/clasificacion.md (propose→preview→confirm). Update architecture-persistence.md (10 tables, classification entity). Update tasks.json and CLAUDE.md when task 8 complete.",
             "details": "See .taskmaster/docs/task-8/plan.md § 8.7.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "8.6"
             ],
@@ -747,7 +748,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-03-13T02:09:01.162Z"
+        "updatedAt": "2026-03-13T19:40:59.375Z"
       },
       {
         "id": "9",
@@ -938,7 +939,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-13T02:09:01.162Z",
+      "lastModified": "2026-03-13T19:40:59.383Z",
       "taskCount": 16,
       "completedCount": 7,
       "tags": [

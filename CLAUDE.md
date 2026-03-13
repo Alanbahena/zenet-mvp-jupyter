@@ -163,9 +163,10 @@ Tasks and subtasks are tracked in `.taskmaster/tasks/tasks.json`.
 | 5 | Agent framework | done |
 | 6 | Gradio UI foundation and LangGraph integration | **done** |
 | 7 | Bienvenida section agent | **done** |
-| 8–16 | Section agents, workflow engine, notebooks, tests, docs | pending |
+| 8 | Clasificación section agent | **done** |
+| 9–16 | Section agents, workflow engine, notebooks, tests, docs | pending |
 
-**Task 8** (Clasificación section agent) is the next task.
+**Task 9** (Configuración section agent) is the next task.
 
 ### TaskMaster docs
 
