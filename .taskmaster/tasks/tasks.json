@@ -643,12 +643,13 @@
             "id": 6,
             "title": "8.6 Tests (tests/unit/test_classification_agent.py)",
             "description": "Create test file with _MockProvider, 12 mocked tests covering agent logic, _data_store accumulation, confirm_fn persistence, and error handling. 3 live tests guarded by ANTHROPIC_API_KEY.",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [
               "8.5"
             ],
             "parentTaskId": 8,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-03-13T02:09:01.162Z"
           },
           {
             "id": 7,
@@ -746,7 +747,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-03-13T01:59:18.171Z"
+        "updatedAt": "2026-03-13T02:09:01.162Z"
       },
       {
         "id": "9",
@@ -937,7 +938,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-13T01:59:18.172Z",
+      "lastModified": "2026-03-13T02:09:01.162Z",
       "taskCount": 16,
       "completedCount": 7,
       "tags": [
