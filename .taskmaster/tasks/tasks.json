@@ -631,12 +631,13 @@
             "id": 5,
             "title": "8.5 Exports (core/agents/__init__.py + core/__init__.py)",
             "description": "Add ClassificationAgent to the two-level export chain: core/agents/__init__.py and core/__init__.py. Follow the WelcomeAgent pattern from Task 7.5.",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [
               "8.4"
             ],
             "parentTaskId": 8,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-03-13T01:59:18.171Z"
           },
           {
             "id": 6,
@@ -745,7 +746,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-03-12T08:20:50.107Z"
+        "updatedAt": "2026-03-13T01:59:18.171Z"
       },
       {
         "id": "9",
@@ -936,7 +937,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-12T08:20:50.108Z",
+      "lastModified": "2026-03-13T01:59:18.172Z",
       "taskCount": 16,
       "completedCount": 7,
       "tags": [
