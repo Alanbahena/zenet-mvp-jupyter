@@ -11,7 +11,42 @@ _LEVEL_DESCRIPTIONS = {
     2: "Zenet usará lo que tengas y complementará con plantillas donde falte.",
     3: "Zenet importará y normalizará la información existente.",
 }
-_DRAFT_PLACEHOLDER = "El asistente irá completando esta sección durante la conversación."
+_LEVEL_NEXT_STEPS = {
+    1: (
+        "No te preocupes si no tienes nada escrito — para eso estamos aquí. "
+        "Vamos a construir todo juntos desde cero, paso a paso. "
+        "Tú solo respondes y Zenet va armando tu operación contigo."
+    ),
+    2: (
+        "Lo que ya tienes es un buen punto de partida. "
+        "Vamos a tomar lo que existe — aunque esté incompleto — y completar lo que falte. "
+        "Piénsalo como ordenar una cocina: usamos lo que hay y conseguimos lo que falta."
+    ),
+    3: (
+        "Llevas ventaja — ya tienes mucho trabajo hecho. "
+        "Vamos a tomar toda esa información y organizarla dentro de Zenet para que funcione como un sistema. "
+        "El trabajo ya está, solo hay que darle estructura."
+    ),
+}
+_LEVEL_SHORT = {
+    1: "Todo en la memoria del equipo, sin documentación.",
+    2: "Algo escrito (Excel, notas, fotos), no está completo.",
+    3: "Categorías, recetas e inventario mayormente documentados.",
+}
+_SPECTRUM_PENDING = """\
+Responde las preguntas del asistente para que Zenet pueda determinar tu nivel.
+
+---
+
+**Nivel 1 — Operación en la cabeza**
+Todo en la memoria del equipo, sin recetas escritas ni procesos documentados.
+
+**Nivel 2 — Parcialmente documentado**
+Algo escrito: Excel, notas, fotos. No está completo pero hay material con qué trabajar.
+
+**Nivel 3 — Operación estructurada**
+La mayoría de categorías, recetas e inventario están documentados y organizados.\
+"""
 
 
 def _format_draft(draft: dict) -> tuple[str, dict]:
@@ -19,15 +54,38 @@ def _format_draft(draft: dict) -> tuple[str, dict]:
     Convert a classification draft dict to a Markdown string and a button update.
 
     Returns (markdown_str, gr.update(interactive=bool)).
-    Shows the diagnosed level label and a one-line contextual description.
-    Returns placeholder text and a disabled button when draft is empty or level is not yet set.
+
+    No level set: shows the full spectrum as a reference so the operator knows
+    what they are working toward during the conversation.
+
+    Level set: shows the diagnosed level prominently, its implication for next
+    sections, and the full spectrum with the current level marked.
     """
     level = (draft or {}).get("standardization_level")
     if level is None:
-        return _DRAFT_PLACEHOLDER, gr.update(interactive=False)
+        return _SPECTRUM_PENDING, gr.update(interactive=False)
+
     label = _LEVEL_LABELS.get(level, f"Nivel {level}")
     description = _LEVEL_DESCRIPTIONS.get(level, "")
-    markdown = f"**{label}**\n{description}"
+    next_steps = _LEVEL_NEXT_STEPS.get(level, "")
+
+    spectrum_lines = []
+    for lvl in (1, 2, 3):
+        row_label = _LEVEL_LABELS.get(lvl, f"Nivel {lvl}")
+        row_short = _LEVEL_SHORT.get(lvl, "")
+        if lvl == level:
+            spectrum_lines.append(f"> **{row_label}** — tu nivel\n> {row_short}")
+        else:
+            spectrum_lines.append(f"{row_label}\n{row_short}")
+    spectrum = "\n\n".join(spectrum_lines)
+
+    markdown = (
+        f"**Tu restaurante está en {label}**\n"
+        f"{description}\n\n"
+        f"**Próximas secciones:** {next_steps}\n\n"
+        f"---\n\n"
+        f"{spectrum}"
+    )
     return markdown, gr.update(interactive=True)
 
 
@@ -83,12 +141,11 @@ def render_draft_preview(
     draft: gr.State,
     confirm_fn: Callable,
     session_id: gr.State,
-) -> gr.Button:
+) -> tuple[gr.Markdown, gr.Button]:
     """
     Render the right-column draft preview panel inside an active gr.Column context.
 
     Renders: gr.Markdown (live classification draft) + Confirm gr.Button.
-    The Markdown re-renders automatically whenever the draft gr.State changes.
     The Confirm button is disabled until standardization_level is set in the draft.
 
     draft: gr.State holding the current classification draft dict
@@ -98,21 +155,20 @@ def render_draft_preview(
       - returns a status message string
     session_id: gr.State holding the current session identifier.
 
-    Returns the Confirm button so the calling section can chain .then() for
-    additional outputs (e.g. status message display).
+    Returns (markdown, confirm_btn) so the calling section can wire them as
+    outputs of a .then() chain on the send button click event. gr.State.change()
+    does not fire when a State is updated via a click handler return value, so
+    the caller must chain .then(fn=_format_draft, inputs=[draft], outputs=[markdown, confirm_btn])
+    directly off the send button.
     """
-    markdown = gr.Markdown(value=_DRAFT_PLACEHOLDER)
+    markdown = gr.Markdown(value=_SPECTRUM_PENDING)
     confirm_btn = gr.Button("Confirmar clasificación", interactive=False)
+    status = gr.Markdown("")
 
-    draft.change(
-        fn=_format_draft,
-        inputs=[draft],
-        outputs=[markdown, confirm_btn],
-    )
     confirm_btn.click(
         fn=confirm_fn,
         inputs=[draft, session_id],
-        outputs=[],
+        outputs=[status],
     )
 
-    return confirm_btn
+    return markdown, confirm_btn

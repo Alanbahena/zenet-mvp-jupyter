@@ -1,10 +1,22 @@
 import gradio as gr
 
 from core.agents.classification_agent import ClassificationAgent
+
+_INITIAL_GREETING = [
+    {
+        "role": "assistant",
+        "content": (
+            "Perfecto, sigamos. Ahora necesito entender cómo opera tu restaurante hoy "
+            "para asignarte un nivel de estandarización — esto le permitirá a Zenet "
+            "adaptar su enfoque en cada sección. "
+            "¿Cuántos años lleva operando tu restaurante?"
+        ),
+    }
+]
 from core.agents.utils import create_agent
 from core.ai.providers import ClaudeProvider
 from core.domain.data_model import DEFAULT_RESTAURANT_TYPES
-from gradio_app.components import render_draft_preview
+from gradio_app.components import _format_draft, render_draft_preview
 
 
 def _load_classification_context(data_lake, session_id: str) -> dict:
@@ -69,21 +81,27 @@ def render(session_id: gr.State, data_lake) -> None:
     with gr.Row():
         with gr.Column(scale=1):
             gr.Markdown("## Asistente de clasificación")
-            chatbot = gr.Chatbot(label="Asistente Zenet", height="70vh")
+            chatbot = gr.Chatbot(label="Asistente Zenet", value=_INITIAL_GREETING, height="70vh")
             textbox = gr.Textbox(placeholder="Escribe tu mensaje...", show_label=False)
             send_btn = gr.Button("Enviar")
 
         with gr.Column(scale=1):
             gr.Markdown("## Clasificación propuesta")
-            render_draft_preview(
+            draft_markdown, confirm_btn = render_draft_preview(
                 draft=draft_state,
                 confirm_fn=_make_confirm_fn(data_lake),
                 session_id=session_id,
             )
 
     chat_fn = _make_chat_fn(provider, data_lake)
+
+    def _chat_and_format(message, history, session_id):
+        history, text, draft_dict = chat_fn(message, history, session_id)
+        md, btn = _format_draft(draft_dict)
+        return history, text, draft_dict, md, btn
+
     send_btn.click(
-        fn=chat_fn,
+        fn=_chat_and_format,
         inputs=[textbox, chatbot, session_id],
-        outputs=[chatbot, textbox, draft_state],
+        outputs=[chatbot, textbox, draft_state, draft_markdown, confirm_btn],
     )

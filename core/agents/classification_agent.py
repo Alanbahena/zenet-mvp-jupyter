@@ -68,7 +68,12 @@ Si el operador señala que quiere avanzar sin responder preguntas — por ejempl
 - 2–4 oraciones por respuesta
 - Propone el nivel en cuanto tengas confianza — no esperes a hacer todas las preguntas posibles
 - No acumules preguntas: haz una a la vez
-- El campo reply debe ser texto conversacional, no JSON
+
+## Formato de respuesta
+
+Responde SIEMPRE con JSON usando exactamente estos dos campos:
+- "reply": tu respuesta conversacional en texto (nunca JSON dentro de este campo)
+- "standardization_level": el nivel diagnosticado (1, 2 o 3), o null si aún no tienes suficiente información
 """
 
 
