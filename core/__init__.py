@@ -106,7 +106,7 @@ from core.ai.prompts import (
     RECIPE_CLASSIFICATION_PROMPT,
 )
 from core.ai.utils import parse_structured_output, validate_structured_output
-from core.agents import BaseAgent, RestaurantInfoAgent, WelcomeAgent, create_agent, AgentRegistry
+from core.agents import BaseAgent, ClassificationAgent, RestaurantInfoAgent, WelcomeAgent, create_agent, AgentRegistry
 
 __all__ = [
     # domain/data_model
@@ -216,6 +216,7 @@ __all__ = [
     "validate_structured_output",
     # agents
     "BaseAgent",
+    "ClassificationAgent",
     "RestaurantInfoAgent",
     "WelcomeAgent",
     "create_agent",

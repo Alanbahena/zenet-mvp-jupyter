@@ -23,7 +23,7 @@ This layer is responsible for:
 - Providing the reusable chat panel component (`render_chat_panel()`)
 - Defining LangGraph node and graph patterns that section agents follow
 
-It does **not** own any section-specific logic. Each section (`bienvenida`, `clasificacion`, etc.) is a stub in Task 6 and is replaced by real implementations in Tasks 7–12.
+It does **not** own any section-specific logic. Each section (`bienvenida`, `clasificacion`, etc.) starts as a stub in Task 6 and is replaced by a real implementation in Tasks 7–12. Task 7 (Bienvenida) is complete.
 
 ---
 
@@ -50,12 +50,12 @@ def build_app() -> gr.Blocks:
 
 ### `gr.State` and `session_id`
 
-`gr.State` is a Gradio component that holds per-browser-tab state. When the page loads, `demo.load` fires `create_session(data_lake)`, which returns a UUID4 string. That string is stored in `session_id` and passed to every section's `render()` call.
+`gr.State` is a Gradio component that holds per-browser-tab state. When the page loads, `demo.load` fires `create_session(data_lake)`, which returns a fixed string. That string is stored in `session_id` and passed to every section's `render()` call.
 
 ```python
 # gradio_app/session.py
 def create_session(data_lake: DataLake) -> str:
-    return str(uuid.uuid4())   # e.g. "a3f8bc12-4491-9e00-f991-003211223344"
+    return "primary_session"   # fixed key — single-operator MVP install
 ```
 
 ### Session constraints
@@ -63,12 +63,13 @@ def create_session(data_lake: DataLake) -> str:
 | Property | Behavior |
 |----------|----------|
 | `data_lake` | Single instance, shared across all tabs |
-| `session_id` | UUID4, generated per browser tab on page load |
-| Persistence | `session_id` is NOT saved to disk in MVP 0.1 |
-| Resume | A page reload generates a new `session_id`; prior session data is not recovered |
-| Multi-user | Not supported in MVP 0.1 — single process, single DataLake |
+| `session_id` | Fixed string `"primary_session"` — same value every page load |
+| Persistence | Session data is saved to `data/zenet.db` (SQLite) and survives app restarts |
+| Resume | Reloading the page resumes the same session — form data and chat history are preserved |
+| Multi-user | Not supported in MVP 0.1 — single process, single operator |
+| Reset | Delete `data/zenet.db` via `reset_session.py` to start fresh |
 
-**Storage root:** `data/sessions/` (created automatically by `get_data_lake()` on first call).
+**Storage:** `data/zenet.db` (SQLite, created automatically by `get_data_lake()` on first call).
 
 ---
 
@@ -93,27 +94,20 @@ def render(session_id: gr.State, data_lake: DataLake) -> None:
 
 ### Task 6 stubs vs real implementations
 
-Task 6 delivers stub implementations for all six sections:
-
-```python
-# gradio_app/sections/bienvenida.py  (stub)
-def render(session_id: gr.State, data_lake) -> None:
-    """Stub — replaced by Task 7."""
-    gr.Markdown("### Bienvenida\nPendiente — Task 7.")
-```
-
-Tasks 7–12 replace each stub with a full implementation. The `render()` signature must remain identical — `build_app()` calls it without any changes.
+Task 6 delivers stub implementations for all six sections. Tasks 7–12 replace each stub
+with a full implementation. The `render()` signature must remain identical — `build_app()`
+calls it without any changes.
 
 ### Section-to-task mapping
 
-| Section | Module | Implemented in |
-|---------|--------|----------------|
-| Bienvenida | `sections/bienvenida.py` | Task 7 |
-| Clasificación | `sections/clasificacion.py` | Task 8 |
-| Configuración | `sections/configuracion.py` | Task 9 |
-| Alineamiento | `sections/alineamiento.py` | Task 10 |
-| Estructura | `sections/estructura.py` | Task 11 |
-| Manual operativo | `sections/manual_operativo.py` | Task 12 |
+| Section | Module | Status |
+|---------|--------|--------|
+| Bienvenida | `sections/bienvenida.py` | **done** (Task 7) |
+| Clasificación | `sections/clasificacion.py` | **done** (Task 8) |
+| Configuración | `sections/configuracion.py` | stub (Task 9) |
+| Alineamiento | `sections/alineamiento.py` | stub (Task 10) |
+| Estructura | `sections/estructura.py` | stub (Task 11) |
+| Manual operativo | `sections/manual_operativo.py` | stub (Task 12) |
 
 ---
 
@@ -129,6 +123,7 @@ def render_chat_panel(
     chat_fn: Callable,
     session_id: gr.State,
     data_lake_ref: object,
+    initial_messages: list[dict[str, str]] | None = None,  # optional static greeting
 ) -> None:
     ...
 ```
@@ -402,8 +397,8 @@ This change enables true human-in-the-loop with `interrupt_before`, session resu
 |------|----------|
 | `gradio_app/app.py` | `build_app()` — gr.Blocks with 6 tabs, DataLake creation, session_id wiring |
 | `gradio_app/session.py` | `get_data_lake()`, `create_session()` |
-| `gradio_app/components.py` | `render_chat_panel()` — reusable chat UI component |
-| `gradio_app/sections/` | Six section stubs (`render()` contract, replaced by Tasks 7–12) |
+| `gradio_app/components.py` | `render_chat_panel()` — reusable chat UI component; `render_draft_preview()` and `_format_draft()` — propose→preview→confirm panel (Tasks 8–12) |
+| `gradio_app/sections/` | Section implementations: Bienvenida done (Task 7); five stubs remaining (Tasks 8–12) |
 | `core/agents/graph_utils.py` | `BaseGraphState`, `make_agent_node()`, `build_sequential_graph()` |
 | `tests/unit/test_graph_utils.py` | Unit tests for graph_utils (6 tests) |
 
