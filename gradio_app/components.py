@@ -7,9 +7,23 @@ _LEVEL_LABELS = {
     3: "Nivel 3 — Operación estructurada",
 }
 _LEVEL_DESCRIPTIONS = {
-    1: "Zenet construirá todo desde plantillas base y te guiará en cada paso.",
-    2: "Zenet usará lo que tengas y complementará con plantillas donde falte.",
-    3: "Zenet importará y normalizará la información existente.",
+    1: (
+        "Tu operación vive en la cabeza de tu equipo. Las recetas se hacen de memoria, "
+        "el inventario se maneja a ojo, y si un empleado clave falta, algo se desordena. "
+        "No hay nada malo en eso — muchos restaurantes exitosos operan así. "
+        "Pero Zenet va a ayudarte a convertir ese conocimiento en un sistema."
+    ),
+    2: (
+        "Tienes algo escrito, pero está disperso. Quizás un Excel con recetas, "
+        "una lista de proveedores en WhatsApp, o fotos de los platillos. "
+        "Funciona, pero depende de que la persona correcta sepa dónde está cada cosa. "
+        "Zenet va a tomar todo eso y darle un lugar."
+    ),
+    3: (
+        "Tu operación está documentada y organizada. Tienes recetas con cantidades, "
+        "inventario controlado, y procesos que tu equipo puede seguir sin preguntarte. "
+        "Zenet va a conectar todo eso para que puedas ver tu negocio como un sistema completo."
+    ),
 }
 _LEVEL_NEXT_STEPS = {
     1: (
@@ -29,9 +43,9 @@ _LEVEL_NEXT_STEPS = {
     ),
 }
 _LEVEL_SHORT = {
-    1: "Todo en la memoria del equipo, sin documentación.",
-    2: "Algo escrito (Excel, notas, fotos), no está completo.",
-    3: "Categorías, recetas e inventario mayormente documentados.",
+    1: "Todo vive en la memoria del equipo, sin nada escrito.",
+    2: "Algo escrito y disperso: Excel, notas, fotos — pero sin un sistema.",
+    3: "Recetas, inventario y procesos documentados y organizados.",
 }
 _SPECTRUM_PENDING = """\
 Responde las preguntas del asistente para que Zenet pueda determinar tu nivel.
@@ -39,13 +53,13 @@ Responde las preguntas del asistente para que Zenet pueda determinar tu nivel.
 ---
 
 **Nivel 1 — Operación en la cabeza**
-Todo en la memoria del equipo, sin recetas escritas ni procesos documentados.
+Todo vive en la memoria del equipo, sin nada escrito.
 
 **Nivel 2 — Parcialmente documentado**
-Algo escrito: Excel, notas, fotos. No está completo pero hay material con qué trabajar.
+Algo escrito y disperso: Excel, notas, fotos — pero sin un sistema.
 
 **Nivel 3 — Operación estructurada**
-La mayoría de categorías, recetas e inventario están documentados y organizados.\
+Recetas, inventario y procesos documentados y organizados.\
 """
 
 

@@ -70,7 +70,13 @@ def _make_confirm_fn(data_lake):
             data_lake.save_entity("classification", entity_id, {"standardization_level": level})
         except Exception:
             return "Error al guardar la clasificación. Por favor, intenta de nuevo."
-        return f"Clasificación guardada: Nivel {level}."
+        from gradio_app.components import _LEVEL_LABELS
+        label = _LEVEL_LABELS.get(level, f"Nivel {level}")
+        return (
+            f"Listo. Tu restaurante queda registrado en **{label}**. "
+            f"Ya puedes continuar con el paso 3 — **Configuración inicial** — "
+            f"en la barra de navegación."
+        )
     return confirm_fn
 
 
