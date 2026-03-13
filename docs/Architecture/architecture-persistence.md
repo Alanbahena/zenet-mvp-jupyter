@@ -76,7 +76,7 @@ ids = storage.list_ids("restaurant")  # list[str]
 
 Stores entities in a single SQLite database file with tables and relationships:
 
-**Schema:** Defined in `core/schema.py` (9 entity tables + recipe_ingredient junction table)
+**Schema:** Defined in `core/schema.py` (11 entity tables + recipe_ingredient junction table)
 
 ```python
 from core import SqliteStorage
@@ -216,11 +216,17 @@ if loaded:
     print(type(loaded))  # <class 'core.data_model.Restaurant'>
 ```
 
-**Supported entity types (9 total):**
+**Supported entity types (11 total):**
 - `Restaurant`, `User`, `RecipeUnit`, `InventoryUnit`
 - `CategoryRecipe`, `FamilyInventory`, `InventoryItem`
 - `Recipe` (with embedded `Ingredient` list)
 - `InventoryUnitEquivalence` (composite key: uses `f"{unit_id}_{inventory_item_id}"`)
+- `agent_state` — JSON blob only (dict-level API); schema: `session_id` (str key) + `data TEXT`
+- `classification` — JSON blob only (dict-level API); schema: `{"standardization_level": 1|2|3}`
+
+**Note:** `agent_state` and `classification` do not have domain object classes or
+`to_dict`/`from_dict` serializers. Use the dict-level API (`save_entity` / `load_entity`)
+for these types — `save_entity_obj` / `load_entity_obj` will raise `KeyError`.
 
 **Example with Recipe:**
 

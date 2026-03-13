@@ -162,10 +162,11 @@ Tasks and subtasks are tracked in `.taskmaster/tasks/tasks.json`.
 | 4 | LLM integration framework | done |
 | 5 | Agent framework | done |
 | 6 | Gradio UI foundation and LangGraph integration | **done** |
-| 7 | Bienvenida section agent (7.1–7.5 done; 7.6 tests + 7.7 docs pending) | **in-progress** |
-| 8–16 | Section agents, workflow engine, notebooks, tests, docs | pending |
+| 7 | Bienvenida section agent | **done** |
+| 8 | Clasificación section agent | **done** |
+| 9–16 | Section agents, workflow engine, notebooks, tests, docs | pending |
 
-**Task 7** (Bienvenida section agent) is the active task — subtasks 7.6 (tests) and 7.7 (docs) remain.
+**Task 9** (Configuración section agent) is the next task.
 
 ### TaskMaster docs
 

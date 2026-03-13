@@ -9,40 +9,22 @@ reading their input/output contracts; Tasks 7–12 provide the concrete agents.
 
 ```mermaid
 flowchart LR
-    T4["Task 4
-LLM Framework
-LlmProvider
-ConversationMemory
-ToolRegistry"]
-    T5["Task 5
-Agent Framework
-BaseAgent
-AgentRegistry
-create_agent()"]
-    T6["Task 6
-Workflow Engine
-(pending)"]
-    T712["Tasks 7–12
-Notebook Agents
-WelcomeAgent
-ClassificationAgent
-..."]
+    T4["Task 4<br/>LLM Framework<br/>LlmProvider<br/>ConversationMemory<br/>ToolRegistry"]
+    T5["Task 5<br/>Agent Framework<br/>BaseAgent<br/>AgentRegistry<br/>create_agent()"]
+    T6["Task 6<br/>Workflow Engine<br/>done"]
+    T712["Tasks 7–12<br/>Notebook Agents<br/>WelcomeAgent ✓<br/>ClassificationAgent ✓<br/>..."]
 
-    T4 -->|"provider, memory,
-tool registry"| T5
-    T5 -->|"run(), INPUT_SCHEMA
-OUTPUT_SCHEMA
-AgentRegistry"| T6
-    T5 -->|"BaseAgent
-extended by"| T712
+    T4 -->|"provider, memory,<br/>tool registry"| T5
+    T5 -->|"run(), INPUT_SCHEMA<br/>OUTPUT_SCHEMA<br/>AgentRegistry"| T6
+    T5 -->|"BaseAgent<br/>extended by"| T712
 ```
 
 | Layer | Provides |
 |-------|----------|
 | Task 4 — LLM Framework | `LlmProvider`, `ConversationMemory`, `ToolRegistry` |
 | Task 5 — Agent Framework | `BaseAgent`, `AgentRegistry`, `create_agent()` |
-| Task 6 — Workflow Engine | Pipeline orchestration (pending) |
-| Tasks 7–12 — Notebook Agents | Concrete agents extending `BaseAgent` |
+| Task 6 — Workflow Engine | Pipeline orchestration (done) |
+| Tasks 7–12 — Notebook Agents | Concrete agents extending `BaseAgent` (`WelcomeAgent` done, `ClassificationAgent` done; 9–12 pending) |
 
 ---
 
@@ -80,16 +62,12 @@ extend it and implement two abstract methods.
 ```mermaid
 flowchart TD
     A(["run(input_data, context)"])
-    B["_validate_input()
-check INPUT_SCHEMA keys"]
-    C["_generate_prompt()
-return (system, user)"]
+    B["_validate_input()<br/>check INPUT_SCHEMA keys"]
+    C["_generate_prompt()<br/>return (system, user)"]
     D["memory.add_user(user_prompt)"]
-    E["_generate_response(system_prompt)
-see tool calling diagram"]
+    E["_generate_response(system_prompt)<br/>see tool calling diagram"]
     F["memory.add_assistant(response)"]
-    G["_process_response(response)
-parse + store + return dict"]
+    G["_process_response(response)<br/>parse + store + return dict"]
     H(["return output dict"])
 
     A --> B
@@ -111,9 +89,10 @@ Every agent declares its interface using two class-level schema dicts:
 
 ```python
 class WelcomeAgent(BaseAgent):
-    INPUT_SCHEMA = {"user_message": "A message from the operator."}
-    OUTPUT_SCHEMA = {"restaurant_name": "Extracted name or None.",
-                     "restaurant_type": "Extracted type or None."}
+    INPUT_SCHEMA  = {"user_message": "A message from the restaurant operator."}
+    OUTPUT_SCHEMA = {"reply": "The agent's conversational response in Spanish.",
+                     "raw_response": "Full LLM response string (same as reply)."}
+    RESPONSE_MODEL = None  # plain prose — no structured output
 ```
 
 ### Validation rules
@@ -143,26 +122,22 @@ When `self.tools` is set, `_generate_response()` runs a multi-turn loop via
 flowchart TD
     A(["_generate_response(system_prompt)"])
     B{"tools is None?"}
-    C["_generate_with_retry()
-exponential backoff"]
+    C["_generate_with_retry()<br/>exponential backoff"]
     D{"result empty?"}
     E(["return response string"])
     F["round = 0"]
     G["provider.generate_raw()"]
     H{"has_tool_calls?"}
     I["memory.add_tool_call()"]
-    J["_execute_tool() for each call
-return string — never raises"]
+    J["_execute_tool() for each call<br/>return string — never raises"]
     K["memory.add_tool_result()"]
     L{"round < _MAX_TOOL_ROUNDS?"}
-    M["raise RuntimeError
-max rounds exceeded"]
+    M["raise RuntimeError<br/>max rounds exceeded"]
 
     A --> B
     B -->|"yes"| C
     C --> D
-    D -->|"yes"| ERR["raise RuntimeError
-empty response"]
+    D -->|"yes"| ERR["raise RuntimeError<br/>empty response"]
     D -->|"no"| E
     B -->|"no"| F
     F --> G
@@ -294,17 +269,36 @@ class MyAgent(BaseAgent):
         }
 ```
 
+### Plain-text agent pattern (`RESPONSE_MODEL = None`)
+
+For companion agents that return natural language prose (not structured JSON), skip
+`_parse_response()` entirely:
+
+```python
+class WelcomeAgent(BaseAgent):
+    RESPONSE_MODEL = None  # disables structured output at the provider level
+
+    def _process_response(self, response: str) -> dict[str, Any]:
+        return {"reply": response, "raw_response": response}
+        # No _parse_response() call — response is plain prose
+```
+
+Setting `RESPONSE_MODEL = None` causes `_generate_response()` to pass
+`structured_output=False` to the provider automatically — no JSON-forcing instruction
+is appended to the prompt.
+
 ### Rules
 
-- Always define `INPUT_SCHEMA` and `OUTPUT_SCHEMA` — Task 6 requires them.
+- Always define `INPUT_SCHEMA` and `OUTPUT_SCHEMA`.
 - `_generate_prompt()` must return a 2-tuple `(system, user)` — never merge them into one string.
-- Use `self._parse_response()`, not `parse_structured_output()` directly — handles Pydantic validation.
+- For structured output: use `self._parse_response()`, not `parse_structured_output()` directly.
+- For plain-text output: set `RESPONSE_MODEL = None` and return the raw response string directly.
 - Use `self.store()` to persist data extracted during the conversation.
 - Do not call `self.memory.add_user()` or `self.memory.add_assistant()` — `run()` manages memory.
 
 ---
 
-## 8. Integration with Task 6 (workflow engine)
+## 8. Integration with the workflow engine (Task 6 — done)
 
 Task 6 chains agents in sequence using the contracts the agent framework exposes:
 
