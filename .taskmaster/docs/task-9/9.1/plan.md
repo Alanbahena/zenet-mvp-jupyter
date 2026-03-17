@@ -84,9 +84,36 @@ getters. The agent must not perform the name→id lookup internally.
 
 ---
 
-## Implementation Steps
+## Implementation Prompt
 
-### Step 1 — Imports
+### Reference implementation
+
+Before writing anything, read `core/agents/classification_agent.py` in full.
+`ConfigurationAgent` follows the exact same structural pattern:
+module docstring → `_SYSTEM_PROMPT` constant → `_ResponseModel(BaseModel)` →
+`Agent(BaseAgent)` with `INPUT_SCHEMA`, `OUTPUT_SCHEMA`, `RESPONSE_MODEL`,
+`_generate_prompt()`, `_process_response()`.
+
+Also read:
+- `core/agents/base_agent.py` lines 77–100 — abstract method signatures for
+  `_generate_prompt` and `_process_response`
+- `core/domain/data_model.py` lines 148–340 — the four template getter functions
+  and the entity dataclasses (`CategoryRecipe`, `FamilyInventory`, `RecipeUnit`,
+  `InventoryUnit`)
+
+### File structure (in this exact order)
+
+```
+module docstring
+imports
+_SYSTEM_PROMPT constant
+_STEP_TEMPLATE_MAP dict
+_STEP_LABELS dict
+_ConfigurationResponse(BaseModel)
+ConfigurationAgent(BaseAgent)
+```
+
+### Imports
 
 ```python
 from __future__ import annotations
@@ -105,7 +132,76 @@ from core.domain.data_model import (
 )
 ```
 
-### Step 2 — Response model
+### `_SYSTEM_PROMPT`
+
+Write it as a triple-quoted string constant. It must contain all of the following
+sections, in this order:
+
+**Role:** You are Zeni, Zenet's configuration assistant. Your role is to guide the
+restaurant operator through the structural setup of their data model — recipe categories,
+inventory families, recipe units, and inventory units — in a single conversation.
+
+**What each entity is for (include all four):**
+- *Categorías de recetas:* Groupings that organize recipes for reports and analysis
+  (e.g. Desayunos, Comidas, Bebidas). Zenet uses them to calculate readiness and cost
+  by category.
+- *Familias de inventario:* Groupings for inventory items (e.g. Lácteos, Carnes,
+  Verduras). They define the base unit for deduction and cost tracking per product type.
+- *Unidades de receta:* The units used inside recipe ingredient lists (e.g. g, kg,
+  taza, cucharada). They must match how recipes are written.
+- *Unidades de inventario:* The units used when purchasing and tracking stock (e.g. kg,
+  L, caja, bolsa). Standard units (kg, g, L, ml, pza) have universal conversions;
+  non-standard units (caja, bolsa) will be mapped to standard units later.
+
+**Level-based behavior (this section is critical):**
+- Level 1 — "Operación en la cabeza": Operator likely has no existing lists. Walk
+  through the template step by step. Explain why each suggested item exists. Invite
+  additions or removals. Be encouraging — this is probably the first time they've
+  structured this.
+- Level 2/3 — "Parcialmente documentado / Estructurado": Operator has some context.
+  Present the template as "what Zenet suggests for your type of restaurant" and ask
+  them to confirm, adjust, or add. Be more concise.
+
+**Conversation rules:**
+- Always in Spanish. Warm, direct tone — like a knowledgeable colleague, not a form.
+- 2–4 sentences per reply. Never list everything at once without asking first.
+- Work on exactly one step at a time. Never reference another step until the current
+  one is confirmed.
+- When the operator seems satisfied with the current list (confirms, says "sí", "bien",
+  "así está bien", "continua") or explicitly wants to skip: set `step_complete: true`.
+- If the operator wants to skip without reviewing: accept the template as-is, set
+  `entities` to the template list, set `step_complete: true`.
+- If the operator asks what something is for: explain it in 1–2 sentences in plain
+  language.
+
+**Response format (final section of system prompt):**
+```
+Responde SIEMPRE con JSON usando exactamente estos tres campos:
+- "reply": tu respuesta conversacional (nunca JSON dentro de este campo)
+- "entities": la lista propuesta de entidades para el paso actual como array de objetos,
+  o null si no hay cambios respecto al borrador anterior
+- "step_complete": true cuando el operador ha confirmado el paso actual, null en caso contrario
+```
+
+### `_STEP_TEMPLATE_MAP` and `_STEP_LABELS`
+
+```python
+_STEP_TEMPLATE_MAP: dict[str, Any] = {
+    "categories":      get_category_recipe_template,
+    "families":        get_family_inventory_template,
+    "recipe_units":    get_recipe_unit_template,
+    "inventory_units": get_inventory_unit_template,
+}
+
+_STEP_LABELS: dict[str, str] = {
+    "categories":      "Categorías de recetas",
+    "families":        "Familias de inventario",
+    "recipe_units":    "Unidades de receta",
+    "inventory_units": "Unidades de inventario",
+}
+```
+
+### `_ConfigurationResponse`
 
 ```python
 class _ConfigurationResponse(BaseModel):
@@ -114,42 +210,43 @@ class _ConfigurationResponse(BaseModel):
     step_complete: bool | None = None
 ```
 
-### Step 3 — Step → template getter map
+No validators needed. `entities=None` is the "no change" signal — it must remain
+`None` in the model default (do not default to `[]`).
 
-```python
-_STEP_TEMPLATE_MAP = {
-    "categories":      get_category_recipe_template,
-    "families":        get_family_inventory_template,
-    "recipe_units":    get_recipe_unit_template,
-    "inventory_units": get_inventory_unit_template,
-}
-
-_STEP_LABELS = {
-    "categories":      "Categorías de recetas",
-    "families":        "Familias de inventario",
-    "recipe_units":    "Unidades de receta",
-    "inventory_units": "Unidades de inventario",
-}
-```
-
-### Step 4 — System prompt constant
-
-Write `_SYSTEM_PROMPT` string. Must enforce:
-
-- Always Spanish, warm and direct tone, 2–4 sentences per reply
-- **Level 1:** build from templates, explain the purpose of each entity ("las categorías
-  le dicen a Zenet cómo agrupar tus recetas para reportes y análisis")
-- **Level 2/3:** present template as a suggestion, invite the operator to adjust
-- One step at a time — never reference or jump to a different step mid-conversation
-- When operator is satisfied or wants to skip: set `step_complete: true` and accept
-  template as-is
-- Response format instruction: always respond with JSON using exactly these three fields:
-  `"reply"`, `"entities"`, `"step_complete"`
-
-### Step 5 — ConfigurationAgent class
+### `ConfigurationAgent`
 
 ```python
 class ConfigurationAgent(BaseAgent):
+    """
+    Conversational configuration agent for the Configuración section.
+
+    Guides the operator through four sequential steps: recipe categories,
+    inventory families, recipe units, and inventory units. Runs as a single
+    continuous session so context from earlier steps carries forward.
+
+    Each turn may update the draft entity list for the current step via the
+    `entities` field and signal readiness via `step_complete`. The UI uses
+    `step_complete` to enable the confirm button; confirmed entities are
+    persisted to DataLake by the section UI (not by this agent).
+
+    Input:
+        user_message: A message from the restaurant operator.
+
+    Context (all provided by the section UI before calling run()):
+        restaurant_type_id:    int  — used to load the correct template
+        restaurant_type:       str  — injected into prompt for display
+        restaurant_name:       str  — injected into prompt for display
+        standardization_level: int  — controls agent tone (1 vs 2/3)
+        current_step:          str  — "categories" | "families" |
+                                      "recipe_units" | "inventory_units"
+
+    Output:
+        reply:         Conversational response shown to the operator.
+        entities:      Proposed entity list for the current step, or None.
+        step_complete: True when agent judges current step ready to confirm.
+        raw_response:  Full LLM response string.
+    """
+
     INPUT_SCHEMA: ClassVar[dict[str, str]] = {
         "user_message": "A message from the restaurant operator.",
     }
@@ -162,7 +259,7 @@ class ConfigurationAgent(BaseAgent):
     RESPONSE_MODEL: ClassVar[type[BaseModel] | None] = _ConfigurationResponse
 ```
 
-### Step 6 — `_generate_prompt()`
+### `_generate_prompt()`
 
 ```python
 def _generate_prompt(
@@ -176,50 +273,57 @@ def _generate_prompt(
     level: int = context.get("standardization_level", 1)
     current_step: str = context.get("current_step", "categories")
 
-    # Bridge to _process_response — must be set before return
+    # Store current_step so _process_response() knows which key to write to.
+    # _process_response() receives only the response string — no context.
     self.store("current_step", current_step)
 
-    # Template defaults for current step
+    # Load template for current step and format as a readable list for the prompt.
     template_fn = _STEP_TEMPLATE_MAP.get(current_step)
     template_items = template_fn(restaurant_type_id) if template_fn else ()
-    template_preview = json.dumps(
-        [vars(item) for item in template_items], ensure_ascii=False, indent=2
-    )
+    template_lines = []
+    for item in template_items:
+        if hasattr(item, "symbol"):
+            template_lines.append(f"- {item.name} ({item.symbol})")
+        else:
+            template_lines.append(f"- {item.name}")
+    template_preview = "\n".join(template_lines) if template_lines else "(sin plantilla)"
 
-    # Build context block
-    context_lines = []
+    # Build context block appended to the system prompt.
+    context_parts: list[str] = ["## Contexto del operador"]
     if restaurant_name:
-        context_lines.append(f"El restaurante se llama {restaurant_name}.")
+        context_parts.append(f"Restaurante: {restaurant_name}")
     if restaurant_type:
-        context_lines.append(f"Tipo de restaurante: {restaurant_type}.")
-    context_lines.append(f"Nivel de estandarización: {level}.")
-    context_lines.append(
-        f"Paso actual: {_STEP_LABELS.get(current_step, current_step)}."
-    )
-    context_lines.append(
-        f"Plantilla sugerida para este paso:\n{template_preview}"
+        context_parts.append(f"Tipo: {restaurant_type}")
+    context_parts.append(f"Nivel de estandarización: {level}")
+    context_parts.append(
+        f"Paso actual: {_STEP_LABELS.get(current_step, current_step)}\n"
+        f"Plantilla sugerida:\n{template_preview}"
     )
 
-    # Inject existing draft if the operator has already reviewed some items
+    # Inject existing draft if the operator has already built a list this session.
     existing = self.retrieve(current_step)
     if existing:
-        context_lines.append(
+        context_parts.append(
             "Borrador actual (ya revisado en esta conversación):\n"
             + json.dumps(existing, ensure_ascii=False, indent=2)
         )
 
-    system = _SYSTEM_PROMPT + "\n\n## Contexto\n" + "\n".join(context_lines)
+    system = _SYSTEM_PROMPT + "\n\n" + "\n\n".join(context_parts)
     return system, input_data["user_message"]
 ```
 
-### Step 7 — `_process_response()`
+### `_process_response()`
 
 ```python
 def _process_response(self, response: str) -> dict[str, Any]:
     data = self._parse_response(response)
 
+    # Retrieve the step that was active when _generate_prompt() ran.
     current_step = self.retrieve("current_step")
     entities = data.get("entities")
+
+    # Only overwrite the stored draft when the LLM returned a non-null entities list.
+    # None means "no change" — the existing draft is preserved.
     if entities is not None and current_step is not None:
         self.store(current_step, entities)
 
@@ -230,6 +334,21 @@ def _process_response(self, response: str) -> dict[str, Any]:
         "raw_response":  response,
     }
 ```
+
+### Constraints
+
+- Do not call `dataclasses.asdict()` anywhere. Template items are formatted with
+  `item.name`, `item.symbol` attribute access only (for display in the prompt — not
+  for persistence).
+- Do not call `self.memory.add_user()` or `self.memory.add_assistant()` — `BaseAgent.run()`
+  manages memory.
+- Do not persist anything to DataLake inside this agent. Persistence is the UI's
+  responsibility (9.3).
+- `INPUT_SCHEMA` has exactly one key: `"user_message"`. No other keys are validated.
+- The `_SYSTEM_PROMPT` constant must be defined at module level, not inside the class
+  or any method.
+- `RESPONSE_MODEL = _ConfigurationResponse` — not `None`. This causes the provider to
+  enforce JSON output.
 
 ---
 
