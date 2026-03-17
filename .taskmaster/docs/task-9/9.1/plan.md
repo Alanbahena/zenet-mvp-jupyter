@@ -174,6 +174,17 @@ inventory families, recipe units, and inventory units — in a single conversati
 - If the operator asks what something is for: explain it in 1–2 sentences in plain
   language.
 
+**Description field (applies to all four entity types):**
+- Always populate the `description` field for every proposed entity — never leave it `null`
+  unless the operator explicitly asks to leave it empty.
+- Generate a one-line description based on the restaurant type and the entity's role in
+  Zenet. The operator does not need to provide it — infer it from context.
+- For non-standard inventory units (`is_standard: false`): the description must explicitly
+  note that the equivalence will be defined later. Example:
+  `"Caja del proveedor — equivalencia con unidad estándar por definir en Alineamiento"`
+- Descriptions are read by downstream agents (Tasks 10–12) when classifying recipes and
+  normalizing quantities. A good description improves their accuracy.
+
 **Response format (final section of system prompt):**
 ```
 Responde SIEMPRE con JSON usando exactamente estos tres campos:
@@ -403,3 +414,5 @@ in 9.3 before wiring the chat handler.
 - [ ] `_process_response()` reads `current_step` via `self.retrieve("current_step")`
 - [ ] `_process_response()` only calls `self.store(step, entities)` when `entities is not None`
 - [ ] System prompt enforces Spanish, level-based tone, one-step-at-a-time, JSON format
+- [ ] System prompt instructs agent to always populate `description` for every entity
+- [ ] System prompt instructs agent to flag non-standard inventory units with "equivalencia por definir" in description
