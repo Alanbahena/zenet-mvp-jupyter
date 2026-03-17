@@ -768,9 +768,10 @@
             "description": "Extend the Configuration Agent to handle recipe units and inventory units setup based on selected templates.",
             "dependencies": [],
             "details": "Modify the ConfigurationAgent class to include tools for recipe and inventory unit setup. Update the _generate_prompt method to include guidance for units configuration. Extend the _process_response method to include recipe_units and inventory_units in the returned dictionary. Reference the template design documentation at .taskmaster/docs/templates-recipe-and-inventory.md for standard units (e.g., g, kg, L, pza, caja).",
-            "status": "pending",
+            "status": "in-progress",
             "testStrategy": "Test the agent with different restaurant templates to verify it correctly extracts and configures standard units. Test with both simple and complex unit configurations.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-03-17T06:55:05.177Z"
           },
           {
             "id": 2,
@@ -807,9 +808,81 @@
             ],
             "parentTaskId": 9,
             "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "9.1 ConfigurationAgent (core/agents/configuration_agent.py)",
+            "description": "Implement ConfigurationAgent with _ConfigurationResponse RESPONSE_MODEL, INPUT_SCHEMA/OUTPUT_SCHEMA, prompt that injects restaurant context and current step draft, and _process_response that merges entities into _data_store without overwriting when entities is None.",
+            "details": "See .taskmaster/docs/task-9/plan.md § 9.1.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 9,
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "9.2 ConsistencyCheckAgent (core/agents/consistency_check_agent.py)",
+            "description": "Create ConsistencyCheckAgent with _ConsistencyCheckResponse (issues, suggestions, looks_good) to run per-step and final cross-entity checks for configuration entities.",
+            "details": "See .taskmaster/docs/task-9/plan.md § 9.2.",
+            "status": "pending",
+            "dependencies": [
+              "9.1"
+            ],
+            "parentTaskId": 9,
+            "parentId": "undefined"
+          },
+          {
+            "id": 7,
+            "title": "9.3 Configuración section UI (gradio_app/sections/configuracion.py)",
+            "description": "Replace stub with full render(): chat column + sequential step UI, progress indicator, state vars, chat handler wiring, per-step and final consistency checks, confirm-and-save flow.",
+            "details": "See .taskmaster/docs/task-9/plan.md § 9.3.",
+            "status": "pending",
+            "dependencies": [
+              "9.1",
+              "9.2"
+            ],
+            "parentTaskId": 9,
+            "parentId": "undefined"
+          },
+          {
+            "id": 8,
+            "title": "9.4 Exports (core/agents/__init__.py + core/__init__.py)",
+            "description": "Export ConfigurationAgent and ConsistencyCheckAgent from core/agents/__init__.py and core/__init__.py, following the WelcomeAgent / ClassificationAgent pattern.",
+            "details": "See .taskmaster/docs/task-9/plan.md § 9.4.",
+            "status": "pending",
+            "dependencies": [
+              "9.1",
+              "9.2"
+            ],
+            "parentTaskId": 9,
+            "parentId": "undefined"
+          },
+          {
+            "id": 9,
+            "title": "9.5 Tests (tests/unit/test_configuration_agent.py)",
+            "description": "Create tests/unit/test_configuration_agent.py with 16 mocked tests and 3 live tests covering ConfigurationAgent, ConsistencyCheckAgent, confirm flow, and ID assignment.",
+            "details": "See .taskmaster/docs/task-9/plan.md § 9.5.",
+            "status": "pending",
+            "dependencies": [
+              "9.4"
+            ],
+            "parentTaskId": 9,
+            "parentId": "undefined"
+          },
+          {
+            "id": 10,
+            "title": "9.6 Documentation and task closure",
+            "description": "Create configuracion section architecture doc; update architecture-agent-framework, architecture-gradio-and-langgraph, tasks.json, and CLAUDE.md to mark Task 9 complete.",
+            "details": "See .taskmaster/docs/task-9/plan.md § 9.6.",
+            "status": "pending",
+            "dependencies": [
+              "9.5"
+            ],
+            "parentTaskId": 9,
+            "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-03-13T22:39:49.782Z"
+        "updatedAt": "2026-03-17T06:55:05.177Z"
       },
       {
         "id": "10",
@@ -940,7 +1013,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-13T22:39:49.783Z",
+      "lastModified": "2026-03-17T06:55:05.178Z",
       "taskCount": 16,
       "completedCount": 8,
       "tags": [

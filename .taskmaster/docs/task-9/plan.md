@@ -490,6 +490,29 @@ and `template_preview` as arguments, called inside `render()` after `_load_confi
 
 ---
 
+### [OPEN] — Task 10 prerequisite: RecipeUnitConversion persistence layer missing
+**Source:** Architecture review during Task 9 planning
+**Problem:** `RecipeUnitConversionRegistry` (in `core/operations/normalization.py`) is a fully
+designed in-memory lookup for non-standard recipe unit conversions (e.g. "1 taza of rice = 0.18 kg").
+It has no DataLake entity, no schema table, no serializer, and no entry in `_SQLITE_ENTITY_TYPES`.
+When Task 10's agent processes uploaded recipes and discovers unit conversions, it cannot persist them.
+The ingredient is silently skipped during normalization if no in-memory entry exists.
+**Impact:** Task 10 cannot save discovered recipe unit conversions. Every app restart loses all
+conversion knowledge. Normalization silently drops ingredients with non-standard recipe units.
+**Suggested action:** At the start of Task 10, add the following before implementing the agent:
+- `core/domain/data_model.py`: new `RecipeUnitConversion` dataclass with fields
+  `id: int`, `recipe_unit_id: int`, `base_unit_id: int`, `quantity: float`,
+  `family_id: Optional[int] = None`, `inventory_item_id: Optional[int] = None`
+- `core/storage/schema.py`: new `recipe_unit_conversion` table
+- `core/storage/persistence.py`: add `"recipe_unit_conversion"` to `_SQLITE_ENTITY_TYPES`
+- `core/domain/serialization.py`: `recipe_unit_conversion_to_dict` / `recipe_unit_conversion_from_dict`
+- `core/operations/normalization.py`: factory to rebuild `RecipeUnitConversionRegistry` from
+  a list of saved `RecipeUnitConversion` entities on app load
+- `core/__init__.py`: export `RecipeUnitConversion` and the new serializer pair
+Note: `RecipeUnitConversionRegistry` itself stays in `normalization.py` as a runtime object.
+Only the entity and its persistence are new. Use a surrogate integer `id` (not composite string)
+since `family_id` and `inventory_item_id` are both optional.
+
 ### [OPEN] — tasks.json Task 9 subtasks don't match plan structure
 **Source:** Validation of task 9
 **Problem:** tasks.json has 4 pre-existing Task 9 subtasks (old design: notebooks, validation.py, equivalences) that don't correspond to plan subtasks 9.1–9.6. Prior "both sets" language in the checklist (inherited from Task 8) does not apply here — there is only one set.
