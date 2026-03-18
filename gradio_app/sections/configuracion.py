@@ -52,6 +52,13 @@ _STEP_TITLES: dict[str, str] = {
     "inventory_units": "Unidades de inventario",
 }
 
+_STEP_DESCRIPTIONS: dict[str, str] = {
+    "categories":      "agrupan tus recetas por tipo de servicio o turno",
+    "families":        "agrupan tus ingredientes por tipo de producto",
+    "recipe_units":    "son las unidades que aparecen en tus listas de ingredientes",
+    "inventory_units": "son las unidades con las que compras y controlas tu stock",
+}
+
 # Dict keys used to extract values from entity dicts
 _STEP_COLUMNS: dict[str, list[str]] = {
     "categories":      ["name", "description"],
@@ -66,6 +73,14 @@ _STEP_COLUMN_LABELS: dict[str, list[str]] = {
     "families":        ["Nombre", "Descripción"],
     "recipe_units":    ["Nombre", "Símbolo", "Descripción"],
     "inventory_units": ["Nombre", "Símbolo", "Estándar", "Descripción"],
+}
+
+# Column widths for gr.Dataframe per step
+_STEP_COLUMN_WIDTHS: dict[str, list[str]] = {
+    "categories":      ["35%", "65%"],
+    "families":        ["35%", "65%"],
+    "recipe_units":    ["30%", "10%", "60%"],
+    "inventory_units": ["25%", "10%", "10%", "55%"],
 }
 
 _ENTITY_BUILDERS = {
@@ -295,11 +310,11 @@ def _make_confirm_fn(data_lake):
         if issues_ack:
             _save_step(data_lake, step_key, current_draft)
             new_step = current_step + 1
-            status = (
-                "Configuración completada. Ya puedes continuar con Alineamiento."
-                if new_step > 3
-                else f"Paso guardado. Ahora: **{_STEP_TITLES[_STEP_KEYS[new_step]]}**"
-            )
+            if new_step > 3:
+                status = f"**{_STEP_TITLES[step_key]}** guardadas. Configuración completa — ya puedes continuar con Alineamiento."
+            else:
+                next_key = _STEP_KEYS[new_step]
+                status = f"**{_STEP_TITLES[step_key]}** guardadas. Siguiente: **{_STEP_TITLES[next_key]}** — {_STEP_DESCRIPTIONS[next_key]}."
             return status, False, new_step, False
 
         # First click: run the appropriate consistency check
@@ -347,11 +362,11 @@ def _make_confirm_fn(data_lake):
         # No issues: save immediately
         _save_step(data_lake, step_key, current_draft)
         new_step = current_step + 1
-        status = (
-            "Configuración completada. Ya puedes continuar con Alineamiento."
-            if new_step > 3
-            else f"Paso guardado. Ahora: **{_STEP_TITLES[_STEP_KEYS[new_step]]}**"
-        )
+        if new_step > 3:
+            status = f"**{_STEP_TITLES[step_key]}** guardadas. Configuración completa — ya puedes continuar con Alineamiento."
+        else:
+            next_key = _STEP_KEYS[new_step]
+            status = f"**{_STEP_TITLES[step_key]}** guardadas. Siguiente: **{_STEP_TITLES[next_key]}** — {_STEP_DESCRIPTIONS[next_key]}."
         return status, False, new_step, False
 
     return confirm_fn
@@ -390,6 +405,7 @@ def render(session_id: gr.State, data_lake) -> None:
             step_title_md = gr.Markdown(f"### {_STEP_TITLES['categories']}")
             entity_table  = gr.Dataframe(
                 headers=_STEP_COLUMN_LABELS["categories"],
+                column_widths=_STEP_COLUMN_WIDTHS["categories"],
                 interactive=False,
                 label="Entidades propuestas",
             )
@@ -421,13 +437,13 @@ def render(session_id: gr.State, data_lake) -> None:
             d_iu,
             s_complete,
             gr.update(interactive=s_complete),
-            gr.update(headers=_STEP_COLUMN_LABELS[step_key], value=rows),
+            gr.update(headers=_STEP_COLUMN_LABELS[step_key], column_widths=_STEP_COLUMN_WIDTHS[step_key], value=rows),
             _make_progress_md(current_step),
             f"### {_STEP_TITLES[step_key]}",
         )
 
     def _confirm_and_advance(
-        current_step, draft_cats, draft_fams, draft_ru, draft_iu,
+        history, current_step, draft_cats, draft_fams, draft_ru, draft_iu,
         issues_ack, sid,
     ):
         status, new_issues_ack, new_step, step_complete_reset = confirm_fn(
@@ -436,16 +452,54 @@ def render(session_id: gr.State, data_lake) -> None:
         new_step_clamped = min(new_step, len(_STEP_KEYS) - 1)
         step_key = _STEP_KEYS[new_step_clamped]
         drafts = [draft_cats, draft_fams, draft_ru, draft_iu]
+
+        new_history = list(history)
+        new_step_complete = step_complete_reset
+
+        if new_step > current_step:
+            if new_step >= len(_STEP_KEYS):
+                new_history.append({
+                    "role": "assistant",
+                    "content": "¡Listo! Configuración completa. Ya puedes continuar con Alineamiento.",
+                })
+            else:
+                # Fire agent transition — only the assistant reply is added, no user message shown
+                agent = create_agent(
+                    ConfigurationAgent, provider=provider, name="configuration_agent"
+                )
+                agent.load_state(data_lake, session_id=f"configuration_agent_{sid}")
+                ctx = _load_configuration_context(data_lake, sid)
+                ctx["current_step"] = _STEP_KEYS[new_step_clamped]
+                try:
+                    result = agent.run(
+                        input_data={"user_message": "__confirmed__"}, context=ctx
+                    )
+                    reply = result["reply"]
+                    entities = result.get("entities")
+                    if result.get("step_complete") is not None:
+                        new_step_complete = bool(result["step_complete"])
+                except Exception:
+                    reply = None
+                    entities = None
+                agent.save_state(data_lake, session_id=f"configuration_agent_{sid}")
+                if reply:
+                    new_history.append({"role": "assistant", "content": reply})
+                if entities is not None:
+                    drafts[new_step_clamped] = entities
+
         rows = _draft_to_rows(drafts[new_step_clamped], step_key)
+
         return (
+            new_history,
             status,
             new_issues_ack,
             new_step,
-            step_complete_reset,
-            gr.update(interactive=False),
-            gr.update(headers=_STEP_COLUMN_LABELS[step_key], value=rows),
+            new_step_complete,
+            gr.update(interactive=new_step_complete),
+            gr.update(headers=_STEP_COLUMN_LABELS[step_key], column_widths=_STEP_COLUMN_WIDTHS[step_key], value=rows),
             _make_progress_md(new_step),
             f"### {_STEP_TITLES[step_key]}",
+            drafts[0], drafts[1], drafts[2], drafts[3],
         )
 
     send_btn.click(
@@ -465,12 +519,13 @@ def render(session_id: gr.State, data_lake) -> None:
     confirm_btn.click(
         fn=_confirm_and_advance,
         inputs=[
-            current_step_state,
+            chatbot, current_step_state,
             draft_categories, draft_families, draft_recipe_units, draft_inv_units,
             issues_acknowledged, session_id,
         ],
         outputs=[
-            status_md, issues_acknowledged, current_step_state,
+            chatbot, status_md, issues_acknowledged, current_step_state,
             step_complete_state, confirm_btn, entity_table, progress_md, step_title_md,
+            draft_categories, draft_families, draft_recipe_units, draft_inv_units,
         ],
     )
