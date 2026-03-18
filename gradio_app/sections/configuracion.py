@@ -126,7 +126,7 @@ def _load_configuration_context(data_lake, session_id: str) -> dict:
 def _init_section(data_lake) -> int:
     """Return the index of the first incomplete step (0-3), or 4 if all complete."""
     for idx, entity_type in enumerate(_STEP_ENTITY_TYPES):
-        if not data_lake.list_ids(entity_type):
+        if not data_lake.list_entity_ids(entity_type):
             return idx
     return 4
 
@@ -208,7 +208,7 @@ def _save_step(data_lake, step_key: str, draft: list[dict]) -> None:
 # Chat and confirm handlers
 # ---------------------------------------------------------------------------
 
-def _make_chat_fn(provider, data_lake):
+def _make_chat_fn(provider, data_lake, initial_greeting_text: str):
     def chat_fn(
         message, history, session_id, current_step,
         draft_cats, draft_fams, draft_ru, draft_iu,
@@ -234,6 +234,11 @@ def _make_chat_fn(provider, data_lake):
 
         agent = create_agent(ConfigurationAgent, provider=provider, name="configuration_agent")
         agent.load_state(data_lake, session_id=f"configuration_agent_{session_id}")
+
+        # On the first turn inject the static greeting into memory so the agent
+        # knows it already greeted the operator and continues naturally.
+        if agent.memory.message_count == 0:
+            agent.memory.add_assistant(initial_greeting_text)
 
         ctx = _load_configuration_context(data_lake, session_id)
         ctx["current_step"] = _STEP_KEYS[current_step]
@@ -384,7 +389,8 @@ def render(session_id: gr.State, data_lake) -> None:
             status_md   = gr.Markdown("")
 
     # --- Wiring ---
-    chat_fn    = _make_chat_fn(provider, data_lake)
+    greeting_text = _initial_greeting("tu restaurante", "", 1)[0]["content"]
+    chat_fn    = _make_chat_fn(provider, data_lake, greeting_text)
     confirm_fn = _make_confirm_fn(data_lake)
 
     def _chat_and_format(

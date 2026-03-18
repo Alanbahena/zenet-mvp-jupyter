@@ -817,7 +817,7 @@
             "title": "9.1 ConfigurationAgent (core/agents/configuration_agent.py)",
             "description": "Implement ConfigurationAgent with _ConfigurationResponse RESPONSE_MODEL, INPUT_SCHEMA/OUTPUT_SCHEMA, prompt that injects restaurant context and current step draft, and _process_response that merges entities into _data_store without overwriting when entities is None.",
             "details": "See .taskmaster/docs/task-9/plan.md § 9.1.",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 9,
             "parentId": "undefined",
@@ -866,7 +866,7 @@
             "title": "9.5 Tests (tests/unit/test_configuration_agent.py)",
             "description": "Create tests/unit/test_configuration_agent.py with 16 mocked tests and 3 live tests covering ConfigurationAgent, ConsistencyCheckAgent, confirm flow, and ID assignment.",
             "details": "See .taskmaster/docs/task-9/plan.md § 9.5.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "9.4"
             ],
