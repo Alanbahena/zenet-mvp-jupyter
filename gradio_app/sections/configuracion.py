@@ -52,12 +52,20 @@ _STEP_TITLES: dict[str, str] = {
     "inventory_units": "Unidades de inventario",
 }
 
-# Column order for gr.Dataframe display per step
+# Dict keys used to extract values from entity dicts
 _STEP_COLUMNS: dict[str, list[str]] = {
     "categories":      ["name", "description"],
     "families":        ["name", "description"],
     "recipe_units":    ["name", "symbol", "description"],
     "inventory_units": ["name", "symbol", "is_standard", "description"],
+}
+
+# Spanish display headers for gr.Dataframe — parallel to _STEP_COLUMNS
+_STEP_COLUMN_LABELS: dict[str, list[str]] = {
+    "categories":      ["Nombre", "Descripción"],
+    "families":        ["Nombre", "Descripción"],
+    "recipe_units":    ["Nombre", "Símbolo", "Descripción"],
+    "inventory_units": ["Nombre", "Símbolo", "Estándar", "Descripción"],
 }
 
 _ENTITY_BUILDERS = {
@@ -381,7 +389,7 @@ def render(session_id: gr.State, data_lake) -> None:
             progress_md   = gr.Markdown(_make_progress_md(0))
             step_title_md = gr.Markdown(f"### {_STEP_TITLES['categories']}")
             entity_table  = gr.Dataframe(
-                headers=_STEP_COLUMNS["categories"],
+                headers=_STEP_COLUMN_LABELS["categories"],
                 interactive=False,
                 label="Entidades propuestas",
             )
@@ -413,7 +421,7 @@ def render(session_id: gr.State, data_lake) -> None:
             d_iu,
             s_complete,
             gr.update(interactive=s_complete),
-            gr.update(headers=_STEP_COLUMNS[step_key], value=rows),
+            gr.update(headers=_STEP_COLUMN_LABELS[step_key], value=rows),
             _make_progress_md(current_step),
             f"### {_STEP_TITLES[step_key]}",
         )
@@ -435,7 +443,7 @@ def render(session_id: gr.State, data_lake) -> None:
             new_step,
             step_complete_reset,
             gr.update(interactive=False),
-            gr.update(headers=_STEP_COLUMNS[step_key], value=rows),
+            gr.update(headers=_STEP_COLUMN_LABELS[step_key], value=rows),
             _make_progress_md(new_step),
             f"### {_STEP_TITLES[step_key]}",
         )
