@@ -804,12 +804,13 @@
             "title": "Implement inventory unit equivalence UI (Unidad / Equivalencia / Equivalencia Unidad)",
             "description": "Add UI and agent support for defining custom inventory unit equivalences (e.g. 1 Caja = 10 Kilogramos) mapped to base_unit_id and factor_to_base.",
             "details": "Provide three-field UI: Unidad de Inventario (name/symbol), Equivalencia (numeric factor), Equivalencia Unidad (reference unit). Map to InventoryUnit.base_unit_id and factor_to_base. Support add/edit in Configuration notebook and Gradio; validate factor > 0, no cycles. Reference .taskmaster/docs/inventory-units-and-equivalences-plan.md Part 5.",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [
               1
             ],
             "parentTaskId": 9,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-03-18T06:14:56.420Z"
           },
           {
             "id": 5,
@@ -826,7 +827,7 @@
             "title": "9.2 ConsistencyCheckAgent (core/agents/consistency_check_agent.py)",
             "description": "Create ConsistencyCheckAgent with _ConsistencyCheckResponse (issues, suggestions, looks_good) to run per-step and final cross-entity checks for configuration entities.",
             "details": "See .taskmaster/docs/task-9/plan.md § 9.2.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "9.1"
             ],
@@ -838,7 +839,7 @@
             "title": "9.3 Configuración section UI (gradio_app/sections/configuracion.py)",
             "description": "Replace stub with full render(): chat column + sequential step UI, progress indicator, state vars, chat handler wiring, per-step and final consistency checks, confirm-and-save flow.",
             "details": "See .taskmaster/docs/task-9/plan.md § 9.3.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "9.1",
               "9.2"
@@ -851,7 +852,7 @@
             "title": "9.4 Exports (core/agents/__init__.py + core/__init__.py)",
             "description": "Export ConfigurationAgent and ConsistencyCheckAgent from core/agents/__init__.py and core/__init__.py, following the WelcomeAgent / ClassificationAgent pattern.",
             "details": "See .taskmaster/docs/task-9/plan.md § 9.4.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "9.1",
               "9.2"
@@ -884,7 +885,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-03-18T03:23:59.192Z"
+        "updatedAt": "2026-03-18T06:14:56.420Z"
       },
       {
         "id": "10",
@@ -1015,7 +1016,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-18T03:23:59.194Z",
+      "lastModified": "2026-03-18T06:14:56.420Z",
       "taskCount": 16,
       "completedCount": 8,
       "tags": [
