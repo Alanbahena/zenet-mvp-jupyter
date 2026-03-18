@@ -794,9 +794,10 @@
               1
             ],
             "details": "Update core/validation.py to include validation functions for recipe and inventory units. Implement checks for required standard units, unit format validation, and consistency between related units. Create helpful error messages that guide users to correct invalid configurations.",
-            "status": "pending",
+            "status": "in-progress",
             "testStrategy": "Test validation with valid and invalid unit configurations. Verify that appropriate error messages are displayed for invalid configurations. Test edge cases like duplicate units or missing required units.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-03-18T03:23:59.192Z"
           },
           {
             "id": 4,
@@ -883,7 +884,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-03-17T07:50:04.299Z"
+        "updatedAt": "2026-03-18T03:23:59.192Z"
       },
       {
         "id": "10",
@@ -1014,7 +1015,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-17T07:50:04.300Z",
+      "lastModified": "2026-03-18T03:23:59.194Z",
       "taskCount": 16,
       "completedCount": 8,
       "tags": [
