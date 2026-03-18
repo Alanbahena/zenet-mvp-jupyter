@@ -781,9 +781,10 @@
               1
             ],
             "details": "Add new interactive cells to notebooks/Configuración_inicial.ipynb for recipe units setup and inventory units setup. Create visualization components to display the configured units. Update the notebook's introduction and guidance text to explain the importance of standardized units. Ensure the notebook saves the configured units to the state that will be passed to subsequent notebooks.",
-            "status": "pending",
+            "status": "in-progress",
             "testStrategy": "Test the notebook with various templates to ensure it correctly guides users through unit setup. Verify that units from templates are properly displayed and can be customized if needed.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-03-17T07:50:04.299Z"
           },
           {
             "id": 3,
@@ -814,7 +815,7 @@
             "title": "9.1 ConfigurationAgent (core/agents/configuration_agent.py)",
             "description": "Implement ConfigurationAgent with _ConfigurationResponse RESPONSE_MODEL, INPUT_SCHEMA/OUTPUT_SCHEMA, prompt that injects restaurant context and current step draft, and _process_response that merges entities into _data_store without overwriting when entities is None.",
             "details": "See .taskmaster/docs/task-9/plan.md § 9.1.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 9,
             "parentId": "undefined"
@@ -882,7 +883,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-03-17T06:55:05.177Z"
+        "updatedAt": "2026-03-17T07:50:04.299Z"
       },
       {
         "id": "10",
@@ -1013,7 +1014,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-17T06:55:05.178Z",
+      "lastModified": "2026-03-17T07:50:04.300Z",
       "taskCount": 16,
       "completedCount": 8,
       "tags": [
