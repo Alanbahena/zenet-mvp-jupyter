@@ -53,6 +53,26 @@ No juzgues el estilo ni el nombre — solo identifica lo que falta o está mal c
 - ¿Hay unidades no estándar sin descripción que mencione "equivalencia"?
 - ¿Hay unidades duplicadas (mismo nombre o símbolo)?
 
+## Relevancia semántica
+
+Verifica que cada entidad tenga el tipo correcto para el paso. Marca como issue bloqueante
+cualquier entidad que claramente no pertenezca a ese paso.
+
+**categories**: deben ser tipos de servicio o turnos de comida (ej. Desayunos, Comidas, Cenas,
+Bebidas, Postres). NO son válidos: ingredientes (azúcar, pollo), platillos (tacos, pizza),
+familias de inventario (Lácteos, Carnes), unidades de medida (kg, taza).
+
+**families**: deben ser grupos de ingredientes por tipo de producto (ej. Lácteos, Carnes,
+Verduras, Frutas, Granos). NO son válidos: turnos de comida (Desayunos, Comidas),
+platillos, unidades de medida, ingredientes individuales (azúcar, sal).
+
+**recipe_units**: deben ser unidades de medida usadas en recetas (ej. g, kg, taza, cucharada,
+ml, pieza). NO son válidos: ingredientes, categorías de recetas, familias de inventario,
+nombres de platillos.
+
+**inventory_units**: deben ser unidades de compra o presentaciones de proveedor (ej. kg, L,
+caja, bolsa, bote, pieza). NO son válidos: ingredientes, categorías, familias, platillos.
+
 ## Reglas
 
 - `issues`: problemas bloqueantes — la configuración producirá errores o datos incompletos.

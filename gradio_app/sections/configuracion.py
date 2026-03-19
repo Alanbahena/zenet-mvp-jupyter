@@ -64,7 +64,7 @@ _STEP_COLUMNS: dict[str, list[str]] = {
     "categories":      ["name", "description"],
     "families":        ["name", "description"],
     "recipe_units":    ["name", "symbol", "description"],
-    "inventory_units": ["name", "symbol", "is_standard", "description"],
+    "inventory_units": ["name", "symbol", "description"],
 }
 
 # Spanish display headers for gr.Dataframe — parallel to _STEP_COLUMNS
@@ -72,7 +72,7 @@ _STEP_COLUMN_LABELS: dict[str, list[str]] = {
     "categories":      ["Nombre", "Descripción"],
     "families":        ["Nombre", "Descripción"],
     "recipe_units":    ["Nombre", "Símbolo", "Descripción"],
-    "inventory_units": ["Nombre", "Símbolo", "Estándar", "Descripción"],
+    "inventory_units": ["Nombre", "Símbolo", "Descripción"],
 }
 
 # Column widths for gr.Dataframe per step
@@ -80,7 +80,7 @@ _STEP_COLUMN_WIDTHS: dict[str, list[str]] = {
     "categories":      ["35%", "65%"],
     "families":        ["35%", "65%"],
     "recipe_units":    ["30%", "10%", "60%"],
-    "inventory_units": ["25%", "10%", "10%", "55%"],
+    "inventory_units": ["25%", "10%", "65%"],
 }
 
 _ENTITY_BUILDERS = {
@@ -446,6 +446,16 @@ def render(session_id: gr.State, data_lake) -> None:
         history, current_step, draft_cats, draft_fams, draft_ru, draft_iu,
         issues_ack, sid,
     ):
+        # Show loading indicator only on first click (when consistency check will run)
+        if not issues_ack and sid and current_step < len(_STEP_KEYS):
+            yield (
+                gr.update(), "Verificando consistencia...",
+                gr.update(), gr.update(), gr.update(),
+                gr.update(interactive=False),
+                gr.update(), gr.update(), gr.update(),
+                gr.update(), gr.update(), gr.update(), gr.update(),
+            )
+
         status, new_issues_ack, new_step, step_complete_reset = confirm_fn(
             current_step, draft_cats, draft_fams, draft_ru, draft_iu, issues_ack, sid,
         )
@@ -489,7 +499,7 @@ def render(session_id: gr.State, data_lake) -> None:
 
         rows = _draft_to_rows(drafts[new_step_clamped], step_key)
 
-        return (
+        yield (
             new_history,
             status,
             new_issues_ack,
@@ -528,4 +538,5 @@ def render(session_id: gr.State, data_lake) -> None:
             step_complete_state, confirm_btn, entity_table, progress_md, step_title_md,
             draft_categories, draft_families, draft_recipe_units, draft_inv_units,
         ],
+        show_progress="hidden",
     )
