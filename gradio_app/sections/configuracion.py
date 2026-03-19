@@ -297,10 +297,10 @@ def _make_confirm_fn(data_lake):
         issues_ack, session_id,
     ):
         if not session_id:
-            return "Sesión no iniciada. Recarga la página.", False, current_step, False
+            return "Sesión no iniciada. Recarga la página.", False, current_step, False, []
 
         if current_step >= len(_STEP_KEYS):
-            return "La configuración ya está completa.", False, current_step, False
+            return "La configuración ya está completa.", False, current_step, False, []
 
         step_key = _STEP_KEYS[current_step]
         drafts = [draft_cats, draft_fams, draft_ru, draft_iu]
@@ -315,7 +315,7 @@ def _make_confirm_fn(data_lake):
             else:
                 next_key = _STEP_KEYS[new_step]
                 status = f"**{_STEP_TITLES[step_key]}** guardadas. Siguiente: **{_STEP_TITLES[next_key]}** — {_STEP_DESCRIPTIONS[next_key]}."
-            return status, False, new_step, False
+            return status, False, new_step, False, []
 
         # First click: run the appropriate consistency check
         ctx = _load_configuration_context(data_lake, session_id)
@@ -355,9 +355,8 @@ def _make_confirm_fn(data_lake):
             issues_md = (
                 "**Advertencias antes de confirmar:**\n"
                 + "\n".join(f"- {i}" for i in issues)
-                + "\n\nHaz clic en **Confirmar** de nuevo para guardar de todas formas."
             )
-            return issues_md, True, current_step, False
+            return issues_md, True, current_step, False, issues
 
         # No issues: save immediately
         _save_step(data_lake, step_key, current_draft)
@@ -367,7 +366,7 @@ def _make_confirm_fn(data_lake):
         else:
             next_key = _STEP_KEYS[new_step]
             status = f"**{_STEP_TITLES[step_key]}** guardadas. Siguiente: **{_STEP_TITLES[next_key]}** — {_STEP_DESCRIPTIONS[next_key]}."
-        return status, False, new_step, False
+        return status, False, new_step, False, []
 
     return confirm_fn
 
@@ -406,6 +405,7 @@ def render(session_id: gr.State, data_lake) -> None:
             entity_table  = gr.Dataframe(
                 headers=_STEP_COLUMN_LABELS["categories"],
                 column_widths=_STEP_COLUMN_WIDTHS["categories"],
+                wrap=True,
                 interactive=False,
                 label="Entidades propuestas",
             )
@@ -456,7 +456,7 @@ def render(session_id: gr.State, data_lake) -> None:
                 gr.update(), gr.update(), gr.update(), gr.update(),
             )
 
-        status, new_issues_ack, new_step, step_complete_reset = confirm_fn(
+        status, new_issues_ack, new_step, step_complete_reset, issues_found = confirm_fn(
             current_step, draft_cats, draft_fams, draft_ru, draft_iu, issues_ack, sid,
         )
         new_step_clamped = min(new_step, len(_STEP_KEYS) - 1)
@@ -465,6 +465,39 @@ def render(session_id: gr.State, data_lake) -> None:
 
         new_history = list(history)
         new_step_complete = step_complete_reset
+
+        # Issues found — fire agent to propose corrections
+        if issues_found and new_step == current_step:
+            yield (
+                gr.update(), status,
+                gr.update(), gr.update(), gr.update(),
+                gr.update(interactive=False),
+                gr.update(), gr.update(), gr.update(),
+                gr.update(), gr.update(), gr.update(), gr.update(),
+            )
+            agent = create_agent(
+                ConfigurationAgent, provider=provider, name="configuration_agent"
+            )
+            agent.load_state(data_lake, session_id=f"configuration_agent_{sid}")
+            ctx = _load_configuration_context(data_lake, sid)
+            ctx["current_step"] = _STEP_KEYS[current_step]
+            issues_msg = "__issues__: " + "; ".join(issues_found)
+            try:
+                result = agent.run(input_data={"user_message": issues_msg}, context=ctx)
+                reply = result["reply"]
+                entities = result.get("entities")
+                if result.get("step_complete") is not None:
+                    new_step_complete = bool(result["step_complete"])
+            except Exception:
+                reply = None
+                entities = None
+            agent.save_state(data_lake, session_id=f"configuration_agent_{sid}")
+            if reply:
+                new_history.append({"role": "assistant", "content": reply})
+            if entities is not None:
+                drafts[current_step] = entities
+                # Reset issues_ack so the corrected list gets validated on next confirm
+                new_issues_ack = False
 
         if new_step > current_step:
             if new_step >= len(_STEP_KEYS):
