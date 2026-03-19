@@ -120,9 +120,10 @@ enfocada en tacos y quesadillas para el almuerzo y comida.
 ### SQLite schema (`core/storage/schema.py`)
 - `restaurant` table (line 24–30): columns are `id`, `name`, `address`,
   `restaurant_type_id`, `notes`. No `description` column.
-- **However:** DataLake's `save_entity` uses the generic JSON `data` column pattern
-  (not column-per-field) for most entity types. Need to verify which storage path
-  clasificacion.py and bienvenida.py use for the `restaurant` entity.
+- **Resolved (17.1):** SqliteStorage uses **typed columns** for `restaurant` (silently
+  drops unknown keys) but a **JSON blob** for `classification` (preserves any keys).
+  Decision: store `restaurant_description` in the classification entity alongside
+  `standardization_level`. See `.taskmaster/docs/task-17/17.1/plan.md` for full analysis.
 
 ---
 
@@ -162,22 +163,26 @@ blob). This determines whether `schema.py` needs an `ALTER TABLE` for a `descrip
 
 **File:** `gradio_app/sections/clasificacion.py`
 
-1. In `_make_confirm_fn`, after saving the classification entity:
-   - Retrieve `restaurant_description` from agent `_data_store` (requires loading agent state).
-   - If description exists, load existing restaurant entity, add `description` field, re-save.
-2. **Alternative (simpler):** Save description as part of the classification entity dict
-   alongside `standardization_level`, then load it in `_load_configuration_context` from
-   the classification entity instead. This avoids modifying the restaurant entity.
-   Decision: choose whichever is simpler after reading bienvenida.py's save pattern.
+Save `restaurant_description` in the **classification** entity alongside
+`standardization_level` (decided in 17.1 — classification uses JSON blob, no schema
+changes needed).
+
+1. In `_make_confirm_fn`, load the agent state to retrieve `restaurant_description`
+   from `_data_store`.
+2. Include it in the classification entity dict:
+   ```python
+   data_lake.save_entity("classification", entity_id, {
+       "standardization_level": level,
+       "restaurant_description": description,
+   })
+   ```
 
 ### Step 4 — Update _load_configuration_context
 
 **File:** `gradio_app/sections/configuracion.py`
 
-Add to the returned dict:
+Add to the returned dict (from classification entity, per 17.1 decision):
 ```python
-"restaurant_description": restaurant_data.get("description", "")
-# OR if stored in classification entity:
 "restaurant_description": classification_data.get("restaurant_description", "")
 ```
 
@@ -255,17 +260,12 @@ live test pattern in `test_configuration_agent.py`.
 
 ## Risks and open questions
 
-### Risk 1 — Restaurant entity save path
+### Risk 1 — Restaurant entity save path (RESOLVED in 17.1)
 
-`clasificacion.py`'s `confirm_fn` saves only the `classification` entity, not the
-`restaurant` entity. Saving the description requires either: (a) updating the restaurant
-entity (saved by bienvenida.py) by loading + modifying + re-saving, or (b) storing the
-description in the classification entity alongside `standardization_level`.
-
-**Suggested resolution:** Option (b) is simpler — store `restaurant_description` in the
-classification entity dict. Then `_load_configuration_context` reads it from
-`classification_data` instead of `restaurant_data`. No need to touch the restaurant entity
-or bienvenida.py.
+**Decision:** Store `restaurant_description` in the **classification** entity alongside
+`standardization_level`. The restaurant entity uses typed SQLite columns (would require
+schema migration); the classification entity uses a JSON blob (zero changes needed).
+See `.taskmaster/docs/task-17/17.1/plan.md` for full analysis.
 
 ### Risk 2 — Agent conversation flow
 
@@ -275,13 +275,10 @@ is non-None). The agent needs prompt instructions to ask the question once and n
 it. The `_data_store` draft injection already exists — adding `restaurant_description` to
 the draft block will signal to the agent that the question was already asked/answered.
 
-### Risk 3 — SQLite schema
+### Risk 3 — SQLite schema (RESOLVED in 17.1)
 
-The `restaurant` table has typed columns with no `description` column. If the description
-is stored on the `restaurant` entity and SqliteStorage uses column-level storage for it,
-an `ALTER TABLE restaurant ADD COLUMN description TEXT` would be needed. If stored on the
-`classification` entity instead (Risk 1, option b), this is avoided since `classification`
-uses a generic JSON `data` column.
+No schema changes needed. The classification entity uses a generic JSON `data` column,
+so adding `restaurant_description` to the dict is transparent to the storage layer.
 
 ### Risk 4 — Missing plan completeness items
 
