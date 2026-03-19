@@ -23,7 +23,7 @@ This layer is responsible for:
 - Providing the reusable chat panel component (`render_chat_panel()`)
 - Defining LangGraph node and graph patterns that section agents follow
 
-It does **not** own any section-specific logic. Each section (`bienvenida`, `clasificacion`, etc.) starts as a stub in Task 6 and is replaced by a real implementation in Tasks 7–12. Task 7 (Bienvenida) is complete.
+It does **not** own any section-specific logic. Each section (`bienvenida`, `clasificacion`, etc.) starts as a stub in Task 6 and is replaced by a real implementation in Tasks 7–12. Tasks 7 (Bienvenida), 8 (Clasificación), and 9 (Configuración) are complete.
 
 ---
 
@@ -104,7 +104,7 @@ calls it without any changes.
 |---------|--------|--------|
 | Bienvenida | `sections/bienvenida.py` | **done** (Task 7) |
 | Clasificación | `sections/clasificacion.py` | **done** (Task 8) |
-| Configuración | `sections/configuracion.py` | stub (Task 9) |
+| Configuración | `sections/configuracion.py` | **done** (Task 9) |
 | Alineamiento | `sections/alineamiento.py` | stub (Task 10) |
 | Estructura | `sections/estructura.py` | stub (Task 11) |
 | Manual operativo | `sections/manual_operativo.py` | stub (Task 12) |
@@ -398,7 +398,7 @@ This change enables true human-in-the-loop with `interrupt_before`, session resu
 | `gradio_app/app.py` | `build_app()` — gr.Blocks with 6 tabs, DataLake creation, session_id wiring |
 | `gradio_app/session.py` | `get_data_lake()`, `create_session()` |
 | `gradio_app/components.py` | `render_chat_panel()` — reusable chat UI component; `render_draft_preview()` and `_format_draft()` — propose→preview→confirm panel (Tasks 8–12) |
-| `gradio_app/sections/` | Section implementations: Bienvenida done (Task 7); five stubs remaining (Tasks 8–12) |
+| `gradio_app/sections/` | Section implementations: Bienvenida (Task 7), Clasificación (Task 8), Configuración (Task 9) done; three stubs remaining (Tasks 10–12) |
 | `core/agents/graph_utils.py` | `BaseGraphState`, `make_agent_node()`, `build_sequential_graph()` |
 | `tests/unit/test_graph_utils.py` | Unit tests for graph_utils (6 tests) |
 

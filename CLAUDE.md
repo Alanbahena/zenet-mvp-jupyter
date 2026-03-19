@@ -74,6 +74,10 @@ core/                    # All business logic — the cognitive core
   agents/                # Agent framework
     base_agent.py        # BaseAgent abstract class (run, validate, tool loop, memory)
     simple_agent.py      # RestaurantInfoAgent — minimal concrete agent for validation
+    welcome_agent.py     # WelcomeAgent (Task 7)
+    classification_agent.py  # ClassificationAgent (Task 8)
+    configuration_agent.py   # ConfigurationAgent (Task 9)
+    consistency_check_agent.py # ConsistencyCheckAgent (Task 9)
     utils.py             # create_agent() factory, AgentRegistry
     graph_utils.py       # BaseGraphState, make_agent_node(), build_sequential_graph()
   __init__.py            # Re-exports from all core subpackages
@@ -82,7 +86,7 @@ gradio_app/              # Gradio UI layer
   app.py                 # build_app() — gr.Blocks with 6 tabs
   session.py             # get_data_lake(), create_session()
   components.py          # render_chat_panel()
-  sections/              # One file per pipeline section (stubs — replaced by Tasks 7–12)
+  sections/              # One file per pipeline section (Tasks 7–9 done; 10–12 stubs)
     bienvenida.py, clasificacion.py, configuracion.py,
     alineamiento.py, estructura.py, manual_operativo.py
 
@@ -164,9 +168,17 @@ Tasks and subtasks are tracked in `.taskmaster/tasks/tasks.json`.
 | 6 | Gradio UI foundation and LangGraph integration | **done** |
 | 7 | Bienvenida section agent | **done** |
 | 8 | Clasificación section agent | **done** |
-| 9–16 | Section agents, workflow engine, notebooks, tests, docs | pending |
+| 9  | Configuración section agent           | **done** |
+| 10 | Alineamiento section                   | pending  |
+| 11 | Estructura section                     | pending  |
+| 12 | Manual operativo section               | pending  |
+| 13 | Gradio UI entry point (cancelled)      | cancelled |
+| 14 | Notebook pipeline orchestration (cancelled) | cancelled |
+| 15 | Unit and integration tests             | pending  |
+| 16 | Documentation and user guide           | pending  |
+| 17 | Restaurant profile enrichment          | pending  |
 
-**Task 9** (Configuración section agent) is the next task.
+**Task 17** (Restaurant profile enrichment) is next, prerequisite for Task 10.
 
 ### TaskMaster docs
 
@@ -219,6 +231,10 @@ Detailed docs in `docs/Architecture/`:
 | Readiness report schema and KPIs | `architecture-readiness-kpis.md` |
 | Storage layer (JSON/SQLite/DataLake) | `architecture-persistence.md` |
 | Gradio UI and LangGraph integration | `architecture-gradio-and-langgraph.md` |
+| Agent framework                        | `architecture-agent-framework.md`            |
+| Bienvenida section                     | `sections/bienvenida.md`                     |
+| Clasificación section                  | `sections/clasificacion.md`                  |
+| Configuración section                  | `sections/configuracion.md`                  |
 
 Project-wide references:
 - `.taskmaster/docs/prd.txt` — Product Requirements Document
