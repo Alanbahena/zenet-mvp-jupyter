@@ -754,7 +754,7 @@
         "id": "9",
         "title": "Implement Configuration Agent and Notebook",
         "description": "Create the Configuration agent for guided setup of recipe categories, inventory families, recipe units, and inventory units, along with its Jupyter notebook interface.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "8"
         ],
@@ -768,9 +768,10 @@
             "description": "Extend the Configuration Agent to handle recipe units and inventory units setup based on selected templates.",
             "dependencies": [],
             "details": "Modify the ConfigurationAgent class to include tools for recipe and inventory unit setup. Update the _generate_prompt method to include guidance for units configuration. Extend the _process_response method to include recipe_units and inventory_units in the returned dictionary. Reference the template design documentation at .taskmaster/docs/templates-recipe-and-inventory.md for standard units (e.g., g, kg, L, pza, caja).",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test the agent with different restaurant templates to verify it correctly extracts and configures standard units. Test with both simple and complex unit configurations.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-03-17T06:55:05.177Z"
           },
           {
             "id": 2,
@@ -780,9 +781,10 @@
               1
             ],
             "details": "Add new interactive cells to notebooks/Configuración_inicial.ipynb for recipe units setup and inventory units setup. Create visualization components to display the configured units. Update the notebook's introduction and guidance text to explain the importance of standardized units. Ensure the notebook saves the configured units to the state that will be passed to subsequent notebooks.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test the notebook with various templates to ensure it correctly guides users through unit setup. Verify that units from templates are properly displayed and can be customized if needed.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-03-17T07:50:04.299Z"
           },
           {
             "id": 3,
@@ -792,23 +794,99 @@
               1
             ],
             "details": "Update core/validation.py to include validation functions for recipe and inventory units. Implement checks for required standard units, unit format validation, and consistency between related units. Create helpful error messages that guide users to correct invalid configurations.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test validation with valid and invalid unit configurations. Verify that appropriate error messages are displayed for invalid configurations. Test edge cases like duplicate units or missing required units.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-03-18T03:23:59.192Z"
           },
           {
             "id": 4,
             "title": "Implement inventory unit equivalence UI (Unidad / Equivalencia / Equivalencia Unidad)",
             "description": "Add UI and agent support for defining custom inventory unit equivalences (e.g. 1 Caja = 10 Kilogramos) mapped to base_unit_id and factor_to_base.",
             "details": "Provide three-field UI: Unidad de Inventario (name/symbol), Equivalencia (numeric factor), Equivalencia Unidad (reference unit). Map to InventoryUnit.base_unit_id and factor_to_base. Support add/edit in Configuration notebook and Gradio; validate factor > 0, no cycles. Reference .taskmaster/docs/inventory-units-and-equivalences-plan.md Part 5.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               1
             ],
             "parentTaskId": 9,
+            "parentId": "undefined",
+            "updatedAt": "2026-03-18T06:14:56.420Z"
+          },
+          {
+            "id": 5,
+            "title": "9.1 ConfigurationAgent (core/agents/configuration_agent.py)",
+            "description": "Implement ConfigurationAgent with _ConfigurationResponse RESPONSE_MODEL, INPUT_SCHEMA/OUTPUT_SCHEMA, prompt that injects restaurant context and current step draft, and _process_response that merges entities into _data_store without overwriting when entities is None.",
+            "details": "See .taskmaster/docs/task-9/plan.md § 9.1.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 9,
+            "parentId": "undefined",
+            "updatedAt": "2026-03-18T06:35:39.887Z"
+          },
+          {
+            "id": 6,
+            "title": "9.2 ConsistencyCheckAgent (core/agents/consistency_check_agent.py)",
+            "description": "Create ConsistencyCheckAgent with _ConsistencyCheckResponse (issues, suggestions, looks_good) to run per-step and final cross-entity checks for configuration entities.",
+            "details": "See .taskmaster/docs/task-9/plan.md § 9.2.",
+            "status": "done",
+            "dependencies": [
+              "9.1"
+            ],
+            "parentTaskId": 9,
+            "parentId": "undefined"
+          },
+          {
+            "id": 7,
+            "title": "9.3 Configuración section UI (gradio_app/sections/configuracion.py)",
+            "description": "Replace stub with full render(): chat column + sequential step UI, progress indicator, state vars, chat handler wiring, per-step and final consistency checks, confirm-and-save flow.",
+            "details": "See .taskmaster/docs/task-9/plan.md § 9.3.",
+            "status": "done",
+            "dependencies": [
+              "9.1",
+              "9.2"
+            ],
+            "parentTaskId": 9,
+            "parentId": "undefined"
+          },
+          {
+            "id": 8,
+            "title": "9.4 Exports (core/agents/__init__.py + core/__init__.py)",
+            "description": "Export ConfigurationAgent and ConsistencyCheckAgent from core/agents/__init__.py and core/__init__.py, following the WelcomeAgent / ClassificationAgent pattern.",
+            "details": "See .taskmaster/docs/task-9/plan.md § 9.4.",
+            "status": "done",
+            "dependencies": [
+              "9.1",
+              "9.2"
+            ],
+            "parentTaskId": 9,
+            "parentId": "undefined"
+          },
+          {
+            "id": 9,
+            "title": "9.5 Tests (tests/unit/test_configuration_agent.py)",
+            "description": "Create tests/unit/test_configuration_agent.py with 16 mocked tests and 3 live tests covering ConfigurationAgent, ConsistencyCheckAgent, confirm flow, and ID assignment.",
+            "details": "See .taskmaster/docs/task-9/plan.md § 9.5.",
+            "status": "done",
+            "dependencies": [
+              "9.4"
+            ],
+            "parentTaskId": 9,
+            "parentId": "undefined"
+          },
+          {
+            "id": 10,
+            "title": "9.6 Documentation and task closure",
+            "description": "Create configuracion section architecture doc; update architecture-agent-framework, architecture-gradio-and-langgraph, tasks.json, and CLAUDE.md to mark Task 9 complete.",
+            "details": "See .taskmaster/docs/task-9/plan.md § 9.6.",
+            "status": "done",
+            "dependencies": [
+              "9.5"
+            ],
+            "parentTaskId": 9,
             "parentId": "undefined"
           }
-        ]
+        ],
+        "updatedAt": "2026-03-18T06:35:39.887Z"
       },
       {
         "id": "10",
@@ -854,6 +932,7 @@
         "status_note": "cancelled",
         "title": "Implement Gradio UI entry point [CANCELLED — covered by Task 6]",
         "description": "Superseded by Task 6 (Gradio UI foundation). Task 6 covers the full Gradio shell, navigation, session management, and stub screens. This task is no longer needed.",
+        "status": "cancelled",
         "details": "Create gradio/app.py:\n\n```python\nimport gradio as gr\nfrom gradio.components import Markdown, Button, File, Textbox\nimport subprocess\nimport os\n\ndef launch_notebook(notebook_path):\n    subprocess.Popen([\"jupyter\", \"notebook\", notebook_path])\n\ndef create_ui():\n    with gr.Blocks(title=\"Zenet MVP 0.1\") as app:\n        gr.Markdown(\"# Zenet MVP 0.1\\nA primary cognitive operating system for restaurants\")\n        \n        with gr.Tab(\"Welcome\"):\n            gr.Markdown(\"## Welcome to Zenet\\nStart your journey to bring order to your restaurant operations.\")\n            welcome_button = gr.Button(\"Start Onboarding\")\n            welcome_button.click(lambda: launch_notebook(\"notebooks/bienvenida.ipynb\"))\n        \n        with gr.Tab(\"Classification\"):\n            gr.Markdown(\"## Restaurant Classification\\nClassify your restaurant and get suggested templates.\")\n            classification_button = gr.Button(\"Start Classification\")\n            classification_button.click(lambda: launch_notebook(\"notebooks/Clasificación.ipynb\"))\n        \n        with gr.Tab(\"Configuration\"):\n            gr.Markdown(\"## Initial Configuration\\nSet up recipe categories and inventory families.\")\n            configuration_button = gr.Button(\"Start Configuration\")\n            configuration_button.click(lambda: launch_notebook(\"notebooks/Configuración_inicial.ipynb\"))\n        \n        with gr.Tab(\"Alignment\"):\n            gr.Markdown(\"## Data Alignment\\nAlign your restaurant data with the configured structure.\")\n            alignment_button = gr.Button(\"Start Alignment\")\n            alignment_button.click(lambda: launch_notebook(\"notebooks/alineamiento.ipynb\"))\n        \n        with gr.Tab(\"Structuring\"):\n            gr.Markdown(\"## Data Structuring\\nCreate structured representations of recipes and ingredients.\")\n            structuring_button = gr.Button(\"Start Structuring\")\n            structuring_button.click(lambda: launch_notebook(\"notebooks/Estructura.ipynb\"))\n        \n        with gr.Tab(\"Operational Manual\"):\n            gr.Markdown(\"## Operational Manual\\nGenerate a digital operational manual and answer business questions.\")\n            manual_button = gr.Button(\"Start Operational Manual\")\n            manual_button.click(lambda: launch_notebook(\"notebooks/manual_operativo.ipynb\"))\n    \n    return app\n\nif __name__ == \"__main__\":\n    app = create_ui()\n    app.launch()\n```\n\nImplement a consistent UI theme and styling across all Gradio components.\nCreate a navigation system that allows users to move between notebooks.\nImplement state management to pass data between notebooks.\nCreate a help system that explains the purpose of each notebook.",
         "testStrategy": "Test the Gradio UI with various browsers and screen sizes. Verify all buttons launch the correct notebooks. Test navigation between notebooks. Ensure state is correctly passed between notebooks. Test the help system.",
         "priority": "medium",
@@ -865,7 +944,6 @@
           "11",
           "12"
         ],
-        "status": "pending",
         "subtasks": []
       },
       {
@@ -873,6 +951,7 @@
         "status_note": "cancelled",
         "title": "Implement notebook pipeline orchestration [CANCELLED — handled by DataLake + Gradio session]",
         "description": "Superseded by the architectural decision that sections communicate through DataLake using session_id (established in Task 6). Each section reads and writes from the same DataLake session — no separate orchestrator is needed. The Gradio tab navigation IS the pipeline.",
+        "status": "cancelled",
         "details": "Create core/notebook_orchestration.py:\n\n```python\nimport json\nimport os\n\nclass NotebookOrchestrator:\n    def __init__(self, data_dir=\"./data\"):\n        self.data_dir = data_dir\n        self.state_file = os.path.join(data_dir, \"notebook_state.json\")\n        self.state = self._load_state()\n    \n    def _load_state(self):\n        if os.path.exists(self.state_file):\n            with open(self.state_file, \"r\") as f:\n                return json.load(f)\n        return {\n            \"current_notebook\": \"bienvenida.ipynb\",\n            \"completed_notebooks\": [],\n            \"restaurant_id\": None,\n            \"data\": {}\n        }\n    \n    def save_state(self):\n        os.makedirs(self.data_dir, exist_ok=True)\n        with open(self.state_file, \"w\") as f:\n            json.dump(self.state, f, indent=2)\n    \n    def update_state(self, key, value):\n        self.state[\"data\"][key] = value\n        self.save_state()\n    \n    def get_state(self, key, default=None):\n        return self.state[\"data\"].get(key, default)\n    \n    def complete_notebook(self, notebook_name):\n        if notebook_name not in self.state[\"completed_notebooks\"]:\n            self.state[\"completed_notebooks\"].append(notebook_name)\n        self.save_state()\n    \n    def set_current_notebook(self, notebook_name):\n        self.state[\"current_notebook\"] = notebook_name\n        self.save_state()\n    \n    def get_next_notebook(self):\n        notebook_sequence = [\n            \"bienvenida.ipynb\",\n            \"Clasificación.ipynb\",\n            \"Configuración_inicial.ipynb\",\n            \"alineamiento.ipynb\",\n            \"Estructura.ipynb\",\n            \"manual_operativo.ipynb\"\n        ]\n        current_index = notebook_sequence.index(self.state[\"current_notebook\"])\n        if current_index < len(notebook_sequence) - 1:\n            return notebook_sequence[current_index + 1]\n        return None\n```\n\nImplement notebook-specific state management functions.\nCreate utility functions for loading and saving data between notebooks.\nImplement a system for tracking progress through the pipeline.\nCreate a mechanism for resuming the pipeline from any point.",
         "testStrategy": "Test the NotebookOrchestrator with a complete pipeline run. Verify state is correctly maintained across notebooks. Test resuming the pipeline from different points. Ensure data is correctly passed between notebooks. Test error recovery.",
         "priority": "high",
@@ -884,7 +963,6 @@
           "11",
           "12"
         ],
-        "status": "pending",
         "subtasks": []
       },
       {
@@ -935,13 +1013,26 @@
         ],
         "status": "pending",
         "subtasks": []
+      },
+      {
+        "id": "17",
+        "title": "Restaurant profile enrichment — free-text description in Clasificación and downstream context",
+        "description": "Add an open-ended question in the Clasificación section that captures a free-text restaurant profile (cuisine type, service style, size, focus). Save the description to the restaurant entity in DataLake. Thread it through _load_configuration_context and into the system prompts of ConfigurationAgent and ConsistencyCheckAgent so all downstream agents have richer context for suggestions, warnings, and entity proposals.",
+        "details": "Scope: (1) ClassificationAgent — add a follow-up question after restaurant type is confirmed, asking the operator to describe their restaurant in a few words. Save description to DataLake restaurant entity. (2) _load_configuration_context in configuracion.py — load the description field and expose it in the context dict. (3) ConfigurationAgent system prompt — inject description into the operator context block. (4) ConsistencyCheckAgent system prompts — inject description so semantic relevance checks are restaurant-specific. (5) Tests — update or add mocked tests covering the new field.",
+        "testStrategy": "Mocked tests: verify description is saved to DataLake, loaded by context loader, and appears in agent system prompts. Live test: verify ClassificationAgent asks the profile question and the description flows correctly into ConfigurationAgent context.",
+        "priority": "high",
+        "dependencies": [
+          "9"
+        ],
+        "status": "pending",
+        "subtasks": []
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-13T19:40:59.383Z",
+      "lastModified": "2026-03-18T06:35:39.888Z",
       "taskCount": 16,
-      "completedCount": 7,
+      "completedCount": 8,
       "tags": [
         "master"
       ]

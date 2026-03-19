@@ -12,7 +12,7 @@ flowchart LR
     T4["Task 4<br/>LLM Framework<br/>LlmProvider<br/>ConversationMemory<br/>ToolRegistry"]
     T5["Task 5<br/>Agent Framework<br/>BaseAgent<br/>AgentRegistry<br/>create_agent()"]
     T6["Task 6<br/>Workflow Engine<br/>done"]
-    T712["Tasks 7–12<br/>Notebook Agents<br/>WelcomeAgent ✓<br/>ClassificationAgent ✓<br/>..."]
+    T712["Tasks 7–12<br/>Notebook Agents<br/>WelcomeAgent ✓<br/>ClassificationAgent ✓<br/>ConfigurationAgent ✓<br/>ConsistencyCheckAgent ✓<br/>..."]
 
     T4 -->|"provider, memory,<br/>tool registry"| T5
     T5 -->|"run(), INPUT_SCHEMA<br/>OUTPUT_SCHEMA<br/>AgentRegistry"| T6
@@ -24,7 +24,7 @@ flowchart LR
 | Task 4 — LLM Framework | `LlmProvider`, `ConversationMemory`, `ToolRegistry` |
 | Task 5 — Agent Framework | `BaseAgent`, `AgentRegistry`, `create_agent()` |
 | Task 6 — Workflow Engine | Pipeline orchestration (done) |
-| Tasks 7–12 — Notebook Agents | Concrete agents extending `BaseAgent` (`WelcomeAgent` done, `ClassificationAgent` done; 9–12 pending) |
+| Tasks 7–12 — Notebook Agents | Concrete agents extending `BaseAgent` (`WelcomeAgent` done, `ClassificationAgent` done, `ConfigurationAgent` done, `ConsistencyCheckAgent` done; 10–12 pending) |
 
 ---
 
