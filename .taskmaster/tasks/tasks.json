@@ -1013,6 +1013,19 @@
         ],
         "status": "pending",
         "subtasks": []
+      },
+      {
+        "id": "17",
+        "title": "Restaurant profile enrichment — free-text description in Clasificación and downstream context",
+        "description": "Add an open-ended question in the Clasificación section that captures a free-text restaurant profile (cuisine type, service style, size, focus). Save the description to the restaurant entity in DataLake. Thread it through _load_configuration_context and into the system prompts of ConfigurationAgent and ConsistencyCheckAgent so all downstream agents have richer context for suggestions, warnings, and entity proposals.",
+        "details": "Scope: (1) ClassificationAgent — add a follow-up question after restaurant type is confirmed, asking the operator to describe their restaurant in a few words. Save description to DataLake restaurant entity. (2) _load_configuration_context in configuracion.py — load the description field and expose it in the context dict. (3) ConfigurationAgent system prompt — inject description into the operator context block. (4) ConsistencyCheckAgent system prompts — inject description so semantic relevance checks are restaurant-specific. (5) Tests — update or add mocked tests covering the new field.",
+        "testStrategy": "Mocked tests: verify description is saved to DataLake, loaded by context loader, and appears in agent system prompts. Live test: verify ClassificationAgent asks the profile question and the description flows correctly into ConfigurationAgent context.",
+        "priority": "high",
+        "dependencies": [
+          "9"
+        ],
+        "status": "pending",
+        "subtasks": []
       }
     ],
     "metadata": {
