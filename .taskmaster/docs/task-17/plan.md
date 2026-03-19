@@ -138,25 +138,63 @@ blob). This determines whether `schema.py` needs an `ALTER TABLE` for a `descrip
 
 **File:** `core/agents/classification_agent.py`
 
+**Two-field approach:** The agent captures the operator's raw input and produces an
+enriched, agent-readable description synthesized from the conversation.
+
+- `restaurant_description_raw`: exactly what the operator typed (preserved for transparency)
+- `restaurant_description`: the agent's enriched version, written for downstream agent
+  consumption — structured, complete, optimized for agent readability
+
+**Enrichment rules (critical — no hallucination):**
+- The agent may ONLY use information from: (1) what the operator said during the
+  conversation (all turns, not just the description answer), and (2) the injected
+  context (restaurant name, restaurant type).
+- The agent must NOT invent, assume, or infer data that was not explicitly stated.
+- If the operator provides sparse input (e.g. "tacos"), the enriched description stays
+  grounded and short: "Taquería — sin más detalle proporcionado por el operador."
+- Better to be short and accurate than long and fabricated.
+
+Changes:
+
 1. Add `description: str | None = None` to `_ClassificationResponse`.
 2. Add a section to `_SYSTEM_PROMPT` after the level diagnosis rules:
    ```
    ## Descripción del restaurante
 
    Una vez que hayas diagnosticado el nivel de estandarización (standardization_level no es null),
-   pregunta al operador: "¿Podrías describir tu restaurante en una frase? Por ejemplo: tipo de
-   cocina, estilo de servicio, tamaño, zona." Guarda la respuesta en el campo "description".
+   pregunta al operador que describa brevemente su restaurante: tipo de cocina, estilo de
+   servicio, tamaño aproximado, zona o enfoque. Ejemplo: "Taquería de barrio, servicio en
+   mostrador, ~30 cubiertos, enfocada en tacos y quesadillas."
+
+   Después de que el operador responda, sintetiza un perfil completo del restaurante en el
+   campo "description". Combina lo que el operador dijo con lo que ya sabes de la conversación
+   (nombre, tipo de restaurante, nivel de estandarización). El resultado debe ser una
+   descripción estructurada y clara, optimizada para que otros agentes del sistema la lean.
+
+   REGLA ABSOLUTA: Usa SOLO información que el operador haya proporcionado explícitamente
+   o que esté en el contexto inyectado. No inventes, no asumas, no infieras datos que no
+   se hayan dicho. Si el operador dio poca información, la descripción debe ser corta y
+   fiel — es preferible una descripción breve y precisa que una larga e inventada.
 
    Si el operador no quiere responder o dice que no sabe, acepta y deja description en null.
-   No insistas.
+   No insistas — una sola pregunta es suficiente.
    ```
 3. Update the JSON format section to include `"description"`.
-4. In `_process_response`, store `description` when non-None:
+4. In `_process_response`, store both values when non-None:
    ```python
    description = data.get("description")
    if description is not None:
        self.store("restaurant_description", description)
+       # Also store the raw input from the user message that triggered this response
+       self.store("restaurant_description_raw", input_data["user_message"])
    ```
+   Note: `_process_response` does not receive `input_data`. The raw input is the operator's
+   message from the turn where the agent produced a non-null description. To capture it,
+   store it in `_generate_prompt` when the agent has already diagnosed the level but does
+   not yet have a description — the user message on that turn is the raw description input.
+   Alternative: store the raw user message in `run()` before calling `_generate_prompt`,
+   but `run()` is in BaseAgent and should not be modified. Simplest approach: let the agent
+   include a `description_raw` field in its JSON response with the operator's exact words.
 5. Add `restaurant_description` to `OUTPUT_SCHEMA`.
 
 ### Step 3 — Update clasificacion.py confirm flow

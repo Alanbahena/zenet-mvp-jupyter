@@ -1,10 +1,13 @@
 """
 ClassificationAgent -- conversational diagnosis agent for the Clasificación section.
 
-Identifies the operator's standardization level (1–3) through a short conversation.
-The diagnosed level is stored in _data_store and persisted to DataLake only when the
-operator confirms via the UI (subtask 8.4). Tasks 9–12 load this level to calibrate
-their agents' tone, suggestions, and approach.
+Identifies the operator's standardization level (1–3) through a short conversation,
+then asks for a brief restaurant description. The agent enriches the operator's input
+into a structured profile for downstream agent consumption.
+
+Both the diagnosed level and the restaurant description are stored in _data_store and
+persisted to DataLake only when the operator confirms via the UI. Tasks 9–12 load
+these values to calibrate their agents' tone, suggestions, and approach.
 """
 
 from __future__ import annotations
@@ -61,6 +64,29 @@ Si el operador señala que quiere avanzar sin responder preguntas — por ejempl
 2. Explicar que Zenet lo acompañará paso a paso desde las plantillas base
 3. Invitarlo a corregirlo si algo no cuadra con su realidad
 
+## Descripción del restaurante
+
+Una vez que hayas diagnosticado el nivel de estandarización (standardization_level no es null), \
+pregunta al operador que describa brevemente su restaurante: tipo de cocina, estilo de \
+servicio, tamaño aproximado, zona o enfoque. Ejemplo: "Taquería de barrio, servicio en \
+mostrador, ~30 cubiertos, enfocada en tacos y quesadillas."
+
+Después de que el operador responda, sintetiza un perfil completo del restaurante en el \
+campo "description". Combina lo que el operador dijo con lo que ya sabes de la conversación \
+(nombre, tipo de restaurante, nivel de estandarización). El resultado debe ser una \
+descripción estructurada y clara, optimizada para que otros agentes del sistema la lean.
+
+Guarda también las palabras exactas del operador en el campo "description_raw" — sin \
+modificar, sin expandir, tal cual las escribió.
+
+REGLA ABSOLUTA: Usa SOLO información que el operador haya proporcionado explícitamente \
+o que esté en el contexto inyectado (nombre y tipo de restaurante). No inventes, no asumas, \
+no infieras datos que no se hayan dicho. Si el operador dio poca información, la descripción \
+debe ser corta y fiel — es preferible una descripción breve y precisa que una larga e inventada.
+
+Si el operador no quiere responder o dice que no sabe, acepta y deja description y \
+description_raw en null. No insistas — una sola pregunta es suficiente.
+
 ## Reglas de comunicación
 
 - Siempre en español
@@ -71,17 +97,21 @@ Si el operador señala que quiere avanzar sin responder preguntas — por ejempl
 
 ## Formato de respuesta
 
-Responde SIEMPRE con JSON usando exactamente estos dos campos:
+Responde SIEMPRE con JSON usando exactamente estos campos:
 - "reply": tu respuesta conversacional en texto (nunca JSON dentro de este campo)
 - "standardization_level": el nivel diagnosticado (1, 2 o 3), o null si aún no tienes suficiente información
+- "description": perfil enriquecido del restaurante sintetizado a partir de la conversación, o null si aún no se ha capturado
+- "description_raw": las palabras exactas del operador describiendo su restaurante, o null si aún no se ha capturado
 """
 
 
 class _ClassificationResponse(BaseModel):
-    """Hybrid response: conversational reply + structured standardization level."""
+    """Hybrid response: conversational reply + structured standardization level + restaurant description."""
 
     reply: str
     standardization_level: int | None = None
+    description: str | None = None
+    description_raw: str | None = None
 
     @field_validator("standardization_level")
     @classmethod
@@ -95,29 +125,35 @@ class ClassificationAgent(BaseAgent):
     """
     Conversational diagnosis agent for the Clasificación section.
 
-    Identifies the operator's standardization level (1–3) through a short conversation.
-    Accumulates the diagnosed level in _data_store across turns. Nothing is persisted
-    to DataLake until the operator confirms via the Confirm button in the UI.
+    Identifies the operator's standardization level (1–3) through a short conversation,
+    then asks for a brief restaurant description. The agent enriches the operator's raw
+    input into a structured profile optimized for downstream agent consumption. Only
+    information explicitly provided by the operator or present in the injected context
+    is used — the agent never invents or assumes data.
 
-    The diagnosed level is used by Tasks 9–12 agents to calibrate their tone,
-    suggestions, and approach for each section of the pipeline.
+    Accumulates diagnosed level and restaurant description in _data_store across turns.
+    Nothing is persisted to DataLake until the operator confirms via the Confirm button.
 
     Input:
         user_message: A message from the restaurant operator.
 
     Output:
-        reply:                 Conversational response shown to the operator.
-        standardization_level: Diagnosed level (1/2/3) or None if not yet determined.
-        raw_response:          Full LLM response string.
+        reply:                      Conversational response shown to the operator.
+        standardization_level:      Diagnosed level (1/2/3) or None if not yet determined.
+        restaurant_description:     Agent-enriched restaurant profile or None.
+        restaurant_description_raw: Operator's exact words or None.
+        raw_response:               Full LLM response string.
     """
 
     INPUT_SCHEMA: ClassVar[dict[str, str]] = {
         "user_message": "A message from the restaurant operator.",
     }
     OUTPUT_SCHEMA: ClassVar[dict[str, str]] = {
-        "reply":                 "Conversational response shown to the operator.",
-        "standardization_level": "Diagnosed level (1/2/3) or None if not yet determined.",
-        "raw_response":          "Full LLM response string.",
+        "reply":                      "Conversational response shown to the operator.",
+        "standardization_level":      "Diagnosed level (1/2/3) or None if not yet determined.",
+        "restaurant_description":     "Agent-enriched restaurant profile or None.",
+        "restaurant_description_raw": "Operator's exact words describing the restaurant or None.",
+        "raw_response":               "Full LLM response string.",
     }
     RESPONSE_MODEL: ClassVar[type[BaseModel] | None] = _ClassificationResponse
 
@@ -139,11 +175,17 @@ class ClassificationAgent(BaseAgent):
 
         # 2. Inject current draft so agent knows what has already been captured
         level = self.retrieve("standardization_level")
+        description = self.retrieve("restaurant_description")
+        draft: dict[str, Any] = {}
         if level is not None:
+            draft["standardization_level"] = level
+        if description is not None:
+            draft["restaurant_description"] = description
+        if draft:
             system = (
                 system
                 + "\n\n## Borrador actual (ya capturado en esta conversación)\n"
-                + json.dumps({"standardization_level": level}, ensure_ascii=False)
+                + json.dumps(draft, ensure_ascii=False)
             )
 
         return system, input_data["user_message"]
@@ -156,8 +198,18 @@ class ClassificationAgent(BaseAgent):
         if level is not None:
             self.store("standardization_level", level)
 
+        # restaurant description: store enriched + raw when provided
+        description = data.get("description")
+        if description is not None:
+            self.store("restaurant_description", description)
+        description_raw = data.get("description_raw")
+        if description_raw is not None:
+            self.store("restaurant_description_raw", description_raw)
+
         return {
-            "reply":                 data.get("reply", ""),
-            "standardization_level": data.get("standardization_level"),
-            "raw_response":          response,
+            "reply":                      data.get("reply", ""),
+            "standardization_level":      data.get("standardization_level"),
+            "restaurant_description":     data.get("description"),
+            "restaurant_description_raw": data.get("description_raw"),
+            "raw_response":               response,
         }
