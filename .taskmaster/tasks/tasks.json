@@ -214,7 +214,7 @@
             "id": 7,
             "title": "Readiness KPIs (onboarding completeness & standardization)",
             "description": "Define a readiness-only KPI schema and compute a readiness report after onboarding so the operator can see how complete/standardized the restaurant setup is.",
-            "details": "Create a readiness KPI schema (JSON + dataclasses) and a computation function that inspects current registries (units, categories, families, inventory items), recipes/ingredients, conversion table coverage, and optional taxonomy coverage to output a readiness report.\n\nDeliverables:\n- Documented KPI schema (fields, required/optional, how to compute)\n- Readiness scoring model (0–100 + per-dimension breakdown)\n- Computation utilities returning a serializable report for UI/manual exploration\n- Unit tests for KPI computation on small fixtures\n\nDepends on: 2.2–2.5 (data model, normalization, taxonomy, integration utils).",
+            "details": "Create a readiness KPI schema (JSON + dataclasses) and a computation function that inspects current registries (units, categories, families, inventory items), recipes/ingredients, conversion table coverage, and optional taxonomy coverage to output a readiness report.\n\nDeliverables:\n- Documented KPI schema (fields, required/optional, how to compute)\n- Readiness scoring model (0\u2013100 + per-dimension breakdown)\n- Computation utilities returning a serializable report for UI/manual exploration\n- Unit tests for KPI computation on small fixtures\n\nDepends on: 2.2\u20132.5 (data model, normalization, taxonomy, integration utils).",
             "status": "done",
             "dependencies": [
               2,
@@ -467,7 +467,7 @@
       },
       {
         "id": "7",
-        "title": "Bienvenida section — Welcome Agent and Gradio UI",
+        "title": "Bienvenida section \u2014 Welcome Agent and Gradio UI",
         "status": "done",
         "description": "Implement the Bienvenida section: form fields (restaurant name input, restaurant type dropdown) plus a single BaseAgent conversational chat to assist the operator. Agent helps if the user is unsure about restaurant type. Confirmed data is saved to DataLake using the session_id established in Task 6.",
         "details": "Create core/agents/welcome_agent.py:\n\n```python\nfrom core.agents.base_agent import BaseAgent\n\nclass WelcomeAgent(BaseAgent):\n    def __init__(self, llm_provider):\n        tools = [\n            # Define tools for information capture\n            # Define tools for emotional support\n        ]\n        super().__init__(\"Welcome Agent\", llm_provider, tools)\n    \n    def run(self, input_data, context=None):\n        prompt = self._generate_prompt(input_data, context)\n        response = self.llm_provider.generate(prompt, tools=self.tools)\n        return self._process_response(response)\n    \n    def _generate_prompt(self, input_data, context):\n        # Create prompt for welcome, onboarding, and emotional support\n        return f\"\"\"You are Zenet's Welcome Agent. Your role is to onboard new restaurant operators,\n        capture initial information about their restaurant, and provide emotional support.\n        \n        User information: {input_data.get('user_info', '')}\n        Restaurant information: {input_data.get('restaurant_info', '')}\n        \n        Please welcome the user, ask for essential information about their restaurant,\n        and address any anxiety they might have about organizing their restaurant data.\"\"\"\n    \n    def _process_response(self, response):\n        # Process the LLM response and extract structured information\n        # Return a dictionary with captured information\n        return {\n            \"restaurant_name\": extracted_name,\n            \"restaurant_type\": extracted_type,\n            \"user_concerns\": extracted_concerns,\n            \"next_steps\": next_steps\n        }\n```\n\nCreate notebooks/bienvenida.ipynb with the following structure:\n1. Introduction to Zenet and the onboarding process\n2. Initialization of the Welcome Agent\n3. Interactive cells for user input\n4. Display of agent responses\n5. Capture of restaurant information\n6. Transition to the next notebook\n\nImplement Gradio UI components for the Welcome notebook in gradio/welcome_ui.py.",
@@ -482,7 +482,7 @@
             "id": 1,
             "title": "7.1 WelcomeAgent (core/agents/welcome_agent.py)",
             "description": "Create the WelcomeAgent class following the RestaurantInfoAgent pattern. INPUT_SCHEMA, OUTPUT_SCHEMA, RESPONSE_MODEL=None, _SYSTEM_PROMPT in Spanish, _generate_prompt(), _process_response().",
-            "details": "See .taskmaster/docs/task-7/plan.md § 7.1.",
+            "details": "See .taskmaster/docs/task-7/plan.md \u00a7 7.1.",
             "status": "done",
             "dependencies": [],
             "parentTaskId": 7,
@@ -493,7 +493,7 @@
             "id": 2,
             "title": "7.2 Chat panel update (gradio_app/components.py)",
             "description": "Add optional initial_messages parameter to render_chat_panel(); pass value=initial_messages to gr.Chatbot. Default None for backwards compatibility.",
-            "details": "See .taskmaster/docs/task-7/plan.md § 7.2.",
+            "details": "See .taskmaster/docs/task-7/plan.md \u00a7 7.2.",
             "status": "done",
             "dependencies": [
               "7.1"
@@ -506,7 +506,7 @@
             "id": 3,
             "title": "7.3 Bienvenida section UI (gradio_app/sections/bienvenida.py)",
             "description": "Replace stub with full render(): two-column layout (form + chat), save handler persisting Restaurant and User to DataLake, chat_fn with load_state/save_state and _load_form_context.",
-            "details": "See .taskmaster/docs/task-7/plan.md § 7.3.",
+            "details": "See .taskmaster/docs/task-7/plan.md \u00a7 7.3.",
             "status": "done",
             "dependencies": [
               "7.1",
@@ -520,7 +520,7 @@
             "id": 4,
             "title": "7.4 Error handling and validation",
             "description": "Chat: try/except around agent.run() with friendly Spanish error message. Form: validate user name and restaurant name required; Spanish validation messages.",
-            "details": "Integrated in _make_chat_fn and _make_save_fn. See .taskmaster/docs/task-7/plan.md § 7.4.",
+            "details": "Integrated in _make_chat_fn and _make_save_fn. See .taskmaster/docs/task-7/plan.md \u00a7 7.4.",
             "status": "done",
             "dependencies": [
               "7.3"
@@ -533,7 +533,7 @@
             "id": 5,
             "title": "7.5 Exports and task status",
             "description": "Add WelcomeAgent to core/__init__.py re-exports. Update tasks.json and CLAUDE.md task status when task 7 is complete.",
-            "details": "See .taskmaster/docs/task-7/plan.md § 7.5.",
+            "details": "See .taskmaster/docs/task-7/plan.md \u00a7 7.5.",
             "status": "done",
             "dependencies": [
               "7.4"
@@ -546,7 +546,7 @@
             "id": 6,
             "title": "7.6 Tests (mocked + live)",
             "description": "Create tests/unit/test_welcome_agent.py: _MockProvider, 18 mocked tests, 3 live tests (skip unless ANTHROPIC_API_KEY).",
-            "details": "See .taskmaster/docs/task-7/plan.md § 7.6.",
+            "details": "See .taskmaster/docs/task-7/plan.md \u00a7 7.6.",
             "status": "done",
             "dependencies": [
               "7.5"
@@ -559,7 +559,7 @@
             "id": 7,
             "title": "7.7 Documentation",
             "description": "Ensure .taskmaster/docs/task-7/plan.md exists (this plan). No subtask-level plan files.",
-            "details": "See .taskmaster/docs/task-7/plan.md § 7.7.",
+            "details": "See .taskmaster/docs/task-7/plan.md \u00a7 7.7.",
             "status": "done",
             "dependencies": [
               "7.6"
@@ -573,9 +573,9 @@
       },
       {
         "id": "8",
-        "title": "Clasificación section — Classification Agent and Gradio UI",
-        "description": "Implement the Clasificación section: form fields (classification inputs) plus a single BaseAgent conversational chat. Agent suggests restaurant type, templates, and operational level. Reads Restaurant entity from DataLake (written by Task 7) and writes classification results back.",
-        "details": "Create core/agents/classification_agent.py:\n\n```python\nfrom core.agents.base_agent import BaseAgent\n\nclass ClassificationAgent(BaseAgent):\n    def __init__(self, llm_provider):\n        tools = [\n            # Define tools for restaurant classification\n            # Define tools for template suggestion\n            # Define tools for operational-level diagnosis\n        ]\n        super().__init__(\"Classification Agent\", llm_provider, tools)\n    \n    def run(self, input_data, context=None):\n        prompt = self._generate_prompt(input_data, context)\n        response = self.llm_provider.generate(prompt, tools=self.tools, structured_output=True)\n        return self._process_response(response)\n    \n    def _generate_prompt(self, input_data, context):\n        # Create prompt for restaurant classification and template suggestion\n        return f\"\"\"You are Zenet's Classification Agent. Your role is to classify the restaurant type,\n        suggest appropriate templates, and diagnose the operational level.\n        \n        Restaurant information: {input_data.get('restaurant_info', '')}\n        \n        Please classify the restaurant type, suggest appropriate templates for recipe categories\n        and inventory families, and diagnose the operational level (accompaniment level,\n        automation level, AI suggestions level, visible guides).\"\"\"\n    \n    def _process_response(self, response):\n        # Process the LLM response and extract structured information\n        # Return a dictionary with classification results\n        return {\n            \"restaurant_type\": extracted_type,\n            \"suggested_templates\": extracted_templates,\n            \"recipe_categories\": default_categories,\n            \"inventory_families\": default_families,\n            \"operational_level\": {\n                \"accompaniment\": level,\n                \"automation\": level,\n                \"ai_suggestions\": level,\n                \"visible_guides\": level\n            }\n        }\n```\n\nCreate notebooks/Clasificación.ipynb with the following structure:\n1. Introduction to restaurant classification\n2. Loading of restaurant information from previous notebook\n3. Initialization of the Classification Agent\n4. Display of classification results\n5. Interactive cells for template selection and customization\n6. Saving of classification results and selected templates\n7. Transition to the next notebook\n\nImplement template presets for different restaurant types in core/templates.py.\nImplement Gradio UI components for the Classification notebook in gradio/classification_ui.py.",
+        "title": "Clasificaci\u00f3n section \u2014 Classification Agent and Gradio UI",
+        "description": "Implement the Clasificaci\u00f3n section: form fields (classification inputs) plus a single BaseAgent conversational chat. Agent suggests restaurant type, templates, and operational level. Reads Restaurant entity from DataLake (written by Task 7) and writes classification results back.",
+        "details": "Create core/agents/classification_agent.py:\n\n```python\nfrom core.agents.base_agent import BaseAgent\n\nclass ClassificationAgent(BaseAgent):\n    def __init__(self, llm_provider):\n        tools = [\n            # Define tools for restaurant classification\n            # Define tools for template suggestion\n            # Define tools for operational-level diagnosis\n        ]\n        super().__init__(\"Classification Agent\", llm_provider, tools)\n    \n    def run(self, input_data, context=None):\n        prompt = self._generate_prompt(input_data, context)\n        response = self.llm_provider.generate(prompt, tools=self.tools, structured_output=True)\n        return self._process_response(response)\n    \n    def _generate_prompt(self, input_data, context):\n        # Create prompt for restaurant classification and template suggestion\n        return f\"\"\"You are Zenet's Classification Agent. Your role is to classify the restaurant type,\n        suggest appropriate templates, and diagnose the operational level.\n        \n        Restaurant information: {input_data.get('restaurant_info', '')}\n        \n        Please classify the restaurant type, suggest appropriate templates for recipe categories\n        and inventory families, and diagnose the operational level (accompaniment level,\n        automation level, AI suggestions level, visible guides).\"\"\"\n    \n    def _process_response(self, response):\n        # Process the LLM response and extract structured information\n        # Return a dictionary with classification results\n        return {\n            \"restaurant_type\": extracted_type,\n            \"suggested_templates\": extracted_templates,\n            \"recipe_categories\": default_categories,\n            \"inventory_families\": default_families,\n            \"operational_level\": {\n                \"accompaniment\": level,\n                \"automation\": level,\n                \"ai_suggestions\": level,\n                \"visible_guides\": level\n            }\n        }\n```\n\nCreate notebooks/Clasificaci\u00f3n.ipynb with the following structure:\n1. Introduction to restaurant classification\n2. Loading of restaurant information from previous notebook\n3. Initialization of the Classification Agent\n4. Display of classification results\n5. Interactive cells for template selection and customization\n6. Saving of classification results and selected templates\n7. Transition to the next notebook\n\nImplement template presets for different restaurant types in core/templates.py.\nImplement Gradio UI components for the Classification notebook in gradio/classification_ui.py.",
         "testStrategy": "Test the Classification Agent with various restaurant types. Verify it correctly classifies restaurants and suggests appropriate templates. Test template customization. Ensure the notebook runs without errors and correctly passes data to the next notebook.",
         "priority": "medium",
         "dependencies": [
@@ -615,7 +615,7 @@
           },
           {
             "id": 4,
-            "title": "8.4 Clasificación section UI (gradio_app/sections/clasificacion.py)",
+            "title": "8.4 Clasificaci\u00f3n section UI (gradio_app/sections/clasificacion.py)",
             "description": "Replace stub with full render(): chat (left) + draft preview (right). Chat wired to ClassificationAgent with load_state/run/save_state per turn. Preview re-renders after each turn. Confirm button calls _make_confirm_fn() to save classification entity to DataLake.",
             "status": "done",
             "dependencies": [
@@ -667,7 +667,7 @@
             "id": 8,
             "title": "8.1 ClassificationAgent (core/agents/classification_agent.py)",
             "description": "Create _ClassificationResponse(BaseModel) and ClassificationAgent(BaseAgent) with RESPONSE_MODEL, INPUT_SCHEMA, OUTPUT_SCHEMA; _generate_prompt() injects restaurant context and current _data_store; _process_response() merges non-None fields into _data_store.",
-            "details": "See .taskmaster/docs/task-8/plan.md § 8.1. Standardization levels 1–3. Hybrid reply + structured fields.",
+            "details": "See .taskmaster/docs/task-8/plan.md \u00a7 8.1. Standardization levels 1\u20133. Hybrid reply + structured fields.",
             "status": "done",
             "dependencies": [],
             "parentTaskId": 8,
@@ -677,7 +677,7 @@
             "id": 9,
             "title": "8.2 Classification persistence (schema.py + persistence.py)",
             "description": "Add classification table in schema.py (id INTEGER PRIMARY KEY, data TEXT NOT NULL). Add \"classification\" to _SQLITE_ENTITY_TYPES and save/load/delete/list_ids handlers (JSON blob pattern) in persistence.py.",
-            "details": "See .taskmaster/docs/task-8/plan.md § 8.2.",
+            "details": "See .taskmaster/docs/task-8/plan.md \u00a7 8.2.",
             "status": "done",
             "dependencies": [
               "8.1"
@@ -689,7 +689,7 @@
             "id": 10,
             "title": "8.3 Draft preview component (gradio_app/components.py)",
             "description": "Add render_draft_preview(draft, confirm_fn, session_id): render draft dict as gr.JSON/live table, Confirm button wired to confirm_fn; greyed-out when draft empty; return Confirm button for wiring.",
-            "details": "See .taskmaster/docs/task-8/plan.md § 8.3.",
+            "details": "See .taskmaster/docs/task-8/plan.md \u00a7 8.3.",
             "status": "done",
             "dependencies": [
               "8.1"
@@ -699,9 +699,9 @@
           },
           {
             "id": 11,
-            "title": "8.4 Clasificación section UI (gradio_app/sections/clasificacion.py)",
+            "title": "8.4 Clasificaci\u00f3n section UI (gradio_app/sections/clasificacion.py)",
             "description": "Replace stub with full render(): chat column + draft preview column; _make_chat_fn (load_state/run/save_state, update draft State); _make_confirm_fn (persist classification to DataLake); _load_classification_context (Restaurant).",
-            "details": "See .taskmaster/docs/task-8/plan.md § 8.4. Propose → preview → confirm pattern.",
+            "details": "See .taskmaster/docs/task-8/plan.md \u00a7 8.4. Propose \u2192 preview \u2192 confirm pattern.",
             "status": "done",
             "dependencies": [
               "8.1",
@@ -715,7 +715,7 @@
             "id": 12,
             "title": "8.5 Exports (core/agents/__init__.py + core/__init__.py)",
             "description": "Add ClassificationAgent to core/agents/__init__.py and core/__init__.py re-exports (same pattern as Task 7.5).",
-            "details": "See .taskmaster/docs/task-8/plan.md § 8.5.",
+            "details": "See .taskmaster/docs/task-8/plan.md \u00a7 8.5.",
             "status": "done",
             "dependencies": [
               "8.4"
@@ -727,7 +727,7 @@
             "id": 13,
             "title": "8.6 Tests (tests/unit/test_classification_agent.py)",
             "description": "Create test file: 12 mocked tests (factory, RESPONSE_MODEL, run reply, _data_store accumulation, context injection, save/load state, confirm_fn); 3 live tests guarded by ANTHROPIC_API_KEY.",
-            "details": "See .taskmaster/docs/task-8/plan.md § 8.6.",
+            "details": "See .taskmaster/docs/task-8/plan.md \u00a7 8.6.",
             "status": "done",
             "dependencies": [
               "8.5"
@@ -738,8 +738,8 @@
           {
             "id": 14,
             "title": "8.7 Documentation and task closure",
-            "description": "Create docs/Architecture/sections/clasificacion.md (propose→preview→confirm). Update architecture-persistence.md (10 tables, classification entity). Update tasks.json and CLAUDE.md when task 8 complete.",
-            "details": "See .taskmaster/docs/task-8/plan.md § 8.7.",
+            "description": "Create docs/Architecture/sections/clasificacion.md (propose\u2192preview\u2192confirm). Update architecture-persistence.md (10 tables, classification entity). Update tasks.json and CLAUDE.md when task 8 complete.",
+            "details": "See .taskmaster/docs/task-8/plan.md \u00a7 8.7.",
             "status": "done",
             "dependencies": [
               "8.6"
@@ -759,7 +759,7 @@
           "8"
         ],
         "priority": "medium",
-        "details": "Create core/agents/configuration_agent.py:\n\n```python\nfrom core.agents.base_agent import BaseAgent\n\nclass ConfigurationAgent(BaseAgent):\n    def __init__(self, llm_provider):\n        tools = [\n            # Define tools for recipe category setup\n            # Define tools for inventory family setup\n            # Define tools for recipe units setup\n            # Define tools for inventory units setup\n            # Define tools for structure validation\n        ]\n        super().__init__(\"Configuration Agent\", llm_provider, tools)\n    \n    def run(self, input_data, context=None):\n        prompt = self._generate_prompt(input_data, context)\n        response = self.llm_provider.generate(prompt, tools=self.tools, structured_output=True)\n        return self._process_response(response)\n    \n    def _generate_prompt(self, input_data, context):\n        # Create prompt for guided setup of recipe categories, inventory families, and units\n        return f\"\"\"You are Zenet's Configuration Agent. Your role is to guide the setup of\n        recipe categories, inventory families, recipe units, and inventory units for the restaurant.\n        \n        Restaurant type: {input_data.get('restaurant_type', '')}\n        Selected templates: {input_data.get('selected_templates', [])}\n        \n        Please guide the setup of recipe categories, inventory families, recipe units, and inventory units\n        based on the restaurant type and selected templates. Explain the importance of each category,\n        family, and unit for normalization, future forecast, and distribution. Use standard units\n        (e.g. g, kg, L, pza, caja) from the template without requiring the user to define them from scratch.\"\"\"\n    \n    def _process_response(self, response):\n        # Process the LLM response and extract structured information\n        # Return a dictionary with configuration results\n        return {\n            \"recipe_categories\": configured_categories,\n            \"inventory_families\": configured_families,\n            \"recipe_units\": configured_recipe_units,\n            \"inventory_units\": configured_inventory_units,\n            \"normalization_rules\": normalization_rules,\n            \"configuration_guidance\": guidance\n        }\n```\n\nCreate notebooks/Configuración_inicial.ipynb with the following structure:\n1. Introduction to restaurant configuration\n2. Loading of classification results from previous notebook\n3. Initialization of the Configuration Agent\n4. Interactive cells for recipe category setup\n5. Interactive cells for inventory family setup\n6. Interactive cells for recipe units setup\n7. Interactive cells for inventory units setup\n8. Visualization of the configured structure\n9. Saving of configuration results\n10. Transition to the next notebook\n\nImplement structure validation tools in core/validation.py.\nImplement Gradio UI components for the Configuration notebook in gradio/configuration_ui.py.\n\nReference the template design documentation at .taskmaster/docs/templates-recipe-and-inventory.md for standard units and other configuration elements.\n<info added on 2026-02-14T06:07:01.618Z>\nExtend the Configuration Agent to support inventory unit equivalences:\n\n1. Update ConfigurationAgent class to include tools for managing unit equivalences:\n```python\n# Add to tools list in __init__\ntools = [\n    # ...existing tools...\n    # Define tools for inventory unit equivalences setup\n]\n```\n\n2. Enhance _generate_prompt method to include guidance for unit equivalences:\n```python\n# Add to the prompt string\n\"\"\"\nFor inventory units, you should also guide the setup of unit equivalences. Each custom inventory \nunit should have:\n- Unidad de Inventario: The inventory unit name/symbol\n- Equivalencia: The numeric conversion factor\n- Equivalencia Unidad: The reference unit (e.g., Kilogramos)\n\nThese equivalences are critical for accurate inventory tracking and cost calculations.\n\"\"\"\n```\n\n3. Update _process_response to include equivalence data:\n```python\n# Add to returned dictionary\n\"inventory_unit_equivalences\": configured_equivalences,\n```\n\n4. Add to notebooks/Configuración_inicial.ipynb:\n- Create a dedicated section for inventory unit equivalences after the inventory units setup\n- Implement UI components for adding/editing equivalences with the three required fields\n- Include visualization of the equivalence relationships\n- Add explanation of how equivalences work (e.g., 1 Caja = 10 Kilogramos)\n\n5. Implement in gradio/configuration_ui.py:\n```python\ndef create_inventory_equivalence_ui():\n    # Create UI components for inventory unit equivalences with three fields:\n    # - Unidad de Inventario (inventory unit name/symbol)\n    # - Equivalencia (numeric factor)\n    # - Equivalencia Unidad (reference unit)\n    # Include add/edit/delete functionality\n```\n\n6. Add validation in core/validation.py:\n```python\ndef validate_inventory_unit_equivalences(equivalences):\n    # Validate that each equivalence has all required fields\n    # Ensure reference units exist in the system\n    # Check for circular references\n    # Verify numeric factors are positive numbers\n```\n\n7. Handle different user paths:\n- For manual configuration path: Present complete UI for setting up units and equivalences\n- For upload path: Allow editing of suggested equivalences from imported data\n</info added on 2026-02-14T06:07:01.618Z>",
+        "details": "Create core/agents/configuration_agent.py:\n\n```python\nfrom core.agents.base_agent import BaseAgent\n\nclass ConfigurationAgent(BaseAgent):\n    def __init__(self, llm_provider):\n        tools = [\n            # Define tools for recipe category setup\n            # Define tools for inventory family setup\n            # Define tools for recipe units setup\n            # Define tools for inventory units setup\n            # Define tools for structure validation\n        ]\n        super().__init__(\"Configuration Agent\", llm_provider, tools)\n    \n    def run(self, input_data, context=None):\n        prompt = self._generate_prompt(input_data, context)\n        response = self.llm_provider.generate(prompt, tools=self.tools, structured_output=True)\n        return self._process_response(response)\n    \n    def _generate_prompt(self, input_data, context):\n        # Create prompt for guided setup of recipe categories, inventory families, and units\n        return f\"\"\"You are Zenet's Configuration Agent. Your role is to guide the setup of\n        recipe categories, inventory families, recipe units, and inventory units for the restaurant.\n        \n        Restaurant type: {input_data.get('restaurant_type', '')}\n        Selected templates: {input_data.get('selected_templates', [])}\n        \n        Please guide the setup of recipe categories, inventory families, recipe units, and inventory units\n        based on the restaurant type and selected templates. Explain the importance of each category,\n        family, and unit for normalization, future forecast, and distribution. Use standard units\n        (e.g. g, kg, L, pza, caja) from the template without requiring the user to define them from scratch.\"\"\"\n    \n    def _process_response(self, response):\n        # Process the LLM response and extract structured information\n        # Return a dictionary with configuration results\n        return {\n            \"recipe_categories\": configured_categories,\n            \"inventory_families\": configured_families,\n            \"recipe_units\": configured_recipe_units,\n            \"inventory_units\": configured_inventory_units,\n            \"normalization_rules\": normalization_rules,\n            \"configuration_guidance\": guidance\n        }\n```\n\nCreate notebooks/Configuraci\u00f3n_inicial.ipynb with the following structure:\n1. Introduction to restaurant configuration\n2. Loading of classification results from previous notebook\n3. Initialization of the Configuration Agent\n4. Interactive cells for recipe category setup\n5. Interactive cells for inventory family setup\n6. Interactive cells for recipe units setup\n7. Interactive cells for inventory units setup\n8. Visualization of the configured structure\n9. Saving of configuration results\n10. Transition to the next notebook\n\nImplement structure validation tools in core/validation.py.\nImplement Gradio UI components for the Configuration notebook in gradio/configuration_ui.py.\n\nReference the template design documentation at .taskmaster/docs/templates-recipe-and-inventory.md for standard units and other configuration elements.\n<info added on 2026-02-14T06:07:01.618Z>\nExtend the Configuration Agent to support inventory unit equivalences:\n\n1. Update ConfigurationAgent class to include tools for managing unit equivalences:\n```python\n# Add to tools list in __init__\ntools = [\n    # ...existing tools...\n    # Define tools for inventory unit equivalences setup\n]\n```\n\n2. Enhance _generate_prompt method to include guidance for unit equivalences:\n```python\n# Add to the prompt string\n\"\"\"\nFor inventory units, you should also guide the setup of unit equivalences. Each custom inventory \nunit should have:\n- Unidad de Inventario: The inventory unit name/symbol\n- Equivalencia: The numeric conversion factor\n- Equivalencia Unidad: The reference unit (e.g., Kilogramos)\n\nThese equivalences are critical for accurate inventory tracking and cost calculations.\n\"\"\"\n```\n\n3. Update _process_response to include equivalence data:\n```python\n# Add to returned dictionary\n\"inventory_unit_equivalences\": configured_equivalences,\n```\n\n4. Add to notebooks/Configuraci\u00f3n_inicial.ipynb:\n- Create a dedicated section for inventory unit equivalences after the inventory units setup\n- Implement UI components for adding/editing equivalences with the three required fields\n- Include visualization of the equivalence relationships\n- Add explanation of how equivalences work (e.g., 1 Caja = 10 Kilogramos)\n\n5. Implement in gradio/configuration_ui.py:\n```python\ndef create_inventory_equivalence_ui():\n    # Create UI components for inventory unit equivalences with three fields:\n    # - Unidad de Inventario (inventory unit name/symbol)\n    # - Equivalencia (numeric factor)\n    # - Equivalencia Unidad (reference unit)\n    # Include add/edit/delete functionality\n```\n\n6. Add validation in core/validation.py:\n```python\ndef validate_inventory_unit_equivalences(equivalences):\n    # Validate that each equivalence has all required fields\n    # Ensure reference units exist in the system\n    # Check for circular references\n    # Verify numeric factors are positive numbers\n```\n\n7. Handle different user paths:\n- For manual configuration path: Present complete UI for setting up units and equivalences\n- For upload path: Allow editing of suggested equivalences from imported data\n</info added on 2026-02-14T06:07:01.618Z>",
         "testStrategy": "Test the Configuration Agent with various restaurant types and templates. Verify it correctly guides the setup of recipe categories, inventory families, recipe units, and inventory units. Test structure validation with valid and invalid configurations. Ensure the notebook runs without errors and correctly passes data to the next notebook. Verify that standard units are properly imported from templates without requiring manual definition.",
         "subtasks": [
           {
@@ -780,7 +780,7 @@
             "dependencies": [
               1
             ],
-            "details": "Add new interactive cells to notebooks/Configuración_inicial.ipynb for recipe units setup and inventory units setup. Create visualization components to display the configured units. Update the notebook's introduction and guidance text to explain the importance of standardized units. Ensure the notebook saves the configured units to the state that will be passed to subsequent notebooks.",
+            "details": "Add new interactive cells to notebooks/Configuraci\u00f3n_inicial.ipynb for recipe units setup and inventory units setup. Create visualization components to display the configured units. Update the notebook's introduction and guidance text to explain the importance of standardized units. Ensure the notebook saves the configured units to the state that will be passed to subsequent notebooks.",
             "status": "done",
             "testStrategy": "Test the notebook with various templates to ensure it correctly guides users through unit setup. Verify that units from templates are properly displayed and can be customized if needed.",
             "parentId": "undefined",
@@ -816,7 +816,7 @@
             "id": 5,
             "title": "9.1 ConfigurationAgent (core/agents/configuration_agent.py)",
             "description": "Implement ConfigurationAgent with _ConfigurationResponse RESPONSE_MODEL, INPUT_SCHEMA/OUTPUT_SCHEMA, prompt that injects restaurant context and current step draft, and _process_response that merges entities into _data_store without overwriting when entities is None.",
-            "details": "See .taskmaster/docs/task-9/plan.md § 9.1.",
+            "details": "See .taskmaster/docs/task-9/plan.md \u00a7 9.1.",
             "status": "done",
             "dependencies": [],
             "parentTaskId": 9,
@@ -827,7 +827,7 @@
             "id": 6,
             "title": "9.2 ConsistencyCheckAgent (core/agents/consistency_check_agent.py)",
             "description": "Create ConsistencyCheckAgent with _ConsistencyCheckResponse (issues, suggestions, looks_good) to run per-step and final cross-entity checks for configuration entities.",
-            "details": "See .taskmaster/docs/task-9/plan.md § 9.2.",
+            "details": "See .taskmaster/docs/task-9/plan.md \u00a7 9.2.",
             "status": "done",
             "dependencies": [
               "9.1"
@@ -837,9 +837,9 @@
           },
           {
             "id": 7,
-            "title": "9.3 Configuración section UI (gradio_app/sections/configuracion.py)",
+            "title": "9.3 Configuraci\u00f3n section UI (gradio_app/sections/configuracion.py)",
             "description": "Replace stub with full render(): chat column + sequential step UI, progress indicator, state vars, chat handler wiring, per-step and final consistency checks, confirm-and-save flow.",
-            "details": "See .taskmaster/docs/task-9/plan.md § 9.3.",
+            "details": "See .taskmaster/docs/task-9/plan.md \u00a7 9.3.",
             "status": "done",
             "dependencies": [
               "9.1",
@@ -852,7 +852,7 @@
             "id": 8,
             "title": "9.4 Exports (core/agents/__init__.py + core/__init__.py)",
             "description": "Export ConfigurationAgent and ConsistencyCheckAgent from core/agents/__init__.py and core/__init__.py, following the WelcomeAgent / ClassificationAgent pattern.",
-            "details": "See .taskmaster/docs/task-9/plan.md § 9.4.",
+            "details": "See .taskmaster/docs/task-9/plan.md \u00a7 9.4.",
             "status": "done",
             "dependencies": [
               "9.1",
@@ -865,7 +865,7 @@
             "id": 9,
             "title": "9.5 Tests (tests/unit/test_configuration_agent.py)",
             "description": "Create tests/unit/test_configuration_agent.py with 16 mocked tests and 3 live tests covering ConfigurationAgent, ConsistencyCheckAgent, confirm flow, and ID assignment.",
-            "details": "See .taskmaster/docs/task-9/plan.md § 9.5.",
+            "details": "See .taskmaster/docs/task-9/plan.md \u00a7 9.5.",
             "status": "done",
             "dependencies": [
               "9.4"
@@ -877,7 +877,7 @@
             "id": 10,
             "title": "9.6 Documentation and task closure",
             "description": "Create configuracion section architecture doc; update architecture-agent-framework, architecture-gradio-and-langgraph, tasks.json, and CLAUDE.md to mark Task 9 complete.",
-            "details": "See .taskmaster/docs/task-9/plan.md § 9.6.",
+            "details": "See .taskmaster/docs/task-9/plan.md \u00a7 9.6.",
             "status": "done",
             "dependencies": [
               "9.5"
@@ -890,8 +890,8 @@
       },
       {
         "id": "10",
-        "title": "Alineamiento section — LangGraph multi-agent workflow and Gradio UI",
-        "description": "Implement the Alineamiento section using LangGraph. User uploads a recipe file (PDF, Excel, image, or text). A multi-agent sequential graph runs: (1) recipe analysis agent extracts structure, (2) ingredient agent creates Ingredient entities with reasoning, (3) inventory agent creates InventoryItem entities. Final output is a structured preview the user can edit, confirm, and save to DataLake. This is the first section to use LangGraph — establishes the pattern for Task 11.",
+        "title": "Alineamiento section \u2014 LangGraph multi-agent workflow and Gradio UI",
+        "description": "Implement the Alineamiento section using LangGraph. User uploads a recipe file (PDF, Excel, image, or text). A multi-agent sequential graph runs: (1) recipe analysis agent extracts structure, (2) ingredient agent creates Ingredient entities with reasoning, (3) inventory agent creates InventoryItem entities. Final output is a structured preview the user can edit, confirm, and save to DataLake. This is the first section to use LangGraph \u2014 establishes the pattern for Task 11.",
         "details": "Create core/agents/alignment_agent.py:\n\n```python\nfrom core.agents.base_agent import BaseAgent\n\nclass AlignmentAgent(BaseAgent):\n    def __init__(self, llm_provider):\n        tools = [\n            # Define tools for PDF parsing\n            # Define tools for image processing\n            # Define tools for text extraction\n            # Define tools for Excel parsing\n            # Define tools for normalization\n            # Define tools for unit conversion\n            # Define tools for semantic unification\n        ]\n        super().__init__(\"Alignment Agent\", llm_provider, tools)\n    \n    def run(self, input_data, context=None):\n        prompt = self._generate_prompt(input_data, context)\n        response = self.llm_provider.generate(prompt, tools=self.tools)\n        return self._process_response(response)\n    \n    def _generate_prompt(self, input_data, context):\n        # Create prompt for data alignment and normalization\n        return f\"\"\"You are Zenet's Alignment Agent. Your role is to ingest restaurant data\n        from various sources, normalize it, and align it with the configured structure.\n        \n        Configuration: {input_data.get('configuration', {})}\n        Data source: {input_data.get('data_source', {})}\n        \n        Please extract the relevant information from the data source, normalize units and measures,\n        perform semantic unification, and align the data with the configured structure.\"\"\"\n    \n    def _process_response(self, response):\n        # Process the LLM response and extract structured information\n        # Return a dictionary with aligned data\n        return {\n            \"aligned_recipes\": aligned_recipes,\n            \"aligned_ingredients\": aligned_ingredients,\n            \"normalization_applied\": normalization_applied,\n            \"semantic_unification_applied\": semantic_unification_applied\n        }\n    \n    def process_pdf(self, pdf_path):\n        # Extract text from PDF\n        # Parse recipes and ingredients\n        pass\n    \n    def process_image(self, image_path):\n        # Extract text from image\n        # Parse recipes and ingredients\n        pass\n    \n    def process_text(self, text):\n        # Parse recipes and ingredients from text\n        pass\n    \n    def process_excel(self, excel_path):\n        # Extract data from Excel\n        # Parse recipes and ingredients\n        pass\n```\n\nCreate notebooks/alineamiento.ipynb with the following structure:\n1. Introduction to data alignment\n2. Loading of configuration from previous notebook\n3. Initialization of the Alignment Agent\n4. File upload interface for PDF, image, text, and Excel\n5. Data extraction and preview\n6. Normalization and semantic unification\n7. Interactive cells for alignment verification and correction\n8. Saving of aligned data\n9. Transition to the next notebook\n\nImplement data extraction utilities in core/extraction.py.\nImplement normalization utilities in core/normalization.py.\nImplement semantic unification utilities in core/semantic_unification.py.\nImplement Gradio UI components for the Alignment notebook in gradio/alignment_ui.py.",
         "testStrategy": "Test the Alignment Agent with various data sources (PDF, image, text, Excel). Verify it correctly extracts and normalizes data. Test unit conversion with different units. Test semantic unification with similar but differently named ingredients. Ensure the notebook runs without errors and correctly passes data to the next notebook.",
         "priority": "medium",
@@ -903,7 +903,7 @@
       },
       {
         "id": "11",
-        "title": "Estructura section — LangGraph multi-agent workflow and Gradio UI",
+        "title": "Estructura section \u2014 LangGraph multi-agent workflow and Gradio UI",
         "description": "Implement the Estructura section using LangGraph (same pattern as Task 10). Multi-agent graph generates the structured operational model: recipe structuring, ingredient-inventory linking, base inventory generation, recipe-inventory relations. Output is a structured preview the user can edit, confirm, and save to DataLake.",
         "details": "Create core/agents/structuring_agent.py:\n\n```python\nfrom core.agents.base_agent import BaseAgent\n\nclass StructuringAgent(BaseAgent):\n    def __init__(self, llm_provider):\n        tools = [\n            # Define tools for recipe structuring\n            # Define tools for ingredient structuring\n            # Define tools for inventory generation\n            # Define tools for recipe-inventory relations\n        ]\n        super().__init__(\"Structuring Agent\", llm_provider, tools)\n    \n    def run(self, input_data, context=None):\n        prompt = self._generate_prompt(input_data, context)\n        response = self.llm_provider.generate(prompt, tools=self.tools, structured_output=True)\n        return self._process_response(response)\n    \n    def _generate_prompt(self, input_data, context):\n        # Create prompt for structured representation of recipes and ingredients\n        return f\"\"\"You are Zenet's Structuring Agent. Your role is to create structured representations\n        of recipes and ingredients, generate a base inventory, and establish recipe-inventory relations.\n        \n        Aligned data: {input_data.get('aligned_data', {})}\n        Configuration: {input_data.get('configuration', {})}\n        \n        Please create structured representations of recipes and ingredients according to the\n        configured categories and families. Generate a base inventory from the ingredients\n        and establish coherent relations between recipes and inventory items.\"\"\"\n    \n    def _process_response(self, response):\n        # Process the LLM response and extract structured information\n        # Return a dictionary with structured data\n        return {\n            \"structured_recipes\": structured_recipes,\n            \"structured_ingredients\": structured_ingredients,\n            \"base_inventory\": base_inventory,\n            \"recipe_inventory_relations\": recipe_inventory_relations\n        }\n```\n\nCreate notebooks/Estructura.ipynb with the following structure:\n1. Introduction to data structuring\n2. Loading of aligned data from previous notebook\n3. Initialization of the Structuring Agent\n4. Structured representation of recipes\n5. Structured representation of ingredients\n6. Base inventory generation\n7. Recipe-inventory relations\n8. Interactive cells for structure verification and correction\n9. Saving of structured data\n10. Transition to the next notebook\n\nImplement recipe structuring utilities in core/recipe_structuring.py.\nImplement ingredient structuring utilities in core/ingredient_structuring.py.\nImplement inventory generation utilities in core/inventory_generation.py.\nImplement Gradio UI components for the Structuring notebook in gradio/structuring_ui.py.",
         "testStrategy": "Test the Structuring Agent with various aligned data. Verify it correctly structures recipes and ingredients. Test base inventory generation with different ingredient sets. Test recipe-inventory relations. Ensure the notebook runs without errors and correctly passes data to the next notebook.",
@@ -916,8 +916,8 @@
       },
       {
         "id": "12",
-        "title": "Manual operativo section — Operational Manual Agent and Gradio UI",
-        "description": "Implement the Manual operativo section: a single BaseAgent that reads all structured data from DataLake (session) and generates the digital operational manual. Includes data visualization and business Q&A chat. No LangGraph for now — may be upgraded to multi-agent later.",
+        "title": "Manual operativo section \u2014 Operational Manual Agent and Gradio UI",
+        "description": "Implement the Manual operativo section: a single BaseAgent that reads all structured data from DataLake (session) and generates the digital operational manual. Includes data visualization and business Q&A chat. No LangGraph for now \u2014 may be upgraded to multi-agent later.",
         "details": "Create core/agents/operational_manual_agent.py:\n\n```python\nfrom core.agents.base_agent import BaseAgent\n\nclass OperationalManualAgent(BaseAgent):\n    def __init__(self, llm_provider):\n        tools = [\n            # Define tools for data visualization\n            # Define tools for operational manual generation\n            # Define tools for business Q&A\n        ]\n        super().__init__(\"Operational Manual Agent\", llm_provider, tools)\n    \n    def run(self, input_data, context=None):\n        prompt = self._generate_prompt(input_data, context)\n        response = self.llm_provider.generate(prompt, tools=self.tools)\n        return self._process_response(response)\n    \n    def _generate_prompt(self, input_data, context):\n        # Create prompt for operational manual generation and business Q&A\n        return f\"\"\"You are Zenet's Operational Manual Agent. Your role is to generate\n        a digital operational manual, visualize restaurant data, and answer business questions.\n        \n        Structured data: {input_data.get('structured_data', {})}\n        Configuration: {input_data.get('configuration', {})}\n        \n        Please generate a digital operational manual based on the structured data.\n        Visualize the restaurant data in a clear and informative way.\n        Answer any business questions the user might have about their restaurant operations.\"\"\"\n    \n    def _process_response(self, response):\n        # Process the LLM response and extract structured information\n        # Return a dictionary with operational manual and visualizations\n        return {\n            \"operational_manual\": operational_manual,\n            \"visualizations\": visualizations,\n            \"business_qa\": business_qa\n        }\n    \n    def generate_operational_manual(self, structured_data):\n        # Generate a digital operational manual\n        pass\n    \n    def visualize_data(self, structured_data):\n        # Generate visualizations of restaurant data\n        pass\n    \n    def answer_business_question(self, question, structured_data):\n        # Answer a business question based on structured data\n        pass\n```\n\nCreate notebooks/manual_operativo.ipynb with the following structure:\n1. Introduction to operational manual\n2. Loading of structured data from previous notebook\n3. Initialization of the Operational Manual Agent\n4. Digital operational manual generation\n5. Data visualization\n6. Interactive cells for business Q&A\n7. Export options for the operational manual\n8. Conclusion and next steps\n\nImplement visualization utilities in core/visualization.py.\nImplement operational manual generation utilities in core/manual_generation.py.\nImplement business Q&A utilities in core/business_qa.py.\nImplement Gradio UI components for the Operational Manual notebook in gradio/operational_manual_ui.py.",
         "testStrategy": "Test the Operational Manual Agent with various structured data. Verify it correctly generates an operational manual. Test data visualization with different data sets. Test business Q&A with various questions. Ensure the notebook runs without errors and provides useful insights.",
         "priority": "medium",
@@ -930,10 +930,10 @@
       {
         "id": "13",
         "status_note": "cancelled",
-        "title": "Implement Gradio UI entry point [CANCELLED — covered by Task 6]",
+        "title": "Implement Gradio UI entry point [CANCELLED \u2014 covered by Task 6]",
         "description": "Superseded by Task 6 (Gradio UI foundation). Task 6 covers the full Gradio shell, navigation, session management, and stub screens. This task is no longer needed.",
         "status": "cancelled",
-        "details": "Create gradio/app.py:\n\n```python\nimport gradio as gr\nfrom gradio.components import Markdown, Button, File, Textbox\nimport subprocess\nimport os\n\ndef launch_notebook(notebook_path):\n    subprocess.Popen([\"jupyter\", \"notebook\", notebook_path])\n\ndef create_ui():\n    with gr.Blocks(title=\"Zenet MVP 0.1\") as app:\n        gr.Markdown(\"# Zenet MVP 0.1\\nA primary cognitive operating system for restaurants\")\n        \n        with gr.Tab(\"Welcome\"):\n            gr.Markdown(\"## Welcome to Zenet\\nStart your journey to bring order to your restaurant operations.\")\n            welcome_button = gr.Button(\"Start Onboarding\")\n            welcome_button.click(lambda: launch_notebook(\"notebooks/bienvenida.ipynb\"))\n        \n        with gr.Tab(\"Classification\"):\n            gr.Markdown(\"## Restaurant Classification\\nClassify your restaurant and get suggested templates.\")\n            classification_button = gr.Button(\"Start Classification\")\n            classification_button.click(lambda: launch_notebook(\"notebooks/Clasificación.ipynb\"))\n        \n        with gr.Tab(\"Configuration\"):\n            gr.Markdown(\"## Initial Configuration\\nSet up recipe categories and inventory families.\")\n            configuration_button = gr.Button(\"Start Configuration\")\n            configuration_button.click(lambda: launch_notebook(\"notebooks/Configuración_inicial.ipynb\"))\n        \n        with gr.Tab(\"Alignment\"):\n            gr.Markdown(\"## Data Alignment\\nAlign your restaurant data with the configured structure.\")\n            alignment_button = gr.Button(\"Start Alignment\")\n            alignment_button.click(lambda: launch_notebook(\"notebooks/alineamiento.ipynb\"))\n        \n        with gr.Tab(\"Structuring\"):\n            gr.Markdown(\"## Data Structuring\\nCreate structured representations of recipes and ingredients.\")\n            structuring_button = gr.Button(\"Start Structuring\")\n            structuring_button.click(lambda: launch_notebook(\"notebooks/Estructura.ipynb\"))\n        \n        with gr.Tab(\"Operational Manual\"):\n            gr.Markdown(\"## Operational Manual\\nGenerate a digital operational manual and answer business questions.\")\n            manual_button = gr.Button(\"Start Operational Manual\")\n            manual_button.click(lambda: launch_notebook(\"notebooks/manual_operativo.ipynb\"))\n    \n    return app\n\nif __name__ == \"__main__\":\n    app = create_ui()\n    app.launch()\n```\n\nImplement a consistent UI theme and styling across all Gradio components.\nCreate a navigation system that allows users to move between notebooks.\nImplement state management to pass data between notebooks.\nCreate a help system that explains the purpose of each notebook.",
+        "details": "Create gradio/app.py:\n\n```python\nimport gradio as gr\nfrom gradio.components import Markdown, Button, File, Textbox\nimport subprocess\nimport os\n\ndef launch_notebook(notebook_path):\n    subprocess.Popen([\"jupyter\", \"notebook\", notebook_path])\n\ndef create_ui():\n    with gr.Blocks(title=\"Zenet MVP 0.1\") as app:\n        gr.Markdown(\"# Zenet MVP 0.1\\nA primary cognitive operating system for restaurants\")\n        \n        with gr.Tab(\"Welcome\"):\n            gr.Markdown(\"## Welcome to Zenet\\nStart your journey to bring order to your restaurant operations.\")\n            welcome_button = gr.Button(\"Start Onboarding\")\n            welcome_button.click(lambda: launch_notebook(\"notebooks/bienvenida.ipynb\"))\n        \n        with gr.Tab(\"Classification\"):\n            gr.Markdown(\"## Restaurant Classification\\nClassify your restaurant and get suggested templates.\")\n            classification_button = gr.Button(\"Start Classification\")\n            classification_button.click(lambda: launch_notebook(\"notebooks/Clasificaci\u00f3n.ipynb\"))\n        \n        with gr.Tab(\"Configuration\"):\n            gr.Markdown(\"## Initial Configuration\\nSet up recipe categories and inventory families.\")\n            configuration_button = gr.Button(\"Start Configuration\")\n            configuration_button.click(lambda: launch_notebook(\"notebooks/Configuraci\u00f3n_inicial.ipynb\"))\n        \n        with gr.Tab(\"Alignment\"):\n            gr.Markdown(\"## Data Alignment\\nAlign your restaurant data with the configured structure.\")\n            alignment_button = gr.Button(\"Start Alignment\")\n            alignment_button.click(lambda: launch_notebook(\"notebooks/alineamiento.ipynb\"))\n        \n        with gr.Tab(\"Structuring\"):\n            gr.Markdown(\"## Data Structuring\\nCreate structured representations of recipes and ingredients.\")\n            structuring_button = gr.Button(\"Start Structuring\")\n            structuring_button.click(lambda: launch_notebook(\"notebooks/Estructura.ipynb\"))\n        \n        with gr.Tab(\"Operational Manual\"):\n            gr.Markdown(\"## Operational Manual\\nGenerate a digital operational manual and answer business questions.\")\n            manual_button = gr.Button(\"Start Operational Manual\")\n            manual_button.click(lambda: launch_notebook(\"notebooks/manual_operativo.ipynb\"))\n    \n    return app\n\nif __name__ == \"__main__\":\n    app = create_ui()\n    app.launch()\n```\n\nImplement a consistent UI theme and styling across all Gradio components.\nCreate a navigation system that allows users to move between notebooks.\nImplement state management to pass data between notebooks.\nCreate a help system that explains the purpose of each notebook.",
         "testStrategy": "Test the Gradio UI with various browsers and screen sizes. Verify all buttons launch the correct notebooks. Test navigation between notebooks. Ensure state is correctly passed between notebooks. Test the help system.",
         "priority": "medium",
         "dependencies": [
@@ -949,10 +949,10 @@
       {
         "id": "14",
         "status_note": "cancelled",
-        "title": "Implement notebook pipeline orchestration [CANCELLED — handled by DataLake + Gradio session]",
-        "description": "Superseded by the architectural decision that sections communicate through DataLake using session_id (established in Task 6). Each section reads and writes from the same DataLake session — no separate orchestrator is needed. The Gradio tab navigation IS the pipeline.",
+        "title": "Implement notebook pipeline orchestration [CANCELLED \u2014 handled by DataLake + Gradio session]",
+        "description": "Superseded by the architectural decision that sections communicate through DataLake using session_id (established in Task 6). Each section reads and writes from the same DataLake session \u2014 no separate orchestrator is needed. The Gradio tab navigation IS the pipeline.",
         "status": "cancelled",
-        "details": "Create core/notebook_orchestration.py:\n\n```python\nimport json\nimport os\n\nclass NotebookOrchestrator:\n    def __init__(self, data_dir=\"./data\"):\n        self.data_dir = data_dir\n        self.state_file = os.path.join(data_dir, \"notebook_state.json\")\n        self.state = self._load_state()\n    \n    def _load_state(self):\n        if os.path.exists(self.state_file):\n            with open(self.state_file, \"r\") as f:\n                return json.load(f)\n        return {\n            \"current_notebook\": \"bienvenida.ipynb\",\n            \"completed_notebooks\": [],\n            \"restaurant_id\": None,\n            \"data\": {}\n        }\n    \n    def save_state(self):\n        os.makedirs(self.data_dir, exist_ok=True)\n        with open(self.state_file, \"w\") as f:\n            json.dump(self.state, f, indent=2)\n    \n    def update_state(self, key, value):\n        self.state[\"data\"][key] = value\n        self.save_state()\n    \n    def get_state(self, key, default=None):\n        return self.state[\"data\"].get(key, default)\n    \n    def complete_notebook(self, notebook_name):\n        if notebook_name not in self.state[\"completed_notebooks\"]:\n            self.state[\"completed_notebooks\"].append(notebook_name)\n        self.save_state()\n    \n    def set_current_notebook(self, notebook_name):\n        self.state[\"current_notebook\"] = notebook_name\n        self.save_state()\n    \n    def get_next_notebook(self):\n        notebook_sequence = [\n            \"bienvenida.ipynb\",\n            \"Clasificación.ipynb\",\n            \"Configuración_inicial.ipynb\",\n            \"alineamiento.ipynb\",\n            \"Estructura.ipynb\",\n            \"manual_operativo.ipynb\"\n        ]\n        current_index = notebook_sequence.index(self.state[\"current_notebook\"])\n        if current_index < len(notebook_sequence) - 1:\n            return notebook_sequence[current_index + 1]\n        return None\n```\n\nImplement notebook-specific state management functions.\nCreate utility functions for loading and saving data between notebooks.\nImplement a system for tracking progress through the pipeline.\nCreate a mechanism for resuming the pipeline from any point.",
+        "details": "Create core/notebook_orchestration.py:\n\n```python\nimport json\nimport os\n\nclass NotebookOrchestrator:\n    def __init__(self, data_dir=\"./data\"):\n        self.data_dir = data_dir\n        self.state_file = os.path.join(data_dir, \"notebook_state.json\")\n        self.state = self._load_state()\n    \n    def _load_state(self):\n        if os.path.exists(self.state_file):\n            with open(self.state_file, \"r\") as f:\n                return json.load(f)\n        return {\n            \"current_notebook\": \"bienvenida.ipynb\",\n            \"completed_notebooks\": [],\n            \"restaurant_id\": None,\n            \"data\": {}\n        }\n    \n    def save_state(self):\n        os.makedirs(self.data_dir, exist_ok=True)\n        with open(self.state_file, \"w\") as f:\n            json.dump(self.state, f, indent=2)\n    \n    def update_state(self, key, value):\n        self.state[\"data\"][key] = value\n        self.save_state()\n    \n    def get_state(self, key, default=None):\n        return self.state[\"data\"].get(key, default)\n    \n    def complete_notebook(self, notebook_name):\n        if notebook_name not in self.state[\"completed_notebooks\"]:\n            self.state[\"completed_notebooks\"].append(notebook_name)\n        self.save_state()\n    \n    def set_current_notebook(self, notebook_name):\n        self.state[\"current_notebook\"] = notebook_name\n        self.save_state()\n    \n    def get_next_notebook(self):\n        notebook_sequence = [\n            \"bienvenida.ipynb\",\n            \"Clasificaci\u00f3n.ipynb\",\n            \"Configuraci\u00f3n_inicial.ipynb\",\n            \"alineamiento.ipynb\",\n            \"Estructura.ipynb\",\n            \"manual_operativo.ipynb\"\n        ]\n        current_index = notebook_sequence.index(self.state[\"current_notebook\"])\n        if current_index < len(notebook_sequence) - 1:\n            return notebook_sequence[current_index + 1]\n        return None\n```\n\nImplement notebook-specific state management functions.\nCreate utility functions for loading and saving data between notebooks.\nImplement a system for tracking progress through the pipeline.\nCreate a mechanism for resuming the pipeline from any point.",
         "testStrategy": "Test the NotebookOrchestrator with a complete pipeline run. Verify state is correctly maintained across notebooks. Test resuming the pipeline from different points. Ensure data is correctly passed between notebooks. Test error recovery.",
         "priority": "high",
         "dependencies": [
@@ -968,7 +968,7 @@
       {
         "id": "15",
         "title": "Implement unit and integration tests",
-        "description": "Create comprehensive unit and integration tests for all components of the system. Note: Tasks 13 and 14 were cancelled — dependencies updated accordingly.",
+        "description": "Create comprehensive unit and integration tests for all components of the system. Note: Tasks 13 and 14 were cancelled \u2014 dependencies updated accordingly.",
         "details": "Create tests/ directory with the following structure:\n- tests/unit/ - Unit tests for individual components\n- tests/integration/ - Integration tests for component interactions\n- tests/system/ - End-to-end tests for the complete system\n\nImplement unit tests for all core modules:\n```python\n# tests/unit/test_data_model.py\nimport unittest\nfrom core.data_model import Recipe, Ingredient, RecipeUnit, InventoryItem\n\nclass TestDataModel(unittest.TestCase):\n    def test_recipe_creation(self):\n        recipe = Recipe(\"Pasta Carbonara\", \"Classic Italian pasta dish\", [\"Step 1\", \"Step 2\"], 1)\n        self.assertEqual(recipe.name, \"Pasta Carbonara\")\n        self.assertEqual(recipe.description, \"Classic Italian pasta dish\")\n        self.assertEqual(recipe.steps, [\"Step 1\", \"Step 2\"])\n        self.assertEqual(recipe.category_id, 1)\n        self.assertEqual(recipe.ingredients, [])\n    \n    def test_ingredient_creation(self):\n        ingredient = Ingredient(\"Eggs\", 2, 1)\n        self.assertEqual(ingredient.name, \"Eggs\")\n        self.assertEqual(ingredient.quantity, 2)\n        self.assertEqual(ingredient.unit_id, 1)\n        self.assertIsNone(ingredient.inventory_item_id)\n```\n\nImplement integration tests for agent interactions:\n```python\n# tests/integration/test_agent_workflow.py\nimport unittest\nfrom core.agents.welcome_agent import WelcomeAgent\nfrom core.agents.classification_agent import ClassificationAgent\nfrom core.llm_framework import OpenAiProvider\nfrom core.workflow_engine import Workflow, WorkflowStep\n\nclass TestAgentWorkflow(unittest.TestCase):\n    def test_welcome_to_classification_flow(self):\n        llm_provider = OpenAiProvider()\n        welcome_agent = WelcomeAgent(llm_provider)\n        classification_agent = ClassificationAgent(llm_provider)\n        \n        workflow = Workflow(\"Test Workflow\")\n        workflow.add_step(WorkflowStep(\"Welcome\", welcome_agent, {}, {\"restaurant_info\": \"restaurant_info\"}))\n        workflow.add_step(WorkflowStep(\"Classification\", classification_agent, {\"restaurant_info\": \"restaurant_info\"}, {}))\n        \n        initial_state = {\"restaurant_info\": {\"name\": \"Test Restaurant\", \"type\": \"Italian\"}}\n        results, final_state = workflow.run(initial_state)\n        \n        self.assertEqual(len(results), 2)\n        self.assertIn(\"restaurant_info\", final_state)\n```\n\nImplement system tests for the complete pipeline:\n```python\n# tests/system/test_complete_pipeline.py\nimport unittest\nimport os\nfrom core.notebook_orchestration import NotebookOrchestrator\n\nclass TestCompletePipeline(unittest.TestCase):\n    def setUp(self):\n        self.test_data_dir = \"./test_data\"\n        os.makedirs(self.test_data_dir, exist_ok=True)\n        self.orchestrator = NotebookOrchestrator(self.test_data_dir)\n    \n    def tearDown(self):\n        if os.path.exists(self.test_data_dir):\n            for file in os.listdir(self.test_data_dir):\n                os.remove(os.path.join(self.test_data_dir, file))\n            os.rmdir(self.test_data_dir)\n    \n    def test_complete_pipeline(self):\n        # Simulate complete pipeline run\n        # Test each notebook in sequence\n        pass\n```\n\nImplement a test runner script:\n```python\n# run_tests.py\nimport unittest\nimport sys\n\nif __name__ == \"__main__\":\n    test_suite = unittest.defaultTestLoader.discover(\"tests\")\n    result = unittest.TextTestRunner().run(test_suite)\n    sys.exit(not result.wasSuccessful())\n```",
         "testStrategy": "Run the test suite with different levels of coverage. Verify all unit tests pass. Test integration between components. Run end-to-end tests for the complete pipeline. Ensure test coverage is comprehensive.",
         "priority": "medium",
@@ -1016,23 +1016,122 @@
       },
       {
         "id": "17",
-        "title": "Restaurant profile enrichment — free-text description in Clasificación and downstream context",
-        "description": "Add an open-ended question in the Clasificación section that captures a free-text restaurant profile (cuisine type, service style, size, focus). Save the description to the restaurant entity in DataLake. Thread it through _load_configuration_context and into the system prompts of ConfigurationAgent and ConsistencyCheckAgent so all downstream agents have richer context for suggestions, warnings, and entity proposals.",
-        "details": "Scope: (1) ClassificationAgent — add a follow-up question after restaurant type is confirmed, asking the operator to describe their restaurant in a few words. Save description to DataLake restaurant entity. (2) _load_configuration_context in configuracion.py — load the description field and expose it in the context dict. (3) ConfigurationAgent system prompt — inject description into the operator context block. (4) ConsistencyCheckAgent system prompts — inject description so semantic relevance checks are restaurant-specific. (5) Tests — update or add mocked tests covering the new field.",
+        "title": "Restaurant profile enrichment \u2014 free-text description in Clasificaci\u00f3n and downstream context",
+        "description": "Add an open-ended question in the Clasificaci\u00f3n section that captures a free-text restaurant profile (cuisine type, service style, size, focus). Save the description to the restaurant entity in DataLake. Thread it through _load_configuration_context and into the system prompts of ConfigurationAgent and ConsistencyCheckAgent so all downstream agents have richer context for suggestions, warnings, and entity proposals.",
+        "details": "Scope: (1) ClassificationAgent \u2014 add a follow-up question after restaurant type is confirmed, asking the operator to describe their restaurant in a few words. Save description to DataLake restaurant entity. (2) _load_configuration_context in configuracion.py \u2014 load the description field and expose it in the context dict. (3) ConfigurationAgent system prompt \u2014 inject description into the operator context block. (4) ConsistencyCheckAgent system prompts \u2014 inject description so semantic relevance checks are restaurant-specific. (5) Tests \u2014 update or add mocked tests covering the new field.",
         "testStrategy": "Mocked tests: verify description is saved to DataLake, loaded by context loader, and appears in agent system prompts. Live test: verify ClassificationAgent asks the profile question and the description flows correctly into ConfigurationAgent context.",
         "priority": "high",
         "dependencies": [
           "9"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "17.1 Verify restaurant entity storage path",
+            "description": "Read bienvenida.py to confirm how the restaurant entity is saved (typed columns vs JSON blob). Determine whether schema.py needs an ALTER TABLE for a description column or if the classification entity is a better storage target.",
+            "details": "See .taskmaster/docs/task-17/plan.md \u00a7 Step 1. Key question: does save_entity('restaurant', ...) go through typed SQLite columns or the generic JSON data column? This determines the storage strategy for the rest of the task.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 17,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "17.2 Update ClassificationAgent with description question",
+            "description": "Add description field to _ClassificationResponse, update _SYSTEM_PROMPT with description question instructions, update _process_response to store restaurant_description in _data_store, add to OUTPUT_SCHEMA.",
+            "details": "See .taskmaster/docs/task-17/plan.md \u00a7 Step 2. The agent must ask the question after standardization_level is non-None. Use _data_store draft injection to signal the question was already asked. Do not add restaurant_confirmed \u2014 trigger off standardization_level presence.",
+            "status": "done",
+            "dependencies": [
+              1
+            ],
+            "parentTaskId": 17,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "17.3 Update clasificacion.py confirm flow to save description",
+            "description": "Modify _make_confirm_fn to save the restaurant description to DataLake when the operator confirms. Either update the restaurant entity or store in the classification entity alongside standardization_level.",
+            "details": "See .taskmaster/docs/task-17/plan.md \u00a7 Step 3. The confirm function must retrieve restaurant_description from agent _data_store (requires loading agent state). Choose storage target based on findings from 17.1.",
+            "status": "done",
+            "dependencies": [
+              1,
+              2
+            ],
+            "parentTaskId": 17,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "17.4 Update _load_configuration_context to expose restaurant_description",
+            "description": "Add restaurant_description to the context dict returned by _load_configuration_context in configuracion.py. Load from whichever entity was chosen in 17.1/17.3.",
+            "details": "See .taskmaster/docs/task-17/plan.md \u00a7 Step 4. One-line addition to the returned dict. Source depends on storage decision from 17.1.",
+            "status": "done",
+            "dependencies": [
+              3
+            ],
+            "parentTaskId": 17,
+            "updatedAt": "2026-03-20T06:13:35.671Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "17.5 Inject restaurant_description into ConfigurationAgent prompt",
+            "description": "Add restaurant_description from context into the operator context block in ConfigurationAgent._generate_prompt. One-line addition after existing context parts.",
+            "details": "See .taskmaster/docs/task-17/plan.md \u00a7 Step 5. Add: if restaurant_description: context_parts.append(f'Descripci\u00f3n del restaurante: {restaurant_description}')",
+            "status": "done",
+            "dependencies": [
+              4
+            ],
+            "parentTaskId": 17,
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "17.6 Inject restaurant_description into ConsistencyCheckAgent prompts",
+            "description": "Add restaurant_description to both _PER_STEP_SYSTEM_PROMPT and _FINAL_SYSTEM_PROMPT input field descriptions. Pass it in both JSON dicts in _generate_prompt. Update configuracion.py caller sites to include restaurant_description in input_data.",
+            "details": "See .taskmaster/docs/task-17/plan.md \u00a7 Steps 6\u20137. Update system prompt input descriptions, add to JSON user messages in both per-step and final modes, and verify caller sites in configuracion.py (lines 321\u2013336, 482\u2013494) pass restaurant_description.",
+            "status": "done",
+            "dependencies": [
+              4
+            ],
+            "parentTaskId": 17,
+            "parentId": "undefined"
+          },
+          {
+            "id": 7,
+            "title": "17.7 Tests for restaurant description flow",
+            "description": "Add mocked test in test_classification_agent.py for description question + store. Add mocked test in test_configuration_agent.py verifying description appears in system prompt. Manual end-to-end verification.",
+            "details": "See .taskmaster/docs/task-17/plan.md \u00a7 Step 8\u20139. Classification test: after agent returns standardization_level, next turn asks for description, verify restaurant_description in _data_store. Configuration test: pass restaurant_description in context, verify it appears in generated system prompt.",
+            "status": "done",
+            "dependencies": [
+              5,
+              6
+            ],
+            "parentTaskId": 17,
+            "parentId": "undefined"
+          },
+          {
+            "id": 8,
+            "title": "17.8 Documentation updates for Task 17",
+            "description": "Update CLAUDE.md task status table and architecture documentation to reflect changes made in Task 17.",
+            "details": "Update the following documentation:\n1. CLAUDE.md - Update Task 17 status from pending to in-progress in task status table\n2. architecture-data-model.md - Document restaurant.description field\n3. sections/clasificacion.md - Document new restaurant profile question in ClassificationAgent\n4. sections/configuracion.md - Document restaurant_description context injection into ConfigurationAgent\n5. architecture-agent-framework.md - Document multi-turn agent context threading pattern",
+            "status": "in-progress",
+            "dependencies": [
+              "17.7"
+            ],
+            "parentTaskId": 17,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-03-20T06:13:35.671Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-18T06:35:39.888Z",
-      "taskCount": 16,
-      "completedCount": 8,
+      "lastModified": "2026-03-20T01:00:32.824295Z",
+      "taskCount": 17,
+      "completedCount": 9,
       "tags": [
         "master"
       ]

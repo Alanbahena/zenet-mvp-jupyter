@@ -93,6 +93,19 @@ carries forward naturally.
 }
 ```
 
+### Context block injected into `_generate_prompt`
+
+| Context key | Source | Used for |
+|---|---|---|
+| `restaurant_name` | `restaurant` entity | Personalization |
+| `restaurant_type` | `restaurant` entity | Template selection, suggestions |
+| `restaurant_type_id` | `restaurant` entity | Template getter (`get_category_recipe_template`, etc.) |
+| `standardization_level` | `classification` entity | Agent tone (Level 1 vs 2/3) |
+| `restaurant_description` | `classification` entity | Richer context for suggestions and semantic relevance |
+
+`restaurant_description` is rendered as `"Descripción del restaurante: {value}"` and
+appended to the `## Contexto del operador` block only when non-empty.
+
 ### Level-based tone
 
 - **Level 1:** Build from scratch with templates. Explain each entity's purpose. Encouraging.
@@ -138,7 +151,7 @@ Stateless agent. Two call modes, different input schemas.
 
 Called before confirming each step (steps 0–2).
 
-Input: `{"step": str, "entities": list[dict], "restaurant_type": str}`
+Input: `{"step": str, "entities": list[dict], "restaurant_type": str, "restaurant_description": str}`
 
 Checks:
 - Structural gaps (e.g. no liquid unit, fewer than N entities)
@@ -148,7 +161,7 @@ Checks:
 
 Called before confirming the last step (step 3).
 
-Input: `{"categories": list, "families": list, "recipe_units": list, "inventory_units": list, "restaurant_type": str}`
+Input: `{"categories": list, "families": list, "recipe_units": list, "inventory_units": list, "restaurant_type": str, "restaurant_description": str}`
 
 Checks cross-list compatibility (e.g. recipe units use "taza" but no standard volume
 inventory unit exists).
@@ -216,10 +229,23 @@ entity. Uses `_ENTITY_BUILDERS[step_key]` to construct the correct dataclass ins
 
 Loads from DataLake:
 - `restaurant` entity → `restaurant_type_id`, `restaurant_type`, `restaurant_name`
-- `classification` entity → `standardization_level` (defaults to 1 if missing)
+- `classification` entity → `standardization_level` (defaults to 1 if missing), `restaurant_description` (defaults to `""` if missing)
 
 Returns a dict consumed by `ConfigurationAgent._generate_prompt()` and
-`ConsistencyCheckAgent` input construction.
+`ConsistencyCheckAgent` input construction:
+
+```python
+{
+    "restaurant_type_id":    int,
+    "restaurant_type":       str,
+    "restaurant_name":       str,
+    "standardization_level": int,
+    "restaurant_description": str,  # "" if operator skipped or older session
+}
+```
+
+`restaurant_description` is sourced from the `classification` entity JSON blob (not the
+`restaurant` SQLite table — see `architecture-data-model.md` for the storage rationale).
 
 ### Non-standard units
 

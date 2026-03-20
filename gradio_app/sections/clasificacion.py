@@ -53,7 +53,13 @@ def _make_chat_fn(provider, data_lake):
         history.append({"role": "user", "content": message})
         history.append({"role": "assistant", "content": reply})
         level = agent.retrieve("standardization_level")
+        description = agent.retrieve("restaurant_description")
+        description_raw = agent.retrieve("restaurant_description_raw")
         draft_dict = {"standardization_level": level} if level is not None else {}
+        if description is not None:
+            draft_dict["restaurant_description"] = description
+        if description_raw is not None:
+            draft_dict["restaurant_description_raw"] = description_raw
         return history, "", draft_dict
     return chat_fn
 
@@ -67,7 +73,14 @@ def _make_confirm_fn(data_lake):
             return "La clasificación no está completa. Continúa la conversación con el asistente."
         entity_id = abs(hash(session_id)) % (2**31 - 1)
         try:
-            data_lake.save_entity("classification", entity_id, {"standardization_level": level})
+            classification_dict = {"standardization_level": level}
+            description = (draft_dict or {}).get("restaurant_description")
+            description_raw = (draft_dict or {}).get("restaurant_description_raw")
+            if description is not None:
+                classification_dict["restaurant_description"] = description
+            if description_raw is not None:
+                classification_dict["restaurant_description_raw"] = description_raw
+            data_lake.save_entity("classification", entity_id, classification_dict)
         except Exception:
             return "Error al guardar la clasificación. Por favor, intenta de nuevo."
         from gradio_app.components import _LEVEL_LABELS
@@ -88,7 +101,7 @@ def render(session_id: gr.State, data_lake) -> None:
         with gr.Column(scale=1):
             gr.Markdown("## Asistente de clasificación")
             chatbot = gr.Chatbot(label="Asistente Zenet", value=_INITIAL_GREETING, height="70vh")
-            textbox = gr.Textbox(placeholder="Escribe tu mensaje...", show_label=False)
+            textbox = gr.Textbox(placeholder="Escribe tu mensaje...", show_label=False, lines=3, max_lines=3)
             send_btn = gr.Button("Enviar")
 
         with gr.Column(scale=1):

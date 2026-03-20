@@ -132,17 +132,20 @@ def _load_configuration_context(data_lake, session_id: str) -> dict:
             restaurant_type = type_map.get(type_id, "")
 
     standardization_level = 1
+    restaurant_description = ""
     classification_data = data_lake.load_entity("classification", entity_id)
     if classification_data:
         level = classification_data.get("standardization_level")
         if level is not None:
             standardization_level = level
+        restaurant_description = classification_data.get("restaurant_description", "")
 
     return {
         "restaurant_type_id":    restaurant_type_id,
         "restaurant_type":       restaurant_type,
         "restaurant_name":       restaurant_name,
         "standardization_level": standardization_level,
+        "restaurant_description": restaurant_description,
     }
 
 
@@ -320,6 +323,7 @@ def _make_confirm_fn(data_lake):
         # First click: run the appropriate consistency check
         ctx = _load_configuration_context(data_lake, session_id)
         restaurant_type = ctx.get("restaurant_type", "")
+        restaurant_description = ctx.get("restaurant_description", "")
 
         check_agent = create_agent(
             ConsistencyCheckAgent, provider=ClaudeProvider(), name="consistency_check"
@@ -329,11 +333,12 @@ def _make_confirm_fn(data_lake):
             # Final step: cross-entity check across all four lists
             try:
                 check_result = check_agent.run(input_data={
-                    "categories":      draft_cats,
-                    "families":        draft_fams,
-                    "recipe_units":    draft_ru,
-                    "inventory_units": draft_iu,
-                    "restaurant_type": restaurant_type,
+                    "categories":             draft_cats,
+                    "families":               draft_fams,
+                    "recipe_units":           draft_ru,
+                    "inventory_units":        draft_iu,
+                    "restaurant_type":        restaurant_type,
+                    "restaurant_description": restaurant_description,
                 })
             except Exception:
                 check_result = {"looks_good": True, "issues": [], "suggestions": []}
@@ -341,9 +346,10 @@ def _make_confirm_fn(data_lake):
             # Per-step check
             try:
                 check_result = check_agent.run(input_data={
-                    "step":            step_key,
-                    "entities":        current_draft,
-                    "restaurant_type": restaurant_type,
+                    "step":                   step_key,
+                    "entities":               current_draft,
+                    "restaurant_type":        restaurant_type,
+                    "restaurant_description": restaurant_description,
                 })
             except Exception:
                 check_result = {"looks_good": True, "issues": [], "suggestions": []}
@@ -396,7 +402,7 @@ def render(session_id: gr.State, data_lake) -> None:
                 height="60vh",
                 value=_initial_greeting("tu restaurante", "", 1),
             )
-            textbox  = gr.Textbox(placeholder="Escribe tu mensaje...", show_label=False)
+            textbox  = gr.Textbox(placeholder="Escribe tu mensaje...", show_label=False, lines=3, max_lines=3)
             send_btn = gr.Button("Enviar")
 
         with gr.Column(scale=1):
