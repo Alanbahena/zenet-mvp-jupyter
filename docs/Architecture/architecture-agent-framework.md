@@ -315,7 +315,53 @@ backwards-compatible; removing keys is not.
 
 ---
 
-## 9. Deferred — external framework integration
+## 9. Cross-section context threading pattern (Task 17)
+
+Fields extracted by one section's agent can be threaded through DataLake to downstream
+section agents. `restaurant_description` (introduced in Task 17) is the canonical example.
+
+```
+ClassificationAgent._data_store
+    │  agent.store("restaurant_description", value)
+    ▼
+_make_confirm_fn()  [gradio_app/sections/clasificacion.py]
+    │  data_lake.save_entity("classification", id, {
+    │      "standardization_level": level,
+    │      "restaurant_description": description,
+    │  })
+    ▼
+DataLake  (classification entity JSON blob)
+    │
+    ▼
+_load_configuration_context()  [gradio_app/sections/configuracion.py]
+    │  classification_data.get("restaurant_description", "")
+    ▼
+ConfigurationAgent._generate_prompt(context)
+    │  context["restaurant_description"]  → injected into system prompt
+ConsistencyCheckAgent.run(input_data)
+    │  input_data["restaurant_description"]  → injected into user message JSON
+    ▼
+LLM receives restaurant-specific context for semantically relevant suggestions
+```
+
+**Key properties:**
+
+| Property | Detail |
+|----------|--------|
+| One-directional | Flows forward from earlier sections to later ones via DataLake — never backwards |
+| Single load point | `_load_configuration_context` is the only place the field is read from storage |
+| Forward-compatible | Tasks 10–12 agents receive `restaurant_description` automatically if they use the same context loader |
+| No agent-to-agent coupling | Agents communicate only through DataLake and the context dict — never directly |
+| Raw field not forwarded | `restaurant_description_raw` is persisted in the classification entity for transparency but is not loaded by `_load_configuration_context` or passed to any agent |
+
+**Extending the pattern for Tasks 10–12:**
+Any field captured by a section agent and saved to its entity can be added to the relevant
+context loader and passed downstream. The loader is the single addition point — agents
+that already accept a `context` dict require no changes beyond a new key in `_generate_prompt`.
+
+---
+
+## 10. Deferred — external framework integration
 
 ## Note on External Frameworks (LangGraph, CrewAI, LangChain, Autogen)
 

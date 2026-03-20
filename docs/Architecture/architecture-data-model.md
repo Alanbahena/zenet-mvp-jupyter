@@ -117,6 +117,8 @@ classDiagram
         +update_restaurant_type_id()
         +clear_*()
     }
+    %% Note: restaurant_description is NOT a field on the Restaurant dataclass.
+    %% It lives in the classification entity JSON blob. See Task 17 note below.
     class User {
         +int id
         +str name
@@ -210,7 +212,24 @@ Template behavior:
 
 ---
 
-## 4. Fixed data (no registries)
+## 4. Note on `restaurant_description` (Task 17)
+
+`restaurant_description` is **not** a field on the `Restaurant` dataclass and is **not** a
+column on the `restaurant` SQLite table. It is stored in the `classification` entity's JSON
+`data` blob alongside `standardization_level`.
+
+**Why:** The `restaurant` table uses typed SQLite columns (see `core/storage/schema.py`).
+Adding a new column requires a schema migration. The `classification` entity uses a generic
+JSON blob — any keys can be added without touching the schema.
+
+**Where to find it:**
+- Stored by: `_make_confirm_fn` in `gradio_app/sections/clasificacion.py`
+- Loaded by: `_load_configuration_context` in `gradio_app/sections/configuracion.py`
+- Full entity schema: see `docs/Architecture/sections/clasificacion.md` Section 5
+
+---
+
+## 5. Fixed data (no registries)
 
 - **RestaurantType:** `DEFAULT_RESTAURANT_TYPES` (Casual, Rápida, Gourmet, Cafeterías, Cafés). User selects only.
 - **InventoryCategory:** `DEFAULT_INVENTORY_CATEGORIES` (Perecedero, No perecedero). User selects only.

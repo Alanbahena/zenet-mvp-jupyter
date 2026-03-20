@@ -176,9 +176,9 @@ Tasks and subtasks are tracked in `.taskmaster/tasks/tasks.json`.
 | 14 | Notebook pipeline orchestration (cancelled) | cancelled |
 | 15 | Unit and integration tests             | pending  |
 | 16 | Documentation and user guide           | pending  |
-| 17 | Restaurant profile enrichment          | pending  |
+| 17 | Restaurant profile enrichment          | **done** |
 
-**Task 17** (Restaurant profile enrichment) is next, prerequisite for Task 10.
+**Task 10** (Alineamiento) is next.
 
 ### TaskMaster docs
 

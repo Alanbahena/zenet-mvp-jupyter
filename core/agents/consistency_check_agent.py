@@ -18,10 +18,11 @@ from core.agents.base_agent import BaseAgent
 
 _PER_STEP_SYSTEM_PROMPT = """Eres un validador estructural para Zenet, un sistema operativo para restaurantes.
 
-Recibirás un JSON con tres campos:
+Recibirás un JSON con cuatro campos:
 - "step": el paso que se está validando ("categories", "families", "recipe_units" o "inventory_units")
 - "entities": la lista de entidades propuestas por el operador
 - "restaurant_type": el tipo de restaurante (ej. "Casual", "Rápida", "Gourmet", "Cafetería")
+- "restaurant_description": descripción libre del restaurante (puede ser vacía)
 
 Tu tarea es revisar si la lista tiene huecos estructurales para ese tipo de restaurante.
 No juzgues el estilo ni el nombre — solo identifica lo que falta o está mal configurado.
@@ -73,6 +74,8 @@ nombres de platillos.
 **inventory_units**: deben ser unidades de compra o presentaciones de proveedor (ej. kg, L,
 caja, bolsa, bote, pieza). NO son válidos: ingredientes, categorías, familias, platillos.
 
+Usa "restaurant_description" para evaluar la relevancia semántica con mayor precisión cuando esté disponible.
+
 ## Reglas
 
 - `issues`: problemas bloqueantes — la configuración producirá errores o datos incompletos.
@@ -92,12 +95,13 @@ Responde SIEMPRE con JSON usando exactamente estos tres campos:
 
 _FINAL_SYSTEM_PROMPT = """Eres un validador estructural para Zenet, un sistema operativo para restaurantes.
 
-Recibirás un JSON con cinco campos:
+Recibirás un JSON con seis campos:
 - "categories": lista de categorías de recetas configuradas
 - "families": lista de familias de inventario configuradas
 - "recipe_units": lista de unidades de receta configuradas
 - "inventory_units": lista de unidades de inventario configuradas
 - "restaurant_type": el tipo de restaurante
+- "restaurant_description": descripción libre del restaurante (puede ser vacía)
 
 Tu tarea es revisar si las cuatro listas son consistentes entre sí.
 No repitas los checks individuales de cada lista — ya fueron validados.
@@ -132,6 +136,8 @@ Busca únicamente inconsistencias que solo se ven cuando las cuatro listas se ve
 - No inventes checks fuera de los criterios listados arriba.
 - Responde siempre en español.
 
+Usa "restaurant_description" para evaluar la consistencia semántica con mayor precisión cuando esté disponible.
+
 ## Formato de respuesta
 
 Responde SIEMPRE con JSON usando exactamente estos tres campos:
@@ -153,13 +159,14 @@ class ConsistencyCheckAgent(BaseAgent):
     Called by the section UI (subtask 9.3) in two distinct modes:
 
     Per-step mode — called before the operator confirms each step:
-        Input: {"step": str, "entities": list[dict], "restaurant_type": str}
+        Input: {"step": str, "entities": list[dict], "restaurant_type": str,
+                "restaurant_description": str}
         Checks a single entity list for structural gaps.
 
     Final cross-entity mode — called before the last step is saved:
         Input: {"categories": list, "families": list,
                 "recipe_units": list, "inventory_units": list,
-                "restaurant_type": str}
+                "restaurant_type": str, "restaurant_description": str}
         Checks all four lists together for cross-entity inconsistencies.
 
     INPUT_SCHEMA is empty ({}) to disable validation — the two call shapes
@@ -193,19 +200,21 @@ class ConsistencyCheckAgent(BaseAgent):
             # Per-step call: validate a single entity list
             system = _PER_STEP_SYSTEM_PROMPT
             user = json.dumps({
-                "step":            input_data["step"],
-                "entities":        input_data.get("entities", []),
-                "restaurant_type": input_data.get("restaurant_type", ""),
+                "step":                   input_data["step"],
+                "entities":               input_data.get("entities", []),
+                "restaurant_type":        input_data.get("restaurant_type", ""),
+                "restaurant_description": input_data.get("restaurant_description", ""),
             }, ensure_ascii=False)
         else:
             # Final cross-entity call: validate all four lists together
             system = _FINAL_SYSTEM_PROMPT
             user = json.dumps({
-                "categories":      input_data.get("categories", []),
-                "families":        input_data.get("families", []),
-                "recipe_units":    input_data.get("recipe_units", []),
-                "inventory_units": input_data.get("inventory_units", []),
-                "restaurant_type": input_data.get("restaurant_type", ""),
+                "categories":             input_data.get("categories", []),
+                "families":               input_data.get("families", []),
+                "recipe_units":           input_data.get("recipe_units", []),
+                "inventory_units":        input_data.get("inventory_units", []),
+                "restaurant_type":        input_data.get("restaurant_type", ""),
+                "restaurant_description": input_data.get("restaurant_description", ""),
             }, ensure_ascii=False)
         return system, user
 

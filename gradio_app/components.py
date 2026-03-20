@@ -138,7 +138,7 @@ def render_chat_panel(
     two-column block in their render() function. See Decision 6 in the Task 6 plan.
     """
     chatbot = gr.Chatbot(label="Asistente Zenet", value=initial_messages, height="70vh")
-    textbox = gr.Textbox(placeholder="Escribe tu mensaje...", show_label=False)
+    textbox = gr.Textbox(placeholder="Escribe tu mensaje...", show_label=False, lines=3, max_lines=3)
     send_btn = gr.Button("Enviar")
 
     def _handler(message: str, history: list, sid: str) -> tuple[list, str]:
