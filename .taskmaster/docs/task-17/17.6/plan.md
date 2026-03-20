@@ -133,11 +133,11 @@ When `restaurant_description` is `""` (operator skipped), the LLM receives
 ## Deliverable checklist
 
 ### `core/agents/consistency_check_agent.py`
-- [ ] `_PER_STEP_SYSTEM_PROMPT` field listing updated to include `restaurant_description`
-- [ ] `_PER_STEP_SYSTEM_PROMPT` criteria section includes guidance to use description
-- [ ] `_FINAL_SYSTEM_PROMPT` field listing updated to include `restaurant_description`
-- [ ] `_FINAL_SYSTEM_PROMPT` criteria section includes guidance to use description
-- [ ] `_generate_prompt` per-step JSON includes `restaurant_description`
-- [ ] `_generate_prompt` final JSON includes `restaurant_description`
-- [ ] Class docstring input shapes updated
-- [ ] All existing tests pass
+- [x] `_PER_STEP_SYSTEM_PROMPT` field listing updated to include `restaurant_description`
+- [x] `_PER_STEP_SYSTEM_PROMPT` criteria section includes guidance to use description
+- [x] `_FINAL_SYSTEM_PROMPT` field listing updated to include `restaurant_description`
+- [x] `_FINAL_SYSTEM_PROMPT` criteria section includes guidance to use description
+- [x] `_generate_prompt` per-step JSON includes `restaurant_description`
+- [x] `_generate_prompt` final JSON includes `restaurant_description`
+- [x] Class docstring input shapes updated
+- [x] All existing tests pass (532 passed in 73.80s)

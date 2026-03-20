@@ -1091,7 +1091,7 @@
             "title": "17.6 Inject restaurant_description into ConsistencyCheckAgent prompts",
             "description": "Add restaurant_description to both _PER_STEP_SYSTEM_PROMPT and _FINAL_SYSTEM_PROMPT input field descriptions. Pass it in both JSON dicts in _generate_prompt. Update configuracion.py caller sites to include restaurant_description in input_data.",
             "details": "See .taskmaster/docs/task-17/plan.md \u00a7 Steps 6\u20137. Update system prompt input descriptions, add to JSON user messages in both per-step and final modes, and verify caller sites in configuracion.py (lines 321\u2013336, 482\u2013494) pass restaurant_description.",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               4
             ],
@@ -1103,7 +1103,7 @@
             "title": "17.7 Tests for restaurant description flow",
             "description": "Add mocked test in test_classification_agent.py for description question + store. Add mocked test in test_configuration_agent.py verifying description appears in system prompt. Manual end-to-end verification.",
             "details": "See .taskmaster/docs/task-17/plan.md \u00a7 Step 8\u20139. Classification test: after agent returns standardization_level, next turn asks for description, verify restaurant_description in _data_store. Configuration test: pass restaurant_description in context, verify it appears in generated system prompt.",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [
               5,
               6
@@ -1129,7 +1129,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-19T23:39:46.090015Z",
+      "lastModified": "2026-03-19T23:56:30.485469Z",
       "taskCount": 17,
       "completedCount": 9,
       "tags": [
