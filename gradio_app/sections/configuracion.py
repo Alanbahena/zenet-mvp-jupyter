@@ -402,7 +402,7 @@ def render(session_id: gr.State, data_lake) -> None:
                 height="60vh",
                 value=_initial_greeting("tu restaurante", "", 1),
             )
-            textbox  = gr.Textbox(placeholder="Escribe tu mensaje...", show_label=False)
+            textbox  = gr.Textbox(placeholder="Escribe tu mensaje...", show_label=False, lines=3, max_lines=3)
             send_btn = gr.Button("Enviar")
 
         with gr.Column(scale=1):

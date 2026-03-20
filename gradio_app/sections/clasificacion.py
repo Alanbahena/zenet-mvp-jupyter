@@ -101,7 +101,7 @@ def render(session_id: gr.State, data_lake) -> None:
         with gr.Column(scale=1):
             gr.Markdown("## Asistente de clasificación")
             chatbot = gr.Chatbot(label="Asistente Zenet", value=_INITIAL_GREETING, height="70vh")
-            textbox = gr.Textbox(placeholder="Escribe tu mensaje...", show_label=False)
+            textbox = gr.Textbox(placeholder="Escribe tu mensaje...", show_label=False, lines=3, max_lines=3)
             send_btn = gr.Button("Enviar")
 
         with gr.Column(scale=1):

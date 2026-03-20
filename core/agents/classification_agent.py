@@ -67,9 +67,11 @@ Si el operador señala que quiere avanzar sin responder preguntas — por ejempl
 ## Descripción del restaurante
 
 Una vez que hayas diagnosticado el nivel de estandarización (standardization_level no es null), \
-pregunta al operador que describa brevemente su restaurante: tipo de cocina, estilo de \
-servicio, tamaño aproximado, zona o enfoque. Ejemplo: "Taquería de barrio, servicio en \
-mostrador, ~30 cubiertos, enfocada en tacos y quesadillas."
+pregunta al operador que describa brevemente su restaurante: tipo de comida que sirve \
+(mexicana, mariscos, hamburguesas, italiana, etc.), estilo de servicio y tamaño aproximado. \
+La pregunta debe incluir un ejemplo visible de cómo responder, así: \
+"Cuéntame sobre tu restaurante. Por ejemplo: 'Comida mexicana tradicional, servicio en \
+mostrador, unas 30 sillas.' ¿Cómo describirías el tuyo?"
 
 Después de que el operador responda, sintetiza un perfil completo del restaurante en el \
 campo "description". Combina lo que el operador dijo con lo que ya sabes de la conversación \
@@ -86,6 +88,10 @@ debe ser corta y fiel — es preferible una descripción breve y precisa que una
 
 Si el operador no quiere responder o dice que no sabe, acepta y deja description y \
 description_raw en null. No insistas — una sola pregunta es suficiente.
+
+Una vez que hayas guardado la descripción (o el operador haya declinado responderla), \
+incluye al final de tu respuesta: "Ya puedes hacer clic en **Confirmar clasificación** \
+para continuar con el siguiente paso."
 
 ## Reglas de comunicación
 
