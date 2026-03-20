@@ -53,21 +53,36 @@ operator clicks Confirm → draft persisted to DataLake
 
 ### `ClassificationAgent`
 
-Conversational diagnosis agent. Identifies `standardization_level` (1, 2, or 3) through 2–4 questions.
+Conversational diagnosis agent. Identifies `standardization_level` (1, 2, or 3) through 2–4
+questions, then asks for a brief restaurant description.
 
 | Attribute | Value |
 |-----------|-------|
 | `INPUT_SCHEMA` | `{"user_message": "A message from the restaurant operator."}` |
-| `OUTPUT_SCHEMA` | `{"reply": str, "standardization_level": int\|None, "raw_response": str}` |
-| `RESPONSE_MODEL` | `_ClassificationResponse` — Pydantic model enforcing `reply` + `standardization_level` |
+| `OUTPUT_SCHEMA` | `{"reply": str, "standardization_level": int\|None, "restaurant_description": str\|None, "restaurant_description_raw": str\|None, "raw_response": str}` |
+| `RESPONSE_MODEL` | `_ClassificationResponse` — Pydantic model with `reply`, `standardization_level`, `description`, `description_raw` |
 | Language | Always Spanish |
 | Tone | Warm, direct, 2–4 sentences |
 
-`RESPONSE_MODEL` requires the LLM to return JSON with exactly these two fields. The system
-prompt's `## Formato de respuesta` section names the fields explicitly — this is required
-because `ClaudeProvider` with `structured_output=True` appends only a generic
-"Respond with valid JSON only" instruction and does not inject field names from the schema.
-Without the explicit naming, the LLM improvised `"level"` instead of `"standardization_level"`.
+**Two-field description pattern (Task 17):**
+The LLM response JSON uses `description` and `description_raw`. `_process_response()` reads
+these and stores them under the `restaurant_*` prefixed keys:
+
+| LLM JSON field | `_data_store` / `OUTPUT_SCHEMA` key | Meaning |
+|---|---|---|
+| `description` | `restaurant_description` | Agent-enriched profile, structured for downstream agent consumption |
+| `description_raw` | `restaurant_description_raw` | Operator's exact words, unmodified |
+
+**No-hallucination rule:** The enriched `description` may only use information the operator
+explicitly provided or that was injected as context (restaurant name, restaurant type). The
+agent must never invent, assume, or infer data not stated. If the operator gave sparse input,
+the description stays short and accurate.
+
+`RESPONSE_MODEL` requires the LLM to return JSON with the exact field names declared in
+`## Formato de respuesta`. Without explicit naming in the system prompt, `ClaudeProvider`
+with `structured_output=True` appends only a generic "Respond with valid JSON only"
+instruction — the LLM improvised `"level"` instead of `"standardization_level"` before
+the explicit naming was added.
 
 ### `_format_draft(draft: dict) -> tuple[str, dict]`
 
@@ -144,8 +159,13 @@ component after each chat turn.
 |-------|-------|
 | Entity type | `"classification"` |
 | Entity ID | `abs(hash(session_id)) % (2**31 - 1)` |
-| Schema | `{"standardization_level": 1 \| 2 \| 3}` |
+| Schema | `{"standardization_level": 1 \| 2 \| 3, "restaurant_description": str \| None, "restaurant_description_raw": str \| None}` |
 | Written when | Operator clicks Confirm button — not during conversation |
+
+The `classification` entity uses a generic JSON `data` blob in SqliteStorage — any keys can
+be added without schema migration. `restaurant_description_raw` is persisted for transparency
+only; only `restaurant_description` is loaded by `_load_configuration_context` and injected
+into downstream agents.
 
 ---
 
@@ -169,6 +189,49 @@ operators get import-first flows.
 Task 7 (Bienvenida) and returns `{"restaurant_name": str, "restaurant_type": str}`. This
 context is injected into `ClassificationAgent._generate_prompt()` so the agent can
 personalize its questions and diagnosis.
+
+The agent also captures `restaurant_description` and `restaurant_description_raw` into
+`_data_store` across turns via `agent.store()`. These are persisted to DataLake at confirm
+(see Section 5) and made available to downstream agents via `_load_configuration_context`
+in `configuracion.py`.
+
+---
+
+## 8. Restaurant Description Flow (Task 17)
+
+After diagnosing `standardization_level`, the agent asks for a brief restaurant description.
+
+**Trigger:** Agent detects `standardization_level` is non-None in `_data_store` (injected as
+draft context in `_generate_prompt`). It asks exactly once — if the operator skips or declines,
+`description` and `description_raw` stay null.
+
+**Skip-path:** If the operator skips the full classification process, the agent sets
+`standardization_level` to Level 1 without asking for a description — both fields remain null.
+
+**Storage flow:**
+```
+Operator answers description question
+    │
+    ▼
+LLM returns JSON: {"description": "...", "description_raw": "..."}
+    │
+    ▼
+_process_response() stores:
+    agent.store("restaurant_description", description)
+    agent.store("restaurant_description_raw", description_raw)
+    │
+    ▼
+_make_confirm_fn() persists both to DataLake:
+    data_lake.save_entity("classification", entity_id, {
+        "standardization_level": level,
+        "restaurant_description": description,
+        "restaurant_description_raw": description_raw,
+    })
+```
+
+`restaurant_description_raw` is persisted for transparency only — it is not loaded
+downstream. Only `restaurant_description` flows to `_load_configuration_context` and into
+ConfigurationAgent and ConsistencyCheckAgent prompts (see `sections/configuracion.md`).
 
 ---
 

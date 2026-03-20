@@ -1103,7 +1103,7 @@
             "title": "17.7 Tests for restaurant description flow",
             "description": "Add mocked test in test_classification_agent.py for description question + store. Add mocked test in test_configuration_agent.py verifying description appears in system prompt. Manual end-to-end verification.",
             "details": "See .taskmaster/docs/task-17/plan.md \u00a7 Step 8\u20139. Classification test: after agent returns standardization_level, next turn asks for description, verify restaurant_description in _data_store. Configuration test: pass restaurant_description in context, verify it appears in generated system prompt.",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               5,
               6
@@ -1116,7 +1116,7 @@
             "title": "17.8 Documentation updates for Task 17",
             "description": "Update CLAUDE.md task status table and architecture documentation to reflect changes made in Task 17.",
             "details": "Update the following documentation:\n1. CLAUDE.md - Update Task 17 status from pending to in-progress in task status table\n2. architecture-data-model.md - Document restaurant.description field\n3. sections/clasificacion.md - Document new restaurant profile question in ClassificationAgent\n4. sections/configuracion.md - Document restaurant_description context injection into ConfigurationAgent\n5. architecture-agent-framework.md - Document multi-turn agent context threading pattern",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [
               "17.7"
             ],
@@ -1129,7 +1129,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-19T23:56:30.485469Z",
+      "lastModified": "2026-03-20T01:00:32.824295Z",
       "taskCount": 17,
       "completedCount": 9,
       "tags": [
