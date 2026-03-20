@@ -199,6 +199,7 @@ class ConfigurationAgent(BaseAgent):
         restaurant_type_id: int = context.get("restaurant_type_id", 1)
         restaurant_type: str = context.get("restaurant_type", "")
         restaurant_name: str = context.get("restaurant_name", "")
+        restaurant_description: str = context.get("restaurant_description", "")
         level: int = context.get("standardization_level", 1)
         current_step: str = context.get("current_step", "categories")
 
@@ -225,6 +226,8 @@ class ConfigurationAgent(BaseAgent):
             context_parts.append(f"Restaurante: {restaurant_name}")
         if restaurant_type:
             context_parts.append(f"Tipo: {restaurant_type}")
+        if restaurant_description:
+            context_parts.append(f"Descripción del restaurante: {restaurant_description}")
         context_parts.append(f"Nivel de estandarización: {level}")
         context_parts.append(
             f"Paso actual: {_STEP_LABELS.get(current_step, current_step)}\n"
