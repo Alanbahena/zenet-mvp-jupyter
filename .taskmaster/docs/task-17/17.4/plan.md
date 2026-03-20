@@ -134,9 +134,9 @@ The ConfigurationAgent change (17.5) will consume it from there.
 ## Deliverable checklist
 
 ### `gradio_app/sections/configuracion.py`
-- [ ] `_load_configuration_context` reads `restaurant_description` from `classification_data`
-- [ ] `_load_configuration_context` returns `restaurant_description` in the context dict
-- [ ] `restaurant_description` extracted as local variable at ConsistencyCheckAgent call sites
-- [ ] ConsistencyCheckAgent final-step call site passes `restaurant_description` in `input_data`
-- [ ] ConsistencyCheckAgent per-step call site passes `restaurant_description` in `input_data`
-- [ ] All existing tests pass
+- [x] `_load_configuration_context` reads `restaurant_description` from `classification_data`
+- [x] `_load_configuration_context` returns `restaurant_description` in the context dict
+- [x] `restaurant_description` extracted as local variable at ConsistencyCheckAgent call sites
+- [x] ConsistencyCheckAgent final-step call site passes `restaurant_description` in `input_data`
+- [x] ConsistencyCheckAgent per-step call site passes `restaurant_description` in `input_data`
+- [x] All existing tests pass (532 passed in 77.29s)
