@@ -326,6 +326,26 @@ so adding `restaurant_description` to the dict is transparent to the storage lay
 - **Architecture docs:** `clasificacion.md` and `configuracion.md` may need minor updates
   to reflect the new `restaurant_description` field in context.
 
+### [OPEN] — clasificacion.py draft_dict does not include description fields
+**Source:** Validation of subtask 17.2
+**Problem:** `_make_chat_fn` in clasificacion.py builds `draft_dict` from only
+`standardization_level`. The new `restaurant_description` and `restaurant_description_raw`
+fields are in `_data_store` but never surfaced to the UI draft panel.
+**Impact:** The draft preview panel won't show the captured description. The confirm
+button logic may not have access to the description unless agent state is loaded.
+**Suggested action:** Address in subtask 17.3 — update `draft_dict` construction and
+`_format_draft` if the panel should display the description.
+
+### [OPEN] — Operator skip-process path does not address description
+**Source:** Validation of subtask 17.2
+**Problem:** The "Operador que quiere saltarse el proceso" prompt section tells the agent
+to propose Level 1 and proceed, but says nothing about the description question. Skip-path
+operators may still get asked for a description or have it silently null.
+**Impact:** Inconsistent UX for operators who want to skip the classification process.
+**Suggested action:** Add to the skip section: "Si el operador quiere saltarse, no
+preguntes por la descripción — deja description y description_raw en null." Apply in
+17.3 or as follow-up polish.
+
 ---
 
 ## Deliverable checklist

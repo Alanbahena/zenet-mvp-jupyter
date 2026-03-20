@@ -1033,41 +1033,46 @@
             "details": "See .taskmaster/docs/task-17/plan.md \u00a7 Step 1. Key question: does save_entity('restaurant', ...) go through typed SQLite columns or the generic JSON data column? This determines the storage strategy for the rest of the task.",
             "status": "done",
             "dependencies": [],
-            "parentTaskId": 17
+            "parentTaskId": 17,
+            "parentId": "undefined"
           },
           {
             "id": 2,
             "title": "17.2 Update ClassificationAgent with description question",
             "description": "Add description field to _ClassificationResponse, update _SYSTEM_PROMPT with description question instructions, update _process_response to store restaurant_description in _data_store, add to OUTPUT_SCHEMA.",
             "details": "See .taskmaster/docs/task-17/plan.md \u00a7 Step 2. The agent must ask the question after standardization_level is non-None. Use _data_store draft injection to signal the question was already asked. Do not add restaurant_confirmed \u2014 trigger off standardization_level presence.",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               1
             ],
-            "parentTaskId": 17
+            "parentTaskId": 17,
+            "parentId": "undefined"
           },
           {
             "id": 3,
             "title": "17.3 Update clasificacion.py confirm flow to save description",
             "description": "Modify _make_confirm_fn to save the restaurant description to DataLake when the operator confirms. Either update the restaurant entity or store in the classification entity alongside standardization_level.",
             "details": "See .taskmaster/docs/task-17/plan.md \u00a7 Step 3. The confirm function must retrieve restaurant_description from agent _data_store (requires loading agent state). Choose storage target based on findings from 17.1.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               1,
               2
             ],
-            "parentTaskId": 17
+            "parentTaskId": 17,
+            "parentId": "undefined"
           },
           {
             "id": 4,
             "title": "17.4 Update _load_configuration_context to expose restaurant_description",
             "description": "Add restaurant_description to the context dict returned by _load_configuration_context in configuracion.py. Load from whichever entity was chosen in 17.1/17.3.",
             "details": "See .taskmaster/docs/task-17/plan.md \u00a7 Step 4. One-line addition to the returned dict. Source depends on storage decision from 17.1.",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [
               3
             ],
-            "parentTaskId": 17
+            "parentTaskId": 17,
+            "updatedAt": "2026-03-20T06:13:35.671Z",
+            "parentId": "undefined"
           },
           {
             "id": 5,
@@ -1078,7 +1083,8 @@
             "dependencies": [
               4
             ],
-            "parentTaskId": 17
+            "parentTaskId": 17,
+            "parentId": "undefined"
           },
           {
             "id": 6,
@@ -1089,7 +1095,8 @@
             "dependencies": [
               4
             ],
-            "parentTaskId": 17
+            "parentTaskId": 17,
+            "parentId": "undefined"
           },
           {
             "id": 7,
@@ -1101,14 +1108,28 @@
               5,
               6
             ],
-            "parentTaskId": 17
+            "parentTaskId": 17,
+            "parentId": "undefined"
+          },
+          {
+            "id": 8,
+            "title": "17.8 Documentation updates for Task 17",
+            "description": "Update CLAUDE.md task status table and architecture documentation to reflect changes made in Task 17.",
+            "details": "Update the following documentation:\n1. CLAUDE.md - Update Task 17 status from pending to in-progress in task status table\n2. architecture-data-model.md - Document restaurant.description field\n3. sections/clasificacion.md - Document new restaurant profile question in ClassificationAgent\n4. sections/configuracion.md - Document restaurant_description context injection into ConfigurationAgent\n5. architecture-agent-framework.md - Document multi-turn agent context threading pattern",
+            "status": "pending",
+            "dependencies": [
+              "17.7"
+            ],
+            "parentTaskId": 17,
+            "parentId": "undefined"
           }
-        ]
+        ],
+        "updatedAt": "2026-03-20T06:13:35.671Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-19T00:00:00.000Z",
+      "lastModified": "2026-03-19T23:17:48.356310Z",
       "taskCount": 17,
       "completedCount": 9,
       "tags": [
