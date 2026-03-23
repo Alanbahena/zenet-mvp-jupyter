@@ -898,8 +898,79 @@
         "dependencies": [
           "9"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "10.1 Data model and persistence prerequisites",
+            "description": "Add recipe_unit_conversion persistence layer and equivalence_source tracking. Unfreeze InventoryUnitEquivalence and add equivalence_source field. Add source field to RecipeUnitConversionEntry. Add recipe_unit_conversion table to schema.py and save/load/delete/list handlers to persistence.py. Add serialization pair to serialization.py. Add load_inventory_item_registry() to data_model_utils.py. Extend ingredients_to_display() with equivalent and inventory_link_status columns.",
+            "details": "See .taskmaster/docs/task-10/plan.md § 10.1. Grep for InventoryUnitEquivalence hashability callers before unfreezing. Composite key pattern: '{recipe_unit_id}_{family_id}_{inventory_item_id}'.",
+            "status": "in-progress",
+            "dependencies": [],
+            "parentTaskId": 10,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "10.2 AlignmentAgent (core/agents/alignment_agent.py)",
+            "description": "Create AlignmentAgent(BaseAgent) with _IngredientProposal, _InventoryProposal, _AlignmentResponse Pydantic models. INPUT_SCHEMA: user_message, recipe_source, page_index. OUTPUT_SCHEMA: reply, recipe_draft, inventory_proposals, raw_response. _generate_prompt() injects 9 context keys. Enforce no-hallucination and volume-no-mass rules in system prompt. _process_response() merges non-None fields into _data_store across turns. Add uv add pypdf openpyxl pillow before implementing file parsing.",
+            "details": "See .taskmaster/docs/task-10/plan.md § 10.2. Context keys: restaurant_name, restaurant_type, restaurant_description, standardization_level, categories, families, existing_inventory_items, recipe_units, inventory_units. Inventory unit fallback rule: solids→g/kg, liquids→ml/L, countable→pza.",
+            "status": "pending",
+            "dependencies": [
+              "10.1"
+            ],
+            "parentTaskId": 10,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "10.3 LangGraph conditional graph (core/agents/graph_utils.py)",
+            "description": "Add build_conditional_graph(nodes, conditional_edges, state_schema) to graph_utils.py. Keep build_sequential_graph unchanged. Define AlignmentGraphState(BaseGraphState) TypedDict with recipe_source, recipe_count, current_page_index, recipe_draft, inventory_proposals, user_message. Build alignment graph: initial_questions_node → conditional branch → file_extraction_node | conversational_node → review_node.",
+            "details": "See .taskmaster/docs/task-10/plan.md § 10.3. Evaluate at implementation time whether to define graph inline in alineamiento.py instead of adding generic helper to graph_utils.py.",
+            "status": "pending",
+            "dependencies": [
+              "10.2"
+            ],
+            "parentTaskId": 10,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "10.4 Alineamiento section UI (gradio_app/sections/alineamiento.py)",
+            "description": "Replace 5-line stub with full two-column render(). Left: chat panel. Right: progress indicator, recipe card (name/category/description/steps), ingredients table (name|qty|unit|equivalent|inventory link), inventory proposals table (name|category|family|status), Save Recipe + Inventory Items button, saved-recipes accumulator list. Implement _load_alignment_context(), _make_chat_fn(), _make_confirm_fn() (saves Recipe + InventoryItems, links matched items). Single-handler pattern (_chat_and_format). File upload gr.File revealed conditionally after format answer.",
+            "details": "See .taskmaster/docs/task-10/plan.md § 10.4. Same single-handler pattern as configuracion.py — no State.change(). Generator pattern on confirm (yield loading state → save → yield result). Progress shows 'Receta X de ~N' or 'Receta X de ?' if count skipped.",
+            "status": "pending",
+            "dependencies": [
+              "10.3"
+            ],
+            "parentTaskId": 10,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "10.5 Exports and tests",
+            "description": "Export AlignmentAgent from core/agents/__init__.py and core/__init__.py following WelcomeAgent/ClassificationAgent pattern. Create tests/unit/test_alignment_agent.py with 14 mocked tests and 2 live tests (skipped without ANTHROPIC_API_KEY).",
+            "details": "See .taskmaster/docs/task-10/plan.md § 10.5 and Test coverage section. Live tests: test_live_alignment_agent_spanish_recipe_text, test_live_alignment_agent_multi_recipe_pagination.",
+            "status": "pending",
+            "dependencies": [
+              "10.4"
+            ],
+            "parentTaskId": 10,
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "10.6 Documentation and task closure",
+            "description": "Create docs/Architecture/sections/alineamiento.md (full section doc). Update architecture-agent-framework.md (build_conditional_graph, AlignmentGraphState). Update architecture-data-model.md (recipe_unit_conversion entity, equivalence_source field). Update architecture-persistence.md (recipe_unit_conversion table). Update CLAUDE.md (Task 10 done, Task 11 next). Update tasks.json (Task 10 status → done).",
+            "details": "See .taskmaster/docs/task-10/plan.md § 10.6. Follow same structure as sections/configuracion.md: overview, agents, context loader, LangGraph graph, UI layout, confirm flow, gradio wiring, error handling.",
+            "status": "pending",
+            "dependencies": [
+              "10.5"
+            ],
+            "parentTaskId": 10,
+            "parentId": "undefined"
+          }
+        ]
       },
       {
         "id": "11",
@@ -1024,7 +1095,7 @@
         "dependencies": [
           "9"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -1116,7 +1187,7 @@
             "title": "17.8 Documentation updates for Task 17",
             "description": "Update CLAUDE.md task status table and architecture documentation to reflect changes made in Task 17.",
             "details": "Update the following documentation:\n1. CLAUDE.md - Update Task 17 status from pending to in-progress in task status table\n2. architecture-data-model.md - Document restaurant.description field\n3. sections/clasificacion.md - Document new restaurant profile question in ClassificationAgent\n4. sections/configuracion.md - Document restaurant_description context injection into ConfigurationAgent\n5. architecture-agent-framework.md - Document multi-turn agent context threading pattern",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               "17.7"
             ],
@@ -1129,7 +1200,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-20T01:00:32.824295Z",
+      "lastModified": "2026-03-20T13:19:41.705100Z",
       "taskCount": 17,
       "completedCount": 9,
       "tags": [
