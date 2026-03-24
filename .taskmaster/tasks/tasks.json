@@ -903,8 +903,8 @@
           {
             "id": 1,
             "title": "10.1 Data model and persistence prerequisites",
-            "description": "Add recipe_unit_conversion persistence layer and equivalence_source tracking. Unfreeze InventoryUnitEquivalence and add equivalence_source field. Add source field to RecipeUnitConversionEntry. Add recipe_unit_conversion table to schema.py and save/load/delete/list handlers to persistence.py. Add serialization pair to serialization.py. Add load_inventory_item_registry() to data_model_utils.py. Extend ingredients_to_display() with equivalent and inventory_link_status columns.",
-            "details": "See .taskmaster/docs/task-10/plan.md § 10.1. Grep for InventoryUnitEquivalence hashability callers before unfreezing. Composite key pattern: '{recipe_unit_id}_{family_id}_{inventory_item_id}'.",
+            "description": "Add recipe_unit_conversion persistence layer and equivalence_source tracking. Add STANDARD_RECIPE_UNIT_SYMBOLS frozenset and is_standard_recipe_unit() helper to data_model.py. Unfreeze InventoryUnitEquivalence and add equivalence_source field. Add source field to RecipeUnitConversionEntry. Add recipe_unit_conversion table to schema.py and save/load/delete/list handlers to persistence.py. Add serialization pair to serialization.py. Add load_inventory_item_registry() to data_model_utils.py. Extend ingredients_to_display() with equivalent and inventory_link_status columns.",
+            "details": "See .taskmaster/docs/task-10/plan.md § 10.1. Standard recipe units: {g, kg, ml, L, pza} — everything else is non-standard. Grep for InventoryUnitEquivalence hashability callers before unfreezing. Composite key pattern: '{recipe_unit_id}_{family_id}_{inventory_item_id}'.",
             "status": "in-progress",
             "dependencies": [],
             "parentTaskId": 10,
@@ -913,8 +913,8 @@
           {
             "id": 2,
             "title": "10.2 AlignmentAgent (core/agents/alignment_agent.py)",
-            "description": "Create AlignmentAgent(BaseAgent) with _IngredientProposal, _InventoryProposal, _AlignmentResponse Pydantic models. INPUT_SCHEMA: user_message, recipe_source, page_index. OUTPUT_SCHEMA: reply, recipe_draft, inventory_proposals, raw_response. _generate_prompt() injects 9 context keys. Enforce no-hallucination and volume-no-mass rules in system prompt. _process_response() merges non-None fields into _data_store across turns. Add uv add pypdf openpyxl pillow before implementing file parsing.",
-            "details": "See .taskmaster/docs/task-10/plan.md § 10.2. Context keys: restaurant_name, restaurant_type, restaurant_description, standardization_level, categories, families, existing_inventory_items, recipe_units, inventory_units. Inventory unit fallback rule: solids→g/kg, liquids→ml/L, countable→pza.",
+            "description": "Create AlignmentAgent(BaseAgent) with _IngredientProposal, _InventoryProposal, _AlignmentResponse Pydantic models. INPUT_SCHEMA: user_message, recipe_source, page_index. OUTPUT_SCHEMA: reply, recipe_draft, inventory_proposals, raw_response. _generate_prompt() injects 9 context keys. Enforce no-hallucination, volume-no-mass, standard recipe unit, and entity creation rules in system prompt. Register create_entity tool for operator-confirmed creation of new categories, families, or recipe units. _process_response() merges non-None fields into _data_store across turns. Add uv add pypdf openpyxl pillow before implementing file parsing.",
+            "details": "See .taskmaster/docs/task-10/plan.md § 10.2. Context keys: restaurant_name, restaurant_type, restaurant_description, standardization_level, categories, families, existing_inventory_items, recipe_units, inventory_units. create_entity tool: loads existing entities, assigns max ID + 1, saves to DataLake, updates in-memory context. For new non-standard recipe units, agent must ask operator for approximate equivalent.",
             "status": "pending",
             "dependencies": [
               "10.1"
@@ -949,7 +949,7 @@
           {
             "id": 5,
             "title": "10.5 Exports and tests",
-            "description": "Export AlignmentAgent from core/agents/__init__.py and core/__init__.py following WelcomeAgent/ClassificationAgent pattern. Create tests/unit/test_alignment_agent.py with 14 mocked tests and 2 live tests (skipped without ANTHROPIC_API_KEY).",
+            "description": "Export AlignmentAgent from core/agents/__init__.py and core/__init__.py following WelcomeAgent/ClassificationAgent pattern. Create tests/unit/test_alignment_agent.py with 20 mocked tests and 2 live tests (skipped without ANTHROPIC_API_KEY).",
             "details": "See .taskmaster/docs/task-10/plan.md § 10.5 and Test coverage section. Live tests: test_live_alignment_agent_spanish_recipe_text, test_live_alignment_agent_multi_recipe_pagination.",
             "status": "pending",
             "dependencies": [

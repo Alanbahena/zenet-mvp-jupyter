@@ -82,6 +82,25 @@ The agent may only extract data present in the uploaded file or the operator's w
 never invent, assume, or infer ingredients not stated. If the source is sparse, the draft
 stays short and accurate. Downstream agents receive only what the operator provided.
 
+### Standard recipe unit rule (no schema change)
+Only 5 recipe unit symbols are standard: `g`, `kg`, `ml`, `L`, `pza`. Any other symbol
+(taza, cda, cdta, oz, manojo, pizca, shot, etc.) is non-standard and requires an equivalent
+in ml or g. This is defined as a `frozenset` constant in `data_model.py` — no `is_standard`
+column on `RecipeUnit`, no schema migration. The AlignmentAgent uses this rule to decide
+which ingredients need the `equivalent` column filled.
+
+### Entity creation via tool with operator confirmation
+During recipe capture, the operator may reference a category, family, or recipe unit that
+was not configured in Task 9. The AlignmentAgent handles this via a registered tool:
+
+1. Agent first proposes mapping to an existing entity from context
+2. If no match fits, agent asks: "use an existing one, or create a new one?"
+3. Only if operator explicitly confirms → agent calls `create_entity` tool
+4. Tool saves the new entity to DataLake, assigns next sequential ID, updates agent context
+5. For new non-standard recipe units, agent asks for the approximate equivalent in g or ml
+
+The agent must never create entities without explicit operator confirmation.
+
 ---
 
 ## Files to modify / create
@@ -113,14 +132,23 @@ stays short and accurate. Downstream agents receive only what the operator provi
 
 ### Subtask 10.1 — Data model and persistence prerequisites
 
-**Goal:** Add `recipe_unit_conversion` persistence and `equivalence_source` tracking.
-All subsequent subtasks depend on this.
+**Goal:** Add `recipe_unit_conversion` persistence, `equivalence_source` tracking, and
+standard recipe unit constant. All subsequent subtasks depend on this.
 
 1. `core/operations/normalization.py`
    - Add `source: str = "agent_estimated"` field to `RecipeUnitConversionEntry` dataclass.
    - No rename, no removal of existing fields.
 
 2. `core/domain/data_model.py`
+   - Add standard recipe unit constant and helper:
+     ```python
+     STANDARD_RECIPE_UNIT_SYMBOLS = frozenset({"g", "kg", "ml", "L", "pza"})
+
+     def is_standard_recipe_unit(symbol: str) -> bool:
+         """Return True if the symbol is a standard recipe unit (no equivalent needed)."""
+         return symbol in STANDARD_RECIPE_UNIT_SYMBOLS
+     ```
+   - Place after `DEFAULT_INVENTORY_CATEGORIES` (near the other fixed-data constants).
    - Grep for any caller using `InventoryUnitEquivalence` as a dict key or set member before
      changing (hashability dependency).
    - Remove `frozen=True` from `@dataclass(frozen=True)` on `InventoryUnitEquivalence`.
@@ -231,10 +259,37 @@ All subsequent subtasks depend on this.
    **Rules enforced in system prompt:**
    - No-hallucination: only extract data present in the file or operator's words
    - Volume-no-mass: do not convert taza/cdas/ml to grams; record volume equivalent only
+   - Standard recipe unit rule: only {g, kg, ml, L, pza} are standard — any other symbol
+     requires an `equivalent` value (e.g., taza → "240 ml", cda → "15 ml")
    - Inventory unit fallback: if recipe unit has no direct inventory equivalent, use nearest
      standard (g for solids, ml for liquids, pza for countable items)
    - Category must be exactly `"Perecedero"` or `"No perecedero"` (fixed set)
    - Family must be chosen from the `families` context list; `null` if none fits
+   - Entity creation rule: if a recipe uses a category, family, or recipe unit not in context,
+     first propose mapping to an existing one. Only create a new entity if the operator
+     explicitly requests it. Never create entities without confirmation.
+
+   **Registered tool: `create_entity`**
+   ```python
+   def create_entity_tool(entity_type: str, name: str, symbol: str | None = None) -> str:
+       """Create a new category_recipe, family_inventory, or recipe_unit.
+       Only called after explicit operator confirmation.
+
+       - entity_type: "category_recipe" | "family_inventory" | "recipe_unit"
+       - name: display name for the entity
+       - symbol: required only for recipe_unit (e.g. "manojo")
+
+       Behavior:
+       1. Loads existing entities for that type from DataLake
+       2. Assigns ID = max existing ID + 1
+       3. Saves new entity to DataLake
+       4. Updates agent's in-memory context dict (categories/families/recipe_units list)
+       5. For new non-standard recipe units (symbol not in {g, kg, ml, L, pza}),
+          agent must ask operator for approximate equivalent in g or ml after creation
+       6. Returns confirmation string for the LLM to continue
+       """
+   ```
+   Registered via `self.register_tool()` in `AlignmentAgent.__post_init__()`.
 
    **`_process_response()`:**
    - Reads `_AlignmentResponse` fields
@@ -332,6 +387,10 @@ All subsequent subtasks depend on this.
     - Progress indicator: `"Receta X de ~N"` — N is the recipe count the operator stated
       (optional/approximate). Shows `"Receta X de ?"` if operator skipped the count question.
 
+    - When `create_entity` tool fires (agent creates new category/family/unit), the in-memory
+      context updates immediately. The right-column dropdowns and context reflect the new entity
+      for the current and all subsequent recipes in the session.
+
 ---
 
 ### Subtask 10.5 — Exports and tests
@@ -396,6 +455,12 @@ All subsequent subtasks depend on this.
 | `test_confirm_links_ingredient_to_existing_item` | `inventory_item_id` set on matched ingredient before saving |
 | `test_recipe_unit_conversion_roundtrip` | save → reload from SQLite returns same entry with source field |
 | `test_ingredients_to_display_equivalent_and_status_columns` | extended columns present in output dict |
+| `test_is_standard_recipe_unit_true_for_standard` | `is_standard_recipe_unit("g")` returns True |
+| `test_is_standard_recipe_unit_false_for_nonstandard` | `is_standard_recipe_unit("taza")` returns False |
+| `test_create_entity_tool_creates_category` | new category saved to DataLake with correct next ID |
+| `test_create_entity_tool_creates_recipe_unit` | new recipe unit saved with name and symbol |
+| `test_create_entity_tool_updates_agent_context` | agent context dict includes new entity after creation |
+| `test_agent_does_not_create_without_confirmation` | agent proposes mapping first, does not call tool unprompted |
 
 ### Live tests (skip unless `ANTHROPIC_API_KEY` set)
 
@@ -458,6 +523,8 @@ solids → `g` or `kg`; liquids → `ml` or `L`; countable → `pza`. Document i
 - [ ] `RecipeUnitConversionEntry.source` field added
 
 ### `core/domain/data_model.py`
+- [ ] `STANDARD_RECIPE_UNIT_SYMBOLS` frozenset added
+- [ ] `is_standard_recipe_unit()` helper added
 - [ ] `InventoryUnitEquivalence` unfrozen
 - [ ] `InventoryUnitEquivalence.equivalence_source` field added
 
@@ -482,6 +549,9 @@ solids → `g` or `kg`; liquids → `ml` or `L`; countable → `pza`. Document i
 - [ ] `_generate_prompt()` injects all 9 context keys
 - [ ] No-hallucination rule in system prompt
 - [ ] Volume-no-mass rule in system prompt
+- [ ] Standard recipe unit rule in system prompt
+- [ ] Entity creation rule in system prompt (no create without confirmation)
+- [ ] `create_entity` tool registered via `register_tool()`
 - [ ] `_process_response()` merges non-None fields across turns
 
 ### `core/agents/graph_utils.py`
@@ -502,7 +572,7 @@ solids → `g` or `kg`; liquids → `ml` or `L`; countable → `pza`. Document i
 - [ ] Progress indicator shown
 
 ### `tests/unit/test_alignment_agent.py`
-- [ ] 14 mocked tests passing
+- [ ] 20 mocked tests passing
 - [ ] 2 live tests skipped without API key, passing with key
 
 ### `docs/Architecture/sections/alineamiento.md`
