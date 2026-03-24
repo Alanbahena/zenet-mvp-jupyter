@@ -961,7 +961,7 @@
             "title": "10.6 Documentation and task closure",
             "description": "Create docs/Architecture/sections/alineamiento.md (full section doc). Update architecture-agent-framework.md (build_conditional_graph, AlignmentGraphState). Update architecture-data-model.md (recipe_unit_conversion entity, equivalence_source field). Update architecture-persistence.md (recipe_unit_conversion table). Update CLAUDE.md (Task 10 done, Task 11 next). Update tasks.json (Task 10 status → done).",
             "details": "See .taskmaster/docs/task-10/plan.md § 10.6. Follow same structure as sections/configuracion.md: overview, agents, context loader, LangGraph graph, UI layout, confirm flow, gradio wiring, error handling.",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [
               "10.5"
             ],
