@@ -273,6 +273,7 @@ class RecipeUnitConversionEntry:
 
     quantity: float
     base_unit_id: int
+    source: str = "agent_estimated"
 
 
 class RecipeUnitConversionRegistry:
@@ -297,6 +298,7 @@ class RecipeUnitConversionRegistry:
         *,
         family_id: Optional[int] = None,
         inventory_item_id: Optional[int] = None,
+        source: str = "agent_estimated",
     ) -> None:
         """Add a conversion entry scoped by recipe unit and optional family/item context.
 
@@ -307,7 +309,9 @@ class RecipeUnitConversionRegistry:
         if not math.isfinite(quantity) or quantity <= 0:
             raise ValueError("quantity must be finite and > 0")
         key = (recipe_unit_id, family_id, inventory_item_id)
-        self._entries[key] = RecipeUnitConversionEntry(quantity=quantity, base_unit_id=base_unit_id)
+        self._entries[key] = RecipeUnitConversionEntry(
+            quantity=quantity, base_unit_id=base_unit_id, source=source
+        )
 
     def get(
         self,

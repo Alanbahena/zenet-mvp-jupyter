@@ -9,7 +9,7 @@ helpers across entity types, and factory methods for related entities.
 from __future__ import annotations
 
 import math
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from core.domain.data_model import (
     FamilyInventoryRegistry,
@@ -20,6 +20,7 @@ from core.domain.data_model import (
     Recipe,
     RecipeUnitRegistry,
 )
+from core.domain.serialization import inventory_item_from_dict
 from core.operations.normalization import (
     DeductionLine,
     RecipeUnitConversionRegistry,
@@ -59,6 +60,19 @@ def format_ingredient_for_display(
     return f"{ingredient.quantity} {symbol} {ingredient.name}"
 
 
+def load_inventory_item_registry(data_lake: Any, session_id: str) -> InventoryItemRegistry:
+    """Load all InventoryItem entities from DataLake into a new registry.
+
+    Returns an empty registry if no items exist (safe no-op for new sessions).
+    """
+    registry = InventoryItemRegistry()
+    for item_id in data_lake.list_entity_ids("inventory_item"):
+        data = data_lake.load_entity("inventory_item", item_id)
+        if data:
+            registry.add(inventory_item_from_dict(data))
+    return registry
+
+
 def ingredients_to_display(
     recipe: Recipe,
     recipe_unit_registry: RecipeUnitRegistry,
@@ -68,6 +82,9 @@ def ingredients_to_display(
 
     Resolves unit symbol from recipe_unit_registry. If inventory_item_registry is given,
     resolves inventory item name by inventory_item_id or get_by_name(ing.name).
+
+    Always includes `equivalent` (per-ingredient mass equivalent, set by AlignmentAgent) and
+    `inventory_link_status` (default "needs_resolution"; caller overrides as needed).
     """
     result: list[dict] = []
     for ing in recipe.ingredients:
@@ -78,6 +95,8 @@ def ingredients_to_display(
             "quantity": ing.quantity,
             "unit_symbol": symbol,
             "unit_id": ing.unit_id,
+            "equivalent": None,
+            "inventory_link_status": "needs_resolution",
         }
         if inventory_item_registry is not None:
             item = inventory_item_registry.get(ing.inventory_item_id) if ing.inventory_item_id else None
