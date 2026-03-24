@@ -926,8 +926,8 @@
             "id": 3,
             "title": "10.3 LangGraph conditional graph (core/agents/graph_utils.py)",
             "description": "Add build_conditional_graph(nodes, conditional_edges, state_schema) to graph_utils.py. Keep build_sequential_graph unchanged. Define AlignmentGraphState(BaseGraphState) TypedDict with recipe_source, recipe_count, current_page_index, recipe_draft, inventory_proposals, user_message. Build alignment graph: initial_questions_node \u2192 conditional branch \u2192 file_extraction_node | conversational_node \u2192 review_node.",
-            "details": "See .taskmaster/docs/task-10/plan.md \u00a7 10.3. Evaluate at implementation time whether to define graph inline in alineamiento.py instead of adding generic helper to graph_utils.py.",
-            "status": "in-progress",
+            "details": "Cancelled \u2014 no LangGraph in any existing section. Single-agent conversational flow does not benefit from graph orchestration. File parsing library install deferred to 10.4.",
+            "status": "cancelled",
             "dependencies": [
               "10.2"
             ],
@@ -939,10 +939,8 @@
             "title": "10.4 Alineamiento section UI (gradio_app/sections/alineamiento.py)",
             "description": "Replace 5-line stub with full two-column render(). Left: chat panel. Right: progress indicator, recipe card (name/category/description/steps), ingredients table (name|qty|unit|equivalent|inventory link), inventory proposals table (name|category|family|status), Save Recipe + Inventory Items button, saved-recipes accumulator list. Implement _load_alignment_context(), _make_chat_fn(), _make_confirm_fn() (saves Recipe + InventoryItems, links matched items). Single-handler pattern (_chat_and_format). File upload gr.File revealed conditionally after format answer.",
             "details": "See .taskmaster/docs/task-10/plan.md \u00a7 10.4. Same single-handler pattern as configuracion.py \u2014 no State.change(). Generator pattern on confirm (yield loading state \u2192 save \u2192 yield result). Progress shows 'Receta X de ~N' or 'Receta X de ?' if count skipped.",
-            "status": "pending",
-            "dependencies": [
-              "10.3"
-            ],
+            "status": "in-progress",
+            "dependencies": [],
             "parentTaskId": 10,
             "parentId": "undefined"
           },
@@ -1200,7 +1198,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-24T01:08:51.537049Z",
+      "lastModified": "2026-03-24T01:34:26.735561Z",
       "taskCount": 17,
       "completedCount": 9,
       "tags": [
