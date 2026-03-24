@@ -78,6 +78,8 @@ Responde SIEMPRE con JSON usando exactamente estos campos:
 - "recipe_steps": lista de pasos de preparación como strings, o null
 - "ingredients": lista de ingredientes extraídos, o null
 - "inventory_proposals": lista de artículos de inventario a crear, o null
+- "show_file_upload": true si el operador indica que va a proporcionar recetas en un archivo; \
+false en cualquier otro caso
 """
 
 
@@ -105,6 +107,7 @@ class _AlignmentResponse(BaseModel):
     recipe_steps: list[str] | None = None
     ingredients: list[_IngredientProposal] | None = None
     inventory_proposals: list[_InventoryProposal] | None = None
+    show_file_upload: bool = False
 
 
 class AlignmentAgent(BaseAgent):
@@ -141,6 +144,7 @@ class AlignmentAgent(BaseAgent):
         "recipe_draft": "Dict with recipe fields for UI preview.",
         "inventory_proposals": "List of dicts for inventory panel.",
         "raw_response": "Full LLM response string.",
+        "show_file_upload": "True when operator indicates they will provide recipes via file.",
     }
     RESPONSE_MODEL: ClassVar[type[BaseModel] | None] = _AlignmentResponse
 
@@ -328,4 +332,5 @@ class AlignmentAgent(BaseAgent):
             "recipe_draft": merged_draft,
             "inventory_proposals": proposals,
             "raw_response": response,
+            "show_file_upload": bool(data.get("show_file_upload", False)),
         }
