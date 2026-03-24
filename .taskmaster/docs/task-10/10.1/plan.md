@@ -231,8 +231,9 @@ norm.RecipeUnitConversionEntry: "recipe_unit_conversion",
 "recipe_unit_conversion": ser.recipe_unit_conversion_to_dict,
 ```
 
-Add `import core.operations.normalization as norm` at the top of `persistence.py` if not
-already present.
+Add `from core.operations import normalization as norm` **inside** `_get_entity_registries()`
+alongside the existing lazy imports — do NOT add at module top level, as `_get_entity_registries()`
+uses lazy imports precisely to avoid circular import issues.
 
 ---
 
@@ -276,6 +277,9 @@ Import `RecipeUnitConversionKey` and `RecipeUnitConversionEntry` from
 ---
 
 ### Step 9 — `core/domain/data_model_utils.py`: `load_inventory_item_registry()`
+
+Add `from core.domain.serialization import inventory_item_from_dict` to the imports
+at the top of `data_model_utils.py` (alongside the existing imports from `core.domain.data_model`).
 
 Add after the existing imports/helpers:
 
@@ -381,11 +385,11 @@ The following tests from the parent plan are directly exercised by 10.1 code:
 ### `core/storage/persistence.py`
 - [ ] `"recipe_unit_conversion"` in `_SQLITE_ENTITY_TYPES`
 - [ ] save/load/delete/list handlers for `recipe_unit_conversion`
-- [ ] `_get_entity_registries()` updated with `recipe_unit_conversion` entry
-- [ ] `inventory_unit_equivalence_from_dict` uses `.get("equivalence_source", "operator")` fallback
+- [ ] `_get_entity_registries()` updated with `recipe_unit_conversion` entry (lazy import inside function)
 
 ### `core/domain/serialization.py`
 - [ ] `recipe_unit_conversion_to_dict` / `recipe_unit_conversion_from_dict` added (standalone pair pattern)
+- [ ] `inventory_unit_equivalence_from_dict` uses `.get("equivalence_source", "operator")` fallback
 
 ### `core/domain/data_model_utils.py`
 - [ ] `load_inventory_item_registry()` added
