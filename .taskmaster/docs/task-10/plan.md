@@ -131,7 +131,7 @@ The agent must never create entities without explicit operator confirmation.
 | `core/agents/__init__.py` | Modify | Export `AlignmentAgent` |
 | `core/__init__.py` | Modify | Re-export `AlignmentAgent` |
 | `gradio_app/sections/alineamiento.py` | Modify | Replace 5-line stub with full two-column section |
-| `tests/unit/test_alignment_agent.py` | Create | 15 mocked + 2 live tests |
+| `tests/unit/test_alignment_agent.py` | Create | 21 mocked + 2 live tests |
 | `docs/Architecture/sections/alineamiento.md` | Create | Full section architecture doc |
 | `docs/Architecture/architecture-agent-framework.md` | Modify | Document `build_conditional_graph` and `AlignmentGraphState` |
 | `docs/Architecture/architecture-data-model.md` | Modify | Document `recipe_unit_conversion` entity and `equivalence_source` addition |
@@ -192,7 +192,7 @@ standard recipe unit constant. All subsequent subtasks depend on this.
 5. `core/domain/serialization.py`
    - Add `recipe_unit_conversion_to_dict(entry, key) -> dict` and
      `recipe_unit_conversion_from_dict(data) -> tuple[RecipeUnitConversionKey, RecipeUnitConversionEntry]`.
-   - Register in `_get_entity_registries()` class_to_type, type_to_from_dict, type_to_to_dict maps.
+   - Follow the existing standalone function pair pattern (same as `inventory_unit_equivalence_to_dict` / `_from_dict`).
 
 6. `core/domain/data_model_utils.py`
    - Add `load_inventory_item_registry(data_lake, session_id) -> InventoryItemRegistry`:
@@ -395,7 +395,9 @@ standard recipe unit constant. All subsequent subtasks depend on this.
          `data_lake.save_entity("inventory_item", id, item_dict)`
       4. For matched inventory proposals: update `ingredient.inventory_item_id` in recipe dict
          before saving
-      5. yield final status + updated saved-recipes list
+      5. For each confirmed per-ingredient equivalent: save `RecipeUnitConversion` via
+         `data_lake.save_entity("recipe_unit_conversion", composite_id, entry_dict)`
+      6. yield final status + updated saved-recipes list
 
     - `_chat_and_format(...)` — single handler wired to `send_btn.click()`. Returns all
       outputs in one shot. No `State.change()` dependency (same pattern as configuracion).
@@ -536,6 +538,24 @@ may show many corrections needed.
 **Suggested action:** Define explicit fallback in AlignmentAgent system prompt at 10.2:
 solids → `g` or `kg`; liquids → `ml` or `L`; countable → `pza`. Document in 10.6.
 
+### [OPEN] — Per-ingredient equivalent confirmation timing
+**Source:** Validation of task 10
+**Problem:** The plan says the agent proposes per-ingredient equivalents (e.g. "1 taza de
+harina ≈ 120 g, ¿te parece bien?") but does not specify whether this happens
+ingredient-by-ingredient during extraction or as a batch after the full recipe draft is shown.
+**Impact:** Implementer at 10.2 must decide the UX flow; inconsistent choice could make the
+confirmation feel disjointed.
+**Suggested action:** Decide at 10.2 planning time. Recommend batch: show all equivalents in
+the preview table, operator confirms or corrects inline before saving.
+
+### [OPEN] — CLAUDE.md Task 17 status still says "pending"
+**Source:** Validation of task 10
+**Problem:** CLAUDE.md task status table shows Task 17 as `pending`, but tasks.json correctly
+shows `done`. Subtask 17.8 was supposed to update CLAUDE.md.
+**Impact:** Misleading for future implementers reading CLAUDE.md. Not blocking for Task 10
+since tasks.json is authoritative.
+**Suggested action:** Update CLAUDE.md Task 17 row to `done` before starting 10.1.
+
 ---
 
 ## Deliverable checklist
@@ -557,8 +577,7 @@ solids → `g` or `kg`; liquids → `ml` or `L`; countable → `pza`. Document i
 - [ ] save/load/delete/list handlers for `recipe_unit_conversion`
 
 ### `core/domain/serialization.py`
-- [ ] `recipe_unit_conversion_to_dict` / `recipe_unit_conversion_from_dict` added
-- [ ] Registered in `_get_entity_registries()` maps
+- [ ] `recipe_unit_conversion_to_dict` / `recipe_unit_conversion_from_dict` added (standalone pair pattern)
 
 ### `core/domain/data_model_utils.py`
 - [ ] `load_inventory_item_registry()` added
@@ -586,7 +605,7 @@ solids → `g` or `kg`; liquids → `ml` or `L`; countable → `pza`. Document i
 - [ ] Stub replaced with full `render()`
 - [ ] `_load_alignment_context()` loads all 5 entity sources
 - [ ] `_make_chat_fn()` follows load/run/save pattern
-- [ ] `_make_confirm_fn()` saves recipe + inventory items; links matched items
+- [ ] `_make_confirm_fn()` saves recipe + inventory items + recipe unit conversions; links matched items
 - [ ] Single-handler pattern (`_chat_and_format`) — no `State.change()`
 - [ ] File upload widget revealed conditionally after format answer
 - [ ] Saved-recipes list accumulates below confirm button
