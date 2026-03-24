@@ -82,6 +82,14 @@ have no `source` field. Task 10 adds:
 `build_conditional_graph` to support the file-path vs conversational-path branch after the
 initial questions node.
 
+### Missing recipe steps: ask once, skip if declined
+If the agent extracts a recipe but no preparation steps are found (file without steps, or
+operator only dictated ingredients), the agent asks once: "No encontré los pasos de
+preparación para [recipe]. ¿Me los puedes dictar?". If the operator provides them, they are
+included in the draft. If the operator skips or says "no los tengo", the recipe is saved with
+`steps=None`. The agent does not repeat the question. Consistent with the classification
+section pattern (one question, no insistence).
+
 ### No-hallucination rule on AlignmentAgent
 The agent may only extract data present in the uploaded file or the operator's words. It must
 never invent, assume, or infer ingredients not stated. If the source is sparse, the draft
@@ -123,7 +131,7 @@ The agent must never create entities without explicit operator confirmation.
 | `core/agents/__init__.py` | Modify | Export `AlignmentAgent` |
 | `core/__init__.py` | Modify | Re-export `AlignmentAgent` |
 | `gradio_app/sections/alineamiento.py` | Modify | Replace 5-line stub with full two-column section |
-| `tests/unit/test_alignment_agent.py` | Create | 14 mocked + 2 live tests |
+| `tests/unit/test_alignment_agent.py` | Create | 15 mocked + 2 live tests |
 | `docs/Architecture/sections/alineamiento.md` | Create | Full section architecture doc |
 | `docs/Architecture/architecture-agent-framework.md` | Modify | Document `build_conditional_graph` and `AlignmentGraphState` |
 | `docs/Architecture/architecture-data-model.md` | Modify | Document `recipe_unit_conversion` entity and `equivalence_source` addition |
@@ -264,6 +272,8 @@ standard recipe unit constant. All subsequent subtasks depend on this.
 
    **Rules enforced in system prompt:**
    - No-hallucination: only extract data present in the file or operator's words
+   - Missing steps: if no preparation steps found, ask the operator once. If declined,
+     save with `steps=None`. Do not repeat the question.
    - Per-ingredient equivalents: for non-standard units (taza, cda, cdta, etc.), reason
      per-ingredient using culinary knowledge and propose a mass equivalent in g or ml.
      Example: "1 taza de harina ≈ 120 g", "1 taza de arroz ≈ 185 g". Ask operator to
@@ -470,6 +480,7 @@ standard recipe unit constant. All subsequent subtasks depend on this.
 | `test_create_entity_tool_creates_recipe_unit` | new recipe unit saved with name and symbol |
 | `test_create_entity_tool_updates_agent_context` | agent context dict includes new entity after creation |
 | `test_agent_does_not_create_without_confirmation` | agent proposes mapping first, does not call tool unprompted |
+| `test_missing_steps_asks_once_then_saves_none` | when no steps found, agent asks once; on skip, recipe saved with `steps=None` |
 
 ### Live tests (skip unless `ANTHROPIC_API_KEY` set)
 
@@ -582,7 +593,7 @@ solids → `g` or `kg`; liquids → `ml` or `L`; countable → `pza`. Document i
 - [ ] Progress indicator shown
 
 ### `tests/unit/test_alignment_agent.py`
-- [ ] 20 mocked tests passing
+- [ ] 21 mocked tests passing
 - [ ] 2 live tests skipped without API key, passing with key
 
 ### `docs/Architecture/sections/alineamiento.md`
