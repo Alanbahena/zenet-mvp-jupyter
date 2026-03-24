@@ -915,7 +915,7 @@
             "title": "10.2 AlignmentAgent (core/agents/alignment_agent.py)",
             "description": "Create AlignmentAgent(BaseAgent) with _IngredientProposal, _InventoryProposal, _AlignmentResponse Pydantic models. INPUT_SCHEMA: user_message, recipe_source, page_index. OUTPUT_SCHEMA: reply, recipe_draft, inventory_proposals, raw_response. _generate_prompt() injects 9 context keys. Enforce no-hallucination, volume-no-mass, standard recipe unit, and entity creation rules in system prompt. Register create_entity tool for operator-confirmed creation of new categories, families, or recipe units. _process_response() merges non-None fields into _data_store across turns. Add uv add pypdf openpyxl pillow before implementing file parsing.",
             "details": "See .taskmaster/docs/task-10/plan.md \u00a7 10.2. Context keys: restaurant_name, restaurant_type, restaurant_description, standardization_level, categories, families, existing_inventory_items, recipe_units, inventory_units. create_entity tool: loads existing entities, assigns max ID + 1, saves to DataLake, updates in-memory context. For new non-standard recipe units, agent must ask operator for approximate equivalent.",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               "10.1"
             ],
@@ -927,7 +927,7 @@
             "title": "10.3 LangGraph conditional graph (core/agents/graph_utils.py)",
             "description": "Add build_conditional_graph(nodes, conditional_edges, state_schema) to graph_utils.py. Keep build_sequential_graph unchanged. Define AlignmentGraphState(BaseGraphState) TypedDict with recipe_source, recipe_count, current_page_index, recipe_draft, inventory_proposals, user_message. Build alignment graph: initial_questions_node \u2192 conditional branch \u2192 file_extraction_node | conversational_node \u2192 review_node.",
             "details": "See .taskmaster/docs/task-10/plan.md \u00a7 10.3. Evaluate at implementation time whether to define graph inline in alineamiento.py instead of adding generic helper to graph_utils.py.",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [
               "10.2"
             ],
@@ -1200,7 +1200,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-24T00:31:40.488534Z",
+      "lastModified": "2026-03-24T01:08:51.537049Z",
       "taskCount": 17,
       "completedCount": 9,
       "tags": [
