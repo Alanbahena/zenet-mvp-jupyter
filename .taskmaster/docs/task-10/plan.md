@@ -54,10 +54,15 @@ confirms what is created, not how it is measured.
 Agent paginates through detected recipes one by one using `page_index`. Operator does not
 re-upload the same file for each recipe.
 
-### Volume-to-mass conversion: not done
-`taza` = 240 ml (fixed volume), but taza → grams is ingredient-specific density. Task 10
-stores recipe quantities as-is. The `equivalent` column shows volume equivalents only
-(e.g., `"3 cdas → 45 ml"`). Mass equivalences are Task 11.
+### Per-ingredient mass equivalents proposed by agent
+Non-standard recipe units (taza, cda, cdta, etc.) require per-ingredient equivalents because
+volume-to-mass conversion is ingredient-specific: 1 taza de harina ≈ 120 g, 1 taza de arroz
+≈ 185 g. The agent uses culinary knowledge to reason per-ingredient and proposes the
+equivalent: `"1 taza de harina ≈ 120 g, ¿te parece bien?"`. The operator confirms, corrects,
+or says "no sé" (stored as `"agent_estimated"`). Confirmed equivalents are stored
+per-ingredient in `RecipeUnitConversionRegistry` with `inventory_item_id` key and appropriate
+`source` value (`"operator"` if corrected, `"agent_confirmed"` if accepted as-is,
+`"agent_estimated"` if operator skipped).
 
 ### RecipeUnitConversion persistence (Task 9 open item)
 `RecipeUnitConversionRegistry` currently has no persistence layer. Task 10 adds a
@@ -188,8 +193,9 @@ standard recipe unit constant. All subsequent subtasks depend on this.
      - Add to a new `InventoryItemRegistry` and return it
      - Returns empty registry if no items exist (no-op for new sessions)
    - Extend `ingredients_to_display()` return dict with:
-     - `equivalent: str | None` — human-readable volume equivalent for non-standard recipe
-       units (e.g. `"240 ml"` for taza, `"15 ml"` for cda); `None` for standard mass/volume units
+     - `equivalent: str | None` — per-ingredient mass equivalent for non-standard recipe
+       units (e.g. `"≈ 120 g"` for 1 taza de harina, `"≈ 185 g"` for 1 taza de arroz);
+       `None` for standard units (g, kg, ml, L, pza)
      - `inventory_link_status: str` — one of:
        `"standard"` | `"agent_estimated"` | `"operator_confirmed"` |
        `"needs_resolution"` | `"matched_existing"`
@@ -208,7 +214,7 @@ standard recipe unit constant. All subsequent subtasks depend on this.
        name: str
        quantity: float
        unit_symbol: str
-       equivalent: str | None = None          # e.g. "240 ml" for taza
+       equivalent: str | None = None          # per-ingredient mass equivalent, e.g. "≈ 120 g" for 1 taza de harina
        inventory_link_status: str             # matched_existing | new | needs_resolution
        matched_item_name: str | None = None   # canonical name if matched_existing
 
@@ -258,9 +264,12 @@ standard recipe unit constant. All subsequent subtasks depend on this.
 
    **Rules enforced in system prompt:**
    - No-hallucination: only extract data present in the file or operator's words
-   - Volume-no-mass: do not convert taza/cdas/ml to grams; record volume equivalent only
+   - Per-ingredient equivalents: for non-standard units (taza, cda, cdta, etc.), reason
+     per-ingredient using culinary knowledge and propose a mass equivalent in g or ml.
+     Example: "1 taza de harina ≈ 120 g", "1 taza de arroz ≈ 185 g". Ask operator to
+     confirm, correct, or skip. Never apply a universal volume-to-mass conversion.
    - Standard recipe unit rule: only {g, kg, ml, L, pza} are standard — any other symbol
-     requires an `equivalent` value (e.g., taza → "240 ml", cda → "15 ml")
+     requires an `equivalent` value proposed per-ingredient
    - Inventory unit fallback: if recipe unit has no direct inventory equivalent, use nearest
      standard (g for solids, ml for liquids, pza for countable items)
    - Category must be exactly `"Perecedero"` or `"No perecedero"` (fixed set)
@@ -444,8 +453,8 @@ standard recipe unit constant. All subsequent subtasks depend on this.
 | `test_extracts_recipe_from_plain_text` | name, category, ingredients parsed from Spanish recipe text |
 | `test_matches_existing_inventory_item` | ingredient matched to existing item; status = `"matched_existing"` |
 | `test_proposes_new_inventory_item_with_category_and_family` | new item gets correct category/family from context |
-| `test_nonstandard_unit_equivalent_populated` | taza → `"240 ml"` in equivalent column |
-| `test_no_volume_to_mass_conversion` | taza not converted to grams; equivalent is volume only |
+| `test_nonstandard_unit_per_ingredient_equivalent` | taza de harina → `"≈ 120 g"` in equivalent column (per-ingredient) |
+| `test_per_ingredient_equivalent_differs_by_ingredient` | same unit (taza) produces different equivalents for harina vs arroz |
 | `test_no_hallucination_on_sparse_input` | agent does not add ingredients not present in source |
 | `test_draft_accumulates_across_turns` | `_data_store` retains recipe_draft across multiple messages |
 | `test_load_alignment_context_all_keys_present` | all context keys returned when Task 9 entities exist |
@@ -475,7 +484,8 @@ standard recipe unit constant. All subsequent subtasks depend on this.
 
 - `InventoryUnit` equivalences (`factor_to_base`, `base_unit_id`) — Task 11
 - Full inventory structuring review UI — Task 11
-- Volume-to-mass conversion (taza → grams) — not done; store as-is in recipe units
+- Exact density tables — agent uses culinary knowledge for per-ingredient estimates, not
+  a lookup table. Operator confirms or corrects.
 - PDF/image OCR quality and library selection details — implementation choice at 10.2
 - Tasks 11–12 agent prompts and docs
 - Readiness KPI recalculation
@@ -548,7 +558,7 @@ solids → `g` or `kg`; liquids → `ml` or `L`; countable → `pza`. Document i
 - [ ] `AlignmentAgent` with `INPUT_SCHEMA`, `OUTPUT_SCHEMA`, `RESPONSE_MODEL`
 - [ ] `_generate_prompt()` injects all 9 context keys
 - [ ] No-hallucination rule in system prompt
-- [ ] Volume-no-mass rule in system prompt
+- [ ] Per-ingredient equivalent reasoning rule in system prompt
 - [ ] Standard recipe unit rule in system prompt
 - [ ] Entity creation rule in system prompt (no create without confirmation)
 - [ ] `create_entity` tool registered via `register_tool()`
