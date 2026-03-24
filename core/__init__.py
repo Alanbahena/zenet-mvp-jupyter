@@ -108,6 +108,7 @@ from core.ai.prompts import (
 from core.ai.utils import parse_structured_output, validate_structured_output
 from core.agents import (
     AgentRegistry,
+    AlignmentAgent,
     BaseAgent,
     ClassificationAgent,
     ConfigurationAgent,
@@ -225,6 +226,7 @@ __all__ = [
     "validate_structured_output",
     # agents
     "AgentRegistry",
+    "AlignmentAgent",
     "BaseAgent",
     "ClassificationAgent",
     "ConfigurationAgent",

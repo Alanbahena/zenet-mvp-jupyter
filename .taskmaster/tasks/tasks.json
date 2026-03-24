@@ -949,7 +949,7 @@
             "title": "10.5 Exports and tests",
             "description": "Export AlignmentAgent from core/agents/__init__.py and core/__init__.py following WelcomeAgent/ClassificationAgent pattern. Create tests/unit/test_alignment_agent.py with 20 mocked tests and 2 live tests (skipped without ANTHROPIC_API_KEY).",
             "details": "See .taskmaster/docs/task-10/plan.md § 10.5 and Test coverage section. Live tests: test_live_alignment_agent_spanish_recipe_text, test_live_alignment_agent_multi_recipe_pagination.",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               "10.4"
             ],
