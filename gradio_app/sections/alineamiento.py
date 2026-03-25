@@ -32,6 +32,21 @@ _INVENTORY_CATEGORY_IDS = {"Perecedero": 1, "No perecedero": 2}
 
 
 # ---------------------------------------------------------------------------
+# Initial greeting
+# ---------------------------------------------------------------------------
+
+def _initial_greeting(_level: int = 1) -> list[dict]:
+    """Return the opening chatbot message for the Alineamiento section."""
+    content = (
+        "Continuemos ahora con la sección de alineamiento de recetas. "
+        "Aquí vamos a capturar todas las recetas de tu menú — nombre, ingredientes con "
+        "cantidades y unidades, y pasos de preparación — para tener tu operación "
+        "documentada y lista. ¿Listo para empezar?"
+    )
+    return [{"role": "assistant", "content": content}]
+
+
+# ---------------------------------------------------------------------------
 # Context loader
 # ---------------------------------------------------------------------------
 
@@ -246,7 +261,7 @@ def _reset_agent_draft(data_lake: Any, session_id: str, provider: Any) -> None:
 # Chat handler
 # ---------------------------------------------------------------------------
 
-def _make_chat_fn(provider: Any, data_lake: Any):
+def _make_chat_fn(provider: Any, data_lake: Any, initial_greeting_text: str):
     def chat_fn(
         message: str,
         history: list,
@@ -264,6 +279,10 @@ def _make_chat_fn(provider: Any, data_lake: Any):
 
         agent = create_agent(AlignmentAgent, provider=provider, name="alignment_agent")
         agent.load_state(data_lake, session_id=f"alignment_agent_{session_id}")
+
+        # On the first turn inject the greeting into memory so the agent has context
+        if not agent.memory.get_messages():
+            agent.memory.add_assistant(initial_greeting_text)
 
         ctx = _load_alignment_context(data_lake, session_id)
 
@@ -466,12 +485,16 @@ def render(session_id: gr.State, data_lake: Any) -> None:
     saved_recipes_state       = gr.State([])
     recipe_ready_state        = gr.State(False)
 
+    # --- Greeting ---
+    greeting_messages = _initial_greeting(1)
+    greeting_text     = greeting_messages[0]["content"]
+
     # --- Layout ---
     with gr.Row():
         # LEFT — chat
         with gr.Column(scale=1):
             gr.Markdown("## Asistente de alineamiento")
-            chatbot = gr.Chatbot(label="Asistente Zenet", height="60vh")
+            chatbot = gr.Chatbot(label="Asistente Zenet", height="60vh", value=greeting_messages)
             textbox = gr.Textbox(
                 placeholder="Escribe tu mensaje...",
                 show_label=False,
@@ -509,7 +532,7 @@ def render(session_id: gr.State, data_lake: Any) -> None:
             saved_md  = gr.Markdown("")
 
     # --- Handlers ---
-    chat_fn    = _make_chat_fn(provider, data_lake)
+    chat_fn    = _make_chat_fn(provider, data_lake, greeting_text)
     confirm_fn = _make_confirm_fn(data_lake)
 
     def _chat_and_format(
@@ -557,17 +580,18 @@ def render(session_id: gr.State, data_lake: Any) -> None:
 
     def _confirm_and_save(
         draft, proposals, sid,
-        saved_recipes, page_index,
+        saved_recipes, page_index, history,
     ):
         # First yield: loading state
         yield (
-            gr.update(),               # recipe_draft_state — no change yet
+            gr.update(),                   # recipe_draft_state — no change yet
             gr.update(interactive=False),  # confirm_btn
-            "Guardando...",            # status_md
-            gr.update(),               # saved_md
-            gr.update(),               # saved_recipes_state
-            gr.update(),               # current_page_index_state
-            gr.update(),               # inventory_proposals_state
+            "Guardando...",                # status_md
+            gr.update(),                   # saved_md
+            gr.update(),                   # saved_recipes_state
+            gr.update(),                   # current_page_index_state
+            gr.update(),                   # inventory_proposals_state
+            gr.update(),                   # chatbot — no change yet
         )
 
         status  = ""
@@ -576,6 +600,7 @@ def render(session_id: gr.State, data_lake: Any) -> None:
             pass
 
         saved = list(saved_recipes)
+        new_history = list(history)
         if success:
             recipe_name = draft.get("recipe_name", "Receta")
             saved.append(f"{recipe_name} ✓")
@@ -583,6 +608,20 @@ def render(session_id: gr.State, data_lake: Any) -> None:
             new_index = page_index + 1
             new_draft = {}
             new_proposals = []
+
+            next_prompt = (
+                f"¡Listo! **{recipe_name}** guardada correctamente. "
+                "¿Tienes otra receta que capturar? Si es así, dime cómo la quieres compartir "
+                "— me la dicas aquí o tienes un archivo (PDF, imagen o Excel). "
+                "Si ya terminaste con todas tus recetas, podemos avanzar al paso 5: Estructura."
+            )
+            new_history.append({"role": "assistant", "content": next_prompt})
+
+            # Inject into agent memory so next turn has context
+            _agent = create_agent(AlignmentAgent, provider=provider, name="alignment_agent")
+            _agent.load_state(data_lake, session_id=f"alignment_agent_{sid}")
+            _agent.memory.add_assistant(next_prompt)
+            _agent.save_state(data_lake, session_id=f"alignment_agent_{sid}")
         else:
             new_index     = page_index
             new_draft     = draft
@@ -599,6 +638,7 @@ def render(session_id: gr.State, data_lake: Any) -> None:
             saved,
             new_index,
             new_proposals,
+            new_history,
         )
 
     # --- Wiring ---
@@ -631,11 +671,12 @@ def render(session_id: gr.State, data_lake: Any) -> None:
         fn=_confirm_and_save,
         inputs=[
             recipe_draft_state, inventory_proposals_state, session_id,
-            saved_recipes_state, current_page_index_state,
+            saved_recipes_state, current_page_index_state, chatbot,
         ],
         outputs=[
             recipe_draft_state, confirm_btn, status_md, saved_md,
             saved_recipes_state, current_page_index_state, inventory_proposals_state,
+            chatbot,
         ],
         show_progress="hidden",
     )
