@@ -490,6 +490,7 @@ from core.serialization import (
     inventory_item_to_dict, inventory_item_from_dict,
     recipe_to_dict, recipe_from_dict,  # Includes ingredients
     inventory_unit_equivalence_to_dict, inventory_unit_equivalence_from_dict,
+    recipe_unit_conversion_to_dict, recipe_unit_conversion_from_dict,
 )
 ```
 
@@ -509,6 +510,54 @@ restored = restaurant_from_dict(data)
 ```
 
 **See also:** [Data Model Architecture](architecture-data-model.md) for entity definitions.
+
+---
+
+### recipe_unit_conversion
+
+Added in Task 10. Stores per-ingredient recipe unit → mass/volume equivalents confirmed
+during the Alineamiento section.
+
+**SQLite-only** — in `_SQLITE_ENTITY_TYPES`. JSON backend does not support it.
+
+**Composite key:** entity id is a string `"{recipe_unit_id}_{family_id}_{inventory_item_id}"`.
+`family_id` and `inventory_item_id` are nullable (stored as `None` in Python; `NULL` in SQLite).
+
+**Schema (from `core/storage/schema.py`):**
+
+```sql
+CREATE TABLE IF NOT EXISTS recipe_unit_conversion (
+    recipe_unit_id    INTEGER NOT NULL,
+    family_id         INTEGER,
+    inventory_item_id INTEGER,
+    quantity          REAL NOT NULL,
+    base_unit_id      INTEGER NOT NULL,
+    source            TEXT NOT NULL DEFAULT 'agent_estimated',
+    PRIMARY KEY (recipe_unit_id, family_id, inventory_item_id)
+)
+```
+
+**Serialization:**
+
+```python
+from core.domain.serialization import (
+    recipe_unit_conversion_to_dict,   # (entry, key) -> dict
+    recipe_unit_conversion_from_dict, # dict -> (key, entry)
+)
+```
+
+`recipe_unit_conversion_to_dict(entry, key)` returns:
+
+```python
+{
+    "recipe_unit_id":    key.recipe_unit_id,
+    "family_id":         key.family_id,        # None if item-specific only
+    "inventory_item_id": key.inventory_item_id,
+    "quantity":          entry.quantity,
+    "base_unit_id":      entry.base_unit_id,
+    "source":            entry.source,         # "operator" | "agent_confirmed" | "agent_estimated"
+}
+```
 
 ---
 

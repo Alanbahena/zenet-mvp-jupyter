@@ -169,7 +169,7 @@ Tasks and subtasks are tracked in `.taskmaster/tasks/tasks.json`.
 | 7 | Bienvenida section agent | **done** |
 | 8 | Clasificación section agent | **done** |
 | 9  | Configuración section agent           | **done** |
-| 10 | Alineamiento section                   | pending  |
+| 10 | Alineamiento section                   | **done** |
 | 11 | Estructura section                     | pending  |
 | 12 | Manual operativo section               | pending  |
 | 13 | Gradio UI entry point (cancelled)      | cancelled |
@@ -178,7 +178,7 @@ Tasks and subtasks are tracked in `.taskmaster/tasks/tasks.json`.
 | 16 | Documentation and user guide           | pending  |
 | 17 | Restaurant profile enrichment          | **done** |
 
-**Task 10** (Alineamiento) is next.
+**Task 11** (Estructura) is next.
 
 ### TaskMaster docs
 
