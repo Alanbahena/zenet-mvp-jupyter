@@ -76,8 +76,21 @@ Responde SIEMPRE con JSON usando exactamente estos campos:
 - "recipe_category": categoría de la receta (de la lista disponible en contexto), o null
 - "recipe_description": descripción breve de la receta, o null
 - "recipe_steps": lista de pasos de preparación como strings, o null
-- "ingredients": lista de ingredientes extraídos, o null
-- "inventory_proposals": lista de artículos de inventario a crear, o null
+- "ingredients": lista de objetos con exactamente estos campos:
+    - "name": nombre del ingrediente (string)
+    - "quantity": cantidad numérica (float)
+    - "unit_symbol": símbolo de la unidad de receta, e.g. "g", "kg", "taza" (string)
+    - "equivalent": equivalente en masa/volumen para unidades no estándar, e.g. "≈ 120 g" \
+(string o null)
+    - "inventory_link_status": "matched_existing" si ya existe en inventario, "new" si es \
+nuevo, "needs_resolution" si no se puede determinar (string)
+    - "matched_item_name": nombre canónico del artículo si inventory_link_status es \
+"matched_existing", null en otro caso (string o null)
+- "inventory_proposals": lista de objetos con exactamente estos campos:
+    - "name": nombre canónico del artículo de inventario (string)
+    - "category": exactamente "Perecedero" o "No perecedero" (string)
+    - "family": nombre de familia del contexto, o null si ninguna aplica (string o null)
+    - "status": "new" si es un artículo nuevo, "matched_existing" si ya existe (string)
 - "show_file_upload": true si el operador indica que va a proporcionar recetas en un archivo; \
 false en cualquier otro caso
 """

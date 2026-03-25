@@ -109,17 +109,78 @@ def _load_alignment_context(data_lake: Any, session_id: str) -> dict:
 # File text extraction
 # ---------------------------------------------------------------------------
 
-def _extract_file_text(file_path: str) -> str:
-    """Extract plain text from PDF or Excel files.
+def _extract_text_via_vision(image_bytes: bytes, media_type: str, client: Any) -> str:
+    """Send a single image to Claude vision and return extracted text."""
+    import base64
+    image_data = base64.standard_b64encode(image_bytes).decode("utf-8")
+    response = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=4096,
+        messages=[{
+            "role": "user",
+            "content": [
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": media_type,
+                        "data": image_data,
+                    },
+                },
+                {
+                    "type": "text",
+                    "text": (
+                        "Extract all text from this image exactly as written. "
+                        "If this is a recipe, preserve ingredient names, quantities, "
+                        "units, and preparation steps."
+                    ),
+                },
+            ],
+        }],
+    )
+    return response.content[0].text if response.content else ""
 
-    Image support is deferred to post-MVP (requires Claude vision API extension).
-    Returns extracted text string passed as user_message to AlignmentAgent.
+
+def _extract_file_text(file_path: str, client: Any = None) -> str:
+    """Extract plain text from PDF, Excel, or image files.
+
+    For text-based PDFs and Excel files no API call is made.
+    For image files (JPG, PNG) and image-based PDFs the content is sent to
+    Claude vision to extract text. client must be an anthropic.Anthropic instance
+    when vision extraction may be needed.
     """
     lower = file_path.lower()
+
+    # --- Image files ---
+    if lower.endswith((".jpg", ".jpeg")):
+        with open(file_path, "rb") as f:
+            return _extract_text_via_vision(f.read(), "image/jpeg", client)
+    if lower.endswith(".png"):
+        with open(file_path, "rb") as f:
+            return _extract_text_via_vision(f.read(), "image/png", client)
+    if lower.endswith(".webp"):
+        with open(file_path, "rb") as f:
+            return _extract_text_via_vision(f.read(), "image/webp", client)
+
+    # --- PDF: try text extraction first, fall back to vision ---
     if lower.endswith(".pdf"):
         import pypdf
         reader = pypdf.PdfReader(file_path)
-        return "\n".join(page.extract_text() or "" for page in reader.pages)
+        text = "\n".join(page.extract_text() or "" for page in reader.pages)
+        if text.strip():
+            return text
+        # Image-based PDF — render each page and send to Claude vision
+        import fitz  # pymupdf
+        doc = fitz.open(file_path)
+        pages_text: list[str] = []
+        for page in doc:
+            pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
+            page_text = _extract_text_via_vision(pix.tobytes("png"), "image/png", client)
+            if page_text.strip():
+                pages_text.append(page_text)
+        return "\n".join(pages_text)
+
+    # --- Excel ---
     if lower.endswith((".xlsx", ".xls")):
         import openpyxl
         wb = openpyxl.load_workbook(file_path, data_only=True)
@@ -130,6 +191,7 @@ def _extract_file_text(file_path: str) -> str:
                 if line.strip():
                     lines.append(line)
         return "\n".join(lines)
+
     return ""
 
 
@@ -328,7 +390,7 @@ def _make_confirm_fn(data_lake: Any):
 
             for ing_dict in (recipe_draft.get("ingredients") or []):
                 ing_name    = ing_dict.get("name", "")
-                ing_qty     = float(ing_dict.get("quantity", 1))
+                ing_qty     = float(ing_dict.get("quantity") or 1)
                 unit_symbol = ing_dict.get("unit_symbol", "g")
                 unit_id     = ru_symbol_to_id.get(unit_symbol, 1)
                 inv_item_id = proposal_name_to_id.get(ing_name)
@@ -422,7 +484,7 @@ def render(session_id: gr.State, data_lake: Any) -> None:
             file_upload = gr.File(
                 label="Subir archivo de recetas",
                 visible=False,
-                file_types=[".pdf", ".xlsx", ".xls"],
+                file_types=[".pdf", ".xlsx", ".xls", ".jpg", ".jpeg", ".png", ".webp"],
             )
 
         # RIGHT — recipe preview
@@ -476,15 +538,18 @@ def render(session_id: gr.State, data_lake: Any) -> None:
     def _handle_file_upload(file_obj, history, sid, page_index):
         """Extract text from uploaded file and run one agent turn."""
         if file_obj is None:
-            return history, "", {}, [], False, gr.update(), False
-        text = _extract_file_text(file_obj.name if hasattr(file_obj, "name") else str(file_obj))
+            return history, "", {}, [], gr.update(), False, gr.update(interactive=False), "", [], []
+        text = _extract_file_text(
+            file_obj.name if hasattr(file_obj, "name") else str(file_obj),
+            client=provider.client,
+        )
         if not text.strip():
             history = list(history)
             history.append({
                 "role": "assistant",
                 "content": "No pude extraer texto del archivo. Intenta con un PDF o Excel con texto.",
             })
-            return history, "", {}, [], False, gr.update(), False
+            return history, "", {}, [], gr.update(), False, gr.update(interactive=False), "", [], []
         # Inject file content as user turn
         return _chat_and_format(
             f"[Contenido de archivo]\n{text}", history, sid, "file_content", page_index,
