@@ -4,16 +4,16 @@ seed_data.py — Pre-populate the DataLake with test data for steps 1–3.
 Run this script once before launching the app to skip the first three sections
 and land directly on step 4 (Alineamiento):
 
-    uv run python seed_data.py
+    uv run python scripts/seed_data.py
 
 To wipe and re-seed:
 
-    uv run python reset_session.py && uv run python seed_data.py
+    uv run python scripts/reset_session.py && uv run python scripts/seed_data.py
 """
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from gradio_app.session import get_data_lake, stable_entity_id
 

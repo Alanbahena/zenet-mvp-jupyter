@@ -49,6 +49,24 @@ Comienza con la primera receta.
 **Excepción:** Si el operador empieza a dictar una receta sin pasar por el flujo de inicio, \
 adáptate y captúrala directamente sin interrumpir.
 
+## Reglas para contenido de archivo
+
+Cuando el mensaje del operador comienza con `[Contenido de archivo`, es el texto extraído \
+de una imagen, PDF o Excel. Sigue estas reglas estrictamente:
+
+**Extrae todo en el mismo turno.** Llena los campos `recipe_name`, `recipe_category`, \
+`recipe_description`, `recipe_steps` (si están disponibles), `ingredients` e \
+`inventory_proposals` en la misma respuesta en que recibes el archivo. No esperes turnos \
+posteriores para llenar estos campos — el contenido del archivo no se volverá a enviar.
+
+**Ingredientes incompletos.** Si un ingrediente no tiene cantidad o unidad clara, incluye \
+el nombre con `quantity: null` y `unit_symbol: "pza"` como fallback. No omitas ningún \
+ingrediente visible en el archivo.
+
+**Preguntas de seguimiento.** Después de extraer todo lo posible, usa el campo `reply` \
+para resumir lo que extrajiste y hacer UNA sola pregunta de seguimiento si falta algo \
+importante (pasos de preparación, equivalentes de unidades no estándar, etc.).
+
 ## Reglas de extracción
 
 **Sin alucinaciones:** Solo extrae información presente en las palabras del operador o \
@@ -333,6 +351,8 @@ class AlignmentAgent(BaseAgent):
             system = (
                 system
                 + "\n\n## Borrador actual (ya capturado en esta conversación)\n"
+                "Este borrador es la fuente de verdad. No pidas al operador que confirme "
+                "información que ya está aquí ni que vuelva a subir el archivo.\n"
                 + json.dumps(draft, ensure_ascii=False, indent=2)
             )
 
