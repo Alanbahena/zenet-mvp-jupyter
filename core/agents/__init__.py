@@ -5,6 +5,7 @@ Provides BaseAgent and concrete agent implementations used across
 the notebook pipeline (Tasks 7-12).
 """
 
+from core.agents.alignment_agent import AlignmentAgent
 from core.agents.base_agent import BaseAgent
 from core.agents.classification_agent import ClassificationAgent
 from core.agents.configuration_agent import ConfigurationAgent
@@ -15,6 +16,7 @@ from core.agents.welcome_agent import WelcomeAgent
 
 __all__ = [
     "AgentRegistry",
+    "AlignmentAgent",
     "BaseAgent",
     "ClassificationAgent",
     "ConfigurationAgent",

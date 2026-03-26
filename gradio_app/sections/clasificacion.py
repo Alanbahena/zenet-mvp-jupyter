@@ -17,10 +17,11 @@ from core.agents.utils import create_agent
 from core.ai.providers import ClaudeProvider
 from core.domain.data_model import DEFAULT_RESTAURANT_TYPES
 from gradio_app.components import _format_draft, render_draft_preview
+from gradio_app.session import stable_entity_id
 
 
 def _load_classification_context(data_lake, session_id: str) -> dict:
-    entity_id = abs(hash(session_id)) % (2**31 - 1)
+    entity_id = stable_entity_id(session_id)
     restaurant_data = data_lake.load_entity("restaurant", entity_id)
     if not restaurant_data:
         return {}
@@ -71,7 +72,7 @@ def _make_confirm_fn(data_lake):
         level = (draft_dict or {}).get("standardization_level")
         if level is None:
             return "La clasificación no está completa. Continúa la conversación con el asistente."
-        entity_id = abs(hash(session_id)) % (2**31 - 1)
+        entity_id = stable_entity_id(session_id)
         try:
             classification_dict = {"standardization_level": level}
             description = (draft_dict or {}).get("restaurant_description")

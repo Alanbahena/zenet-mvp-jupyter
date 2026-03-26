@@ -21,6 +21,7 @@ from core.domain.data_model import (
     Restaurant,
     User,
 )
+from core.operations.normalization import RecipeUnitConversionEntry, RecipeUnitConversionKey
 
 
 def _require(d: dict[str, Any], key: str, entity_name: str) -> Any:
@@ -260,6 +261,7 @@ def inventory_unit_equivalence_to_dict(eq: InventoryUnitEquivalence) -> dict[str
         "inventory_item_id": eq.inventory_item_id,
         "base_unit_id": eq.base_unit_id,
         "factor_to_base": eq.factor_to_base,
+        "equivalence_source": eq.equivalence_source,
     }
 
 
@@ -270,4 +272,36 @@ def inventory_unit_equivalence_from_dict(d: dict[str, Any]) -> InventoryUnitEqui
         inventory_item_id=int(_require(d, "inventory_item_id", "inventory_unit_equivalence")),
         base_unit_id=int(_require(d, "base_unit_id", "inventory_unit_equivalence")),
         factor_to_base=float(_require(d, "factor_to_base", "inventory_unit_equivalence")),
+        equivalence_source=d.get("equivalence_source", "operator"),
     )
+
+
+def recipe_unit_conversion_to_dict(
+    entry: RecipeUnitConversionEntry, key: RecipeUnitConversionKey
+) -> dict[str, Any]:
+    """Serialize RecipeUnitConversionEntry + key to contract dict."""
+    return {
+        "recipe_unit_id": key.recipe_unit_id,
+        "family_id": key.family_id,
+        "inventory_item_id": key.inventory_item_id,
+        "quantity": entry.quantity,
+        "base_unit_id": entry.base_unit_id,
+        "source": entry.source,
+    }
+
+
+def recipe_unit_conversion_from_dict(
+    d: dict[str, Any],
+) -> tuple[RecipeUnitConversionKey, RecipeUnitConversionEntry]:
+    """Build (RecipeUnitConversionKey, RecipeUnitConversionEntry) from contract dict."""
+    key = RecipeUnitConversionKey(
+        recipe_unit_id=int(_require(d, "recipe_unit_id", "recipe_unit_conversion")),
+        family_id=int(d["family_id"]) if d.get("family_id") is not None else None,
+        inventory_item_id=int(d["inventory_item_id"]) if d.get("inventory_item_id") is not None else None,
+    )
+    entry = RecipeUnitConversionEntry(
+        quantity=float(_require(d, "quantity", "recipe_unit_conversion")),
+        base_unit_id=int(_require(d, "base_unit_id", "recipe_unit_conversion")),
+        source=d.get("source", "agent_estimated"),
+    )
+    return key, entry

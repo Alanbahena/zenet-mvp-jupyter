@@ -136,11 +136,11 @@ classDiagram
         +update_category_id()
     }
     class InventoryUnitEquivalence {
-        <<frozen dataclass>>
         +int unit_id
         +int inventory_item_id
         +int base_unit_id
         +float factor_to_base
+        +str equivalence_source
     }
     class Ingredient {
         +str name
@@ -177,6 +177,7 @@ classDiagram
 ```
 
 ![Class diagram](images/data-model-02-class-diagram.png)
+<!-- NOTE: PNG is stale — class diagram Mermaid source updated for Task 10 (InventoryUnitEquivalence unfrozen, equivalence_source added). Regenerate from Mermaid source. -->
 
 ---
 
@@ -316,6 +317,46 @@ flowchart TB
 - `InventoryItemRegistry.add(...)`:
   - enforces unique item name (case-insensitive)
   - `get_by_name(...)` supports name-based resolution in early onboarding flows
+
+---
+
+## 7. Task 10 additions (Alineamiento)
+
+### Standard recipe unit constant
+
+```python
+STANDARD_RECIPE_UNIT_SYMBOLS: frozenset[str] = frozenset({"g", "kg", "ml", "L", "pza"})
+
+def is_standard_recipe_unit(symbol: str) -> bool:
+    """Return True if the symbol is a standard recipe unit (no equivalent needed)."""
+    return symbol in STANDARD_RECIPE_UNIT_SYMBOLS
+```
+
+Standard units need no per-ingredient mass equivalent. Any other symbol (taza, cda, cdta,
+oz, manojo, pizca, etc.) is non-standard and requires an equivalent proposed per-ingredient
+by `AlignmentAgent`.
+
+### InventoryUnitEquivalence — unfrozen + equivalence_source
+
+`InventoryUnitEquivalence` was `@dataclass(frozen=True)` prior to Task 10. Task 10
+removed `frozen=True` to allow future updates by Task 11, and added:
+
+| Field | Type | Default | Meaning |
+|-------|------|---------|---------|
+| `equivalence_source` | `str` | `"operator"` | `"operator"` / `"agent_confirmed"` / `"agent_estimated"` |
+
+### RecipeUnitConversionEntry.source
+
+`RecipeUnitConversionEntry` (in `core/operations/normalization.py`) received a new field:
+
+| Field | Type | Default | Meaning |
+|-------|------|---------|---------|
+| `source` | `str` | `"agent_estimated"` | `"operator"` / `"agent_confirmed"` / `"agent_estimated"` |
+
+Source values:
+- `"operator"` — operator explicitly provided or corrected the equivalent
+- `"agent_confirmed"` — operator accepted the agent's culinary estimate as-is
+- `"agent_estimated"` — operator skipped; agent estimate stored without confirmation
 
 ---
 

@@ -12,4 +12,8 @@ dependencies = [
     "pydantic>=2.12.5",
     "gradio>=6.8.0",
     "langgraph>=1.0.10",
+    "pypdf>=6.9.2",
+    "openpyxl>=3.1.5",
+    "pillow>=12.1.1",
+    "pymupdf>=1.27.2.2",
 ]

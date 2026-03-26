@@ -133,6 +133,19 @@ def _create_tables(conn: sqlite3.Connection) -> None:
         )
     """)
 
+    # 8a. Recipe unit conversions (composite key: recipe_unit_id + family_id + inventory_item_id)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS recipe_unit_conversion (
+            recipe_unit_id    INTEGER NOT NULL,
+            family_id         INTEGER,
+            inventory_item_id INTEGER,
+            quantity          REAL NOT NULL,
+            base_unit_id      INTEGER NOT NULL,
+            source            TEXT NOT NULL DEFAULT 'agent_estimated',
+            PRIMARY KEY (recipe_unit_id, family_id, inventory_item_id)
+        )
+    """)
+
     # 8. Schema version (for future migrations)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS schema_version (
