@@ -45,6 +45,8 @@ Data produced by this section:
 | `recipe_draft` | `dict` | Accumulated recipe fields for UI preview |
 | `inventory_proposals` | `list` | Proposed inventory items |
 | `raw_response` | `str` | Full LLM response string |
+| `recipe_count` | `int \| None` | Total recipe count stated by operator |
+| `ready_to_save` | `bool` | True when agent has resolved all fields and equivalents |
 | `show_file_upload` | `bool` | True when operator indicates they have a file |
 
 **RESPONSE_MODEL (`_AlignmentResponse`)**
@@ -58,6 +60,8 @@ Data produced by this section:
 | `recipe_steps` | `list[str] \| None` | Preparation steps |
 | `ingredients` | `list[_IngredientProposal] \| None` | Extracted ingredients |
 | `inventory_proposals` | `list[_InventoryProposal] \| None` | Items to create in inventory |
+| `recipe_count` | `int \| None` | Total recipe count stated by operator; persisted once set |
+| `ready_to_save` | `bool` | True when all fields and equivalents are resolved |
 | `show_file_upload` | `bool` | Reveal file upload widget |
 
 **`_IngredientProposal` fields:** `name`, `quantity`, `unit_symbol`, `equivalent` (per-ingredient mass estimate, e.g. `"≈ 120 g"`), `inventory_link_status` (`"new"` / `"matched_existing"` / `"needs_resolution"`), `matched_item_name`.
@@ -66,7 +70,7 @@ Data produced by this section:
 
 ### Context block
 
-`_generate_prompt` injects 9 keys from the context dict into the system prompt:
+`_generate_prompt` injects 10 keys from the context dict into the system prompt:
 
 | Key | Source |
 |-----|--------|
@@ -79,19 +83,25 @@ Data produced by this section:
 | `existing_inventory_items` | `inventory_item` entities — list of canonical names |
 | `recipe_units` | `recipe_unit` entities — list of symbols |
 | `inventory_units` | `inventory_unit` entities — list of symbols |
+| `confirmed_equivalences` | `recipe_unit_conversion` entities — list of human-readable strings e.g. `"1 cucharada de mix ajo/shallot ≈ 8 g"` |
 
 The draft accumulated so far is also injected as a JSON block so the agent never repeats
 questions about fields already captured.
 
 ### System prompt rules
 
-- **No-hallucination:** extract only data present in the file or operator's words; never invent ingredients
+- **Opening flow (mandatory):** On operator confirmation of readiness, ask "¿Cuántas recetas tienes aproximadamente?" first; after reply ask the format question (level 1: explicit file-or-chat choice; level 2: proactive mention of both options); only start recipe capture after both answers. Exception: if operator starts dictating a recipe directly, adapt and capture it.
+- **File content extraction:** When message begins with `[Contenido de archivo`, extract all available fields (`recipe_name`, `ingredients`, etc.) in the same turn before asking any follow-up questions. The file content is not re-sent in subsequent turns.
+- **No-hallucination:** extract only data present in the file or operator's words; never invent ingredients or quantities
 - **Missing steps:** if no preparation steps are found, ask the operator once; if declined, save `recipe_steps=None`; do not repeat the question
-- **Per-ingredient equivalents:** for non-standard units (taza, cda, cdta, oz, manojo, pizca, etc.), reason per-ingredient using culinary knowledge and propose an equivalent in g or ml; example: 1 taza de harina ≈ 120 g, 1 taza de arroz ≈ 185 g; never apply a universal volume-to-mass conversion
-- **Standard unit rule:** only `{g, kg, ml, L, pza}` are standard — any other symbol requires an `equivalent` value in the ingredient proposal
-- **Inventory unit fallback:** if a recipe unit has no direct inventory equivalent, use the nearest standard (g/kg for solids, ml/L for liquids, pza for countable items)
+- **Per-ingredient equivalents:** for non-standard units, ask the operator per ingredient naming the ingredient explicitly (e.g. "¿Sabes cuántos gramos equivale 1 cucharada de mix ajo/shallot?"); only propose a culinary estimate if the operator doesn't know; never ask generically about the unit alone
+- **Confirmed equivalences:** equivalents already in context under `confirmed_equivalences` are not asked again
+- **Standard unit rule:** only `{g, kg, ml, L, pza}` are standard — any other symbol requires an `equivalent` value
+- **Inventory unit fallback:** solids → g/kg, liquids → ml/L, countable → pza
 - **Category constraint:** `category` must be exactly `"Perecedero"` or `"No perecedero"`
-- **Entity creation gate:** if the operator references a category, family, or recipe unit not in context, first propose mapping to an existing one; only call `create_entity` if the operator explicitly confirms; never create entities without confirmation
+- **Entity creation gate:** propose mapping to existing first; only call `create_entity` after explicit operator confirmation
+- **`ready_to_save`:** set to `true` only when recipe name is confirmed, all ingredients captured, all non-standard unit equivalents resolved, and no pending corrections
+- **Draft is authoritative:** the injected draft block is the source of truth; do not ask the operator to re-confirm information already captured or re-upload files
 
 ---
 
@@ -121,9 +131,9 @@ Registered via `self.register_tool()` in `AlignmentAgent.__post_init__()`.
 def _load_alignment_context(data_lake, session_id) -> dict
 ```
 
-`entity_id` for restaurant and classification lookup: `abs(hash(session_id)) % (2**31 - 1)`
+`entity_id` for restaurant and classification lookup: `stable_entity_id(session_id)` (from `gradio_app.session`)
 
-Returns a dict with 11 keys:
+Returns a dict with 12 keys:
 
 | Key | Type | Default when missing |
 |-----|------|----------------------|
@@ -136,6 +146,7 @@ Returns a dict with 11 keys:
 | `recipe_units` | `list[str]` | `[]` |
 | `inventory_units` | `list[str]` | `[]` |
 | `existing_inventory_items` | `list[str]` | `[]` |
+| `confirmed_equivalences` | `list[str]` | `[]` |
 | `data_lake` | `DataLake` | (passed through) |
 | `session_id` | `str` | (passed through) |
 
@@ -144,23 +155,27 @@ Returns a dict with 11 keys:
 ## 5. File upload flow
 
 ```python
-gr.File(visible=False, file_types=[".pdf", ".xlsx", ".xls"])
+gr.File(visible=False, file_types=[".pdf", ".xlsx", ".xls", ".jpg", ".jpeg", ".png", ".webp"])
 ```
 
 Revealed via `gr.update(visible=True)` when the agent returns `show_file_upload=True`.
 
 ```python
-def _extract_file_text(file_path: str) -> str
+def _extract_text_via_vision(image_bytes: bytes, media_type: str, client) -> str
+def _extract_file_text(file_path: str, client=None) -> str
 ```
 
 | File type | Library | Behavior |
 |-----------|---------|---------|
-| `.pdf` | `pypdf` (`PdfReader`) | Extracts text from all pages, joined with newlines |
-| `.xlsx`, `.xls` | `openpyxl` (`load_workbook`) | Iterates all sheets and rows; joins cell values with tabs/newlines |
-| Other (images, etc.) | — | Returns `""` — image OCR deferred to post-MVP |
+| `.jpg`, `.jpeg` | Claude vision API | Base64-encoded, sent to `claude-sonnet-4-6` via `client.messages.create`; returns extracted text |
+| `.png`, `.webp` | Claude vision API | Same as above with appropriate `media_type` |
+| `.pdf` (text-based) | `pypdf` (`PdfReader`) | Extracts text from all pages; returns joined string |
+| `.pdf` (image-based) | `pymupdf` (`fitz`) + Claude vision | Renders each page at 2x resolution via `page.get_pixmap(matrix=fitz.Matrix(2,2))`; sends each page image to Claude vision; joins results |
+| `.xlsx`, `.xls` | `openpyxl` (`load_workbook`) | Iterates all sheets and rows; joins non-empty cell values |
 
-When a file is uploaded, `_handle_file_upload` calls `_extract_file_text`, then runs the
-agent with `recipe_source="file_content"` and the extracted text as `user_message`.
+`_extract_file_text` requires `client` (an `anthropic.Anthropic` instance) for image and image-based PDF extraction. `provider.client` is passed from the `render()` scope.
+
+When a file is uploaded, `_handle_file_upload` calls `_extract_file_text`, then delegates to `_chat_and_format` with `recipe_source="file_content"`.
 
 ---
 
@@ -208,12 +223,41 @@ On exception: yield `(f"Error al guardar: {exc}", False)`.
 
 | Event | Handler | Inputs | Outputs |
 |-------|---------|--------|---------|
-| `send_btn.click` | `_chat_and_format` | `textbox, chatbot, session_id, recipe_source_state, current_page_index_state` (5) | `chatbot, textbox, recipe_draft_state, inventory_proposals_state, file_upload, recipe_ready_state, confirm_btn, recipe_name_md, ingredients_tbl, proposals_tbl` (10) |
-| `file_upload.upload` | `_handle_file_upload` | `file_upload, chatbot, session_id, current_page_index_state` (4) | same 10 outputs as send_btn |
-| `confirm_btn.click` | `_confirm_and_save` | `recipe_draft_state, inventory_proposals_state, session_id, saved_recipes_state, current_page_index_state` (5) | `recipe_draft_state, confirm_btn, status_md, saved_md, saved_recipes_state, current_page_index_state, inventory_proposals_state` (7) |
+| `send_btn.click` | `_chat_and_format` | `textbox, chatbot, session_id, recipe_source_state, current_page_index_state, recipe_count_state` (6) | `chatbot, textbox, recipe_draft_state, inventory_proposals_state, file_upload, recipe_ready_state, recipe_count_state, confirm_btn, recipe_name_md, ingredients_tbl, proposals_tbl, progress_md` (12) |
+| `file_upload.upload` | `_handle_file_upload` | `file_upload, chatbot, session_id, current_page_index_state, recipe_count_state` (5) | same 12 outputs as send_btn |
+| `confirm_btn.click` | `_confirm_and_save` | `recipe_draft_state, inventory_proposals_state, session_id, saved_recipes_state, current_page_index_state, chatbot, recipe_count_state` (7) | `recipe_draft_state, confirm_btn, status_md, saved_md, saved_recipes_state, current_page_index_state, inventory_proposals_state, chatbot, progress_md` (9) |
 
 **Key patterns:**
 - No `State.change()` dependency — same single-handler pattern as `configuracion.py`
 - `show_file_upload` field from agent output drives `file_upload` visibility update on each turn
+- `ready_to_save` field from agent output drives `confirm_btn` interactivity — button is disabled until agent explicitly signals all fields and equivalents are resolved
+- `recipe_count_state` persists the operator-stated total across turns; drives `progress_md` ("Receta X de N")
+- `_confirm_and_save` appends a post-save chat message to `chatbot`; if `new_index >= recipe_count`, shows a section-completion message directing to step 5 (Estructura)
 - `_confirm_and_save` is a generator (`yield`) — `show_progress="hidden"` passed to Gradio
 - Agent state is loaded, run, and saved within each handler call (load/run/save pattern)
+
+---
+
+## 9. Additional UI helpers
+
+### `_initial_greeting()`
+
+```python
+def _initial_greeting(_level: int = 1) -> list[dict]
+```
+
+Returns the static opening message shown in `gr.Chatbot(value=...)` when the section loads. The greeting is level-agnostic (same text for all operators). It is also injected into `AlignmentAgent` memory on the first turn via `agent.memory.add_assistant(greeting_text)` so the agent knows what was already said.
+
+### Status translation
+
+Display helpers translate agent status strings to Spanish before showing in the UI:
+
+| English | Spanish | Column |
+|---------|---------|--------|
+| `new` | `nuevo` | Inventario / Estado |
+| `matched_existing` | `existente` | Inventario / Estado |
+| `needs_resolution` | `por resolver` | Inventario |
+
+### `stable_entity_id`
+
+All sections use `stable_entity_id(session_id)` from `gradio_app.session` to compute the integer entity ID used for loading `restaurant` and `classification` entities. This replaces the previous `abs(hash(session_id)) % (2**31 - 1)` which was non-deterministic across Python restarts (PYTHONHASHSEED randomization). `stable_entity_id` uses MD5 for a consistent result across runs.

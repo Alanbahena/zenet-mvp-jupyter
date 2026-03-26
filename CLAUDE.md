@@ -41,6 +41,12 @@ jupyter notebook
 
 # Run examples (PYTHONPATH required — gradio_app and core are not installed packages)
 PYTHONPATH=. uv run python examples/graph_example.py
+
+# Pre-populate DB with test data (skip steps 1–3, go straight to step 4)
+uv run python scripts/seed_data.py
+
+# Wipe DB and re-seed
+uv run python scripts/reset_session.py && uv run python scripts/seed_data.py
 ```
 
 ### Environment variables
@@ -96,6 +102,7 @@ tests/
 docs/Architecture/       # Detailed architecture docs
 .taskmaster/             # Task management: tasks.json, subtask plans, PRD, docs
 notebooks/               # Jupyter notebooks (pipeline stages)
+scripts/                 # Dev utilities: seed_data.py, reset_session.py
 data/                    # raw, processed, normalized, outputs, sessions/
 examples/                # quickstart.py, tortilla_example.py, graph_example.py
 ```
