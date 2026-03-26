@@ -78,11 +78,12 @@ pregunta una sola vez al operador. Si el operador no los proporciona o dice que 
 tiene, guarda `recipe_steps` como null. No repitas la pregunta.
 
 **Equivalentes por ingrediente:** Para unidades de receta no estándar (taza, cda, cdta, \
-oz, manojo, pizca, etc.), primero pregunta al operador si conoce el equivalente en gramos \
-o mililitros. Ejemplo: "¿Sabes cuántos gramos equivale aproximadamente 1 taza de harina \
-en tu receta?". Solo si el operador dice que no sabe o no tiene el dato, propón tú el \
-equivalente usando conocimiento culinario (e.g. 1 taza de harina ≈ 120 g) y pídele que \
-confirme o corrija. Nunca propongas un equivalente sin antes preguntarle al operador. \
+oz, manojo, pizca, etc.), pregunta siempre por ingrediente específico, nombrando el \
+ingrediente explícitamente. Ejemplo correcto: "¿Sabes cuántos gramos equivale \
+aproximadamente 1 cucharada de mix ajo/shallot en tu receta?". Nunca preguntes por la \
+unidad de forma genérica ("¿cuánto es una cucharada en tu cocina?") — la conversión \
+depende del ingrediente, no de la unidad sola. Solo si el operador dice que no sabe, \
+propón tú el equivalente usando conocimiento culinario y pídele que confirme o corrija. \
 Nunca apliques una conversión universal de volumen a masa — siempre es por ingrediente \
 específico.
 
@@ -137,6 +138,11 @@ nuevo, "needs_resolution" si no se puede determinar (string)
 - "recipe_count": número total de recetas que el operador mencionó tener (entero), o null \
 si no lo ha mencionado aún. Solo actualiza este campo cuando el operador proporcione el número \
 por primera vez — no lo repitas en cada turno.
+- "ready_to_save": true únicamente cuando se cumplan TODAS estas condiciones: (1) el nombre \
+de la receta está confirmado, (2) todos los ingredientes están capturados, (3) todos los \
+equivalentes de unidades no estándar han sido resueltos (confirmados, corregidos o marcados \
+como estimados), y (4) el operador no tiene más correcciones pendientes. En cualquier otro \
+caso debe ser false.
 - "show_file_upload": true si el operador indica que va a proporcionar recetas en un archivo; \
 false en cualquier otro caso
 """
@@ -167,6 +173,7 @@ class _AlignmentResponse(BaseModel):
     ingredients: list[_IngredientProposal] | None = None
     inventory_proposals: list[_InventoryProposal] | None = None
     recipe_count: int | None = None
+    ready_to_save: bool = False
     show_file_upload: bool = False
 
 
@@ -407,5 +414,6 @@ class AlignmentAgent(BaseAgent):
             "inventory_proposals": proposals,
             "raw_response": response,
             "recipe_count": recipe_count,
+            "ready_to_save": bool(data.get("ready_to_save", False)),
             "show_file_upload": bool(data.get("show_file_upload", False)),
         }

@@ -347,15 +347,15 @@ def _make_chat_fn(provider: Any, data_lake: Any, initial_greeting_text: str):
             recipe_draft        = result["recipe_draft"]
             inventory_proposals = result["inventory_proposals"]
             recipe_count        = result.get("recipe_count")
+            recipe_ready        = bool(result.get("ready_to_save", False))
             show_file_upload    = bool(result.get("show_file_upload", False))
-            recipe_ready        = bool(recipe_draft.get("recipe_name"))
         except Exception:
             reply               = "Hubo un problema al conectar con el asistente. Por favor, intenta de nuevo."
             recipe_draft        = {}
             inventory_proposals = []
             recipe_count        = None
-            show_file_upload    = False
             recipe_ready        = False
+            show_file_upload    = False
 
         agent.save_state(data_lake, session_id=f"alignment_agent_{session_id}")
 
@@ -596,9 +596,11 @@ def render(session_id: gr.State, data_lake: Any) -> None:
         resolved_count = new_count if new_count is not None else recipe_count
         total = str(resolved_count) if resolved_count is not None else "?"
         progress = f"Receta {page_index + 1} de {total}"
-        ing_rows  = _ingredients_to_rows(draft.get("ingredients") or [])
+        ingredients = draft.get("ingredients") or []
+        ing_rows  = _ingredients_to_rows(ingredients)
         prop_rows = _proposals_to_rows(proposals)
         name_md   = f"### {draft.get('recipe_name', '')}" if draft.get("recipe_name") else ""
+        ing_label = f"Ingredientes ({len(ingredients)})" if ingredients else "Ingredientes"
         return (
             history,
             text,
@@ -609,7 +611,7 @@ def render(session_id: gr.State, data_lake: Any) -> None:
             resolved_count,
             gr.update(interactive=ready),
             name_md,
-            ing_rows,
+            gr.update(value=ing_rows, label=ing_label),
             prop_rows,
             progress,
         )
@@ -666,12 +668,22 @@ def render(session_id: gr.State, data_lake: Any) -> None:
             new_draft = {}
             new_proposals = []
 
-            next_prompt = (
-                f"¡Listo! **{recipe_name}** guardada correctamente. "
-                "¿Tienes otra receta que capturar? Si es así, dime cómo la quieres compartir "
-                "— me la dicas aquí o tienes un archivo (PDF, imagen o Excel). "
-                "Si ya terminaste con todas tus recetas, podemos avanzar al paso 5: Estructura."
-            )
+            all_done = recipe_count is not None and new_index >= recipe_count
+            if all_done:
+                next_prompt = (
+                    f"¡Listo! **{recipe_name}** guardada correctamente. "
+                    f"Has completado las {recipe_count} recetas de tu menú. "
+                    "Ya tienes toda la información capturada para continuar. "
+                    "Cuando estés listo, puedes avanzar al paso 5: **Estructura**, "
+                    "donde vamos a completar los artículos de inventario con sus unidades y equivalencias."
+                )
+            else:
+                next_prompt = (
+                    f"¡Listo! **{recipe_name}** guardada correctamente. "
+                    "¿Tienes otra receta que capturar? Si es así, dime cómo la quieres compartir "
+                    "— me la dicas aquí o tienes un archivo (PDF, imagen o Excel). "
+                    "Si ya terminaste con todas tus recetas, podemos avanzar al paso 5: Estructura."
+                )
             new_history.append({"role": "assistant", "content": next_prompt})
 
             # Inject into agent memory so next turn has context
