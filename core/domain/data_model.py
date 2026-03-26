@@ -84,6 +84,14 @@ def _valid_inventory_category_ids() -> set[int]:
     return {c.id for c in DEFAULT_INVENTORY_CATEGORIES}
 
 
+STANDARD_RECIPE_UNIT_SYMBOLS: frozenset[str] = frozenset({"g", "kg", "ml", "L", "pza"})
+
+
+def is_standard_recipe_unit(symbol: str) -> bool:
+    """Return True if the symbol is a standard recipe unit (no equivalent needed)."""
+    return symbol in STANDARD_RECIPE_UNIT_SYMBOLS
+
+
 @dataclass
 class RestaurantType:
     """Type of restaurant (e.g. Casual, Rápida, Gourmet, Cafeterías, Cafés)."""
@@ -720,7 +728,7 @@ class InventoryUnitRegistry:
 
 # --- Item-specific inventory unit equivalence (e.g. 1 box strawberries ≠ 1 box oranges) ---
 
-@dataclass(frozen=True)
+@dataclass
 class InventoryUnitEquivalence:
     """Per-inventory-item equivalence: for this unit and item, 1 unit = factor_to_base in base_unit_id.
 
@@ -732,6 +740,7 @@ class InventoryUnitEquivalence:
     inventory_item_id: int
     base_unit_id: int
     factor_to_base: float
+    equivalence_source: str = "operator"
 
 
 class InventoryUnitEquivalenceRegistry:

@@ -6,6 +6,7 @@ from core.ai.providers import ClaudeProvider
 from core.domain.data_model import DEFAULT_RESTAURANT_TYPES, Restaurant, User
 from core.domain.serialization import restaurant_to_dict, user_to_dict
 from gradio_app.components import render_chat_panel
+from gradio_app.session import stable_entity_id
 
 
 _RESTAURANT_TYPE_OPTIONS = [t.name for t in DEFAULT_RESTAURANT_TYPES]
@@ -24,7 +25,7 @@ _INITIAL_GREETING = [
 
 
 def _load_form_context(data_lake, session_id: str) -> dict:
-    entity_id = abs(hash(session_id)) % (2**31 - 1)
+    entity_id = stable_entity_id(session_id)
     restaurant_data = data_lake.load_entity("restaurant", entity_id)
     user_data = data_lake.load_entity("user", entity_id)
     if restaurant_data and user_data:
@@ -43,7 +44,7 @@ def _make_save_fn(data_lake):
             return "El nombre del operador es obligatorio.", gr.update()
         if not (restaurant_name or "").strip():
             return "El nombre del restaurante es obligatorio.", gr.update()
-        entity_id = abs(hash(session_id)) % (2**31 - 1)
+        entity_id = stable_entity_id(session_id)
         restaurant_type_id = _RESTAURANT_TYPE_NAME_TO_ID.get(restaurant_type_label)
         restaurant = Restaurant(
             id=entity_id,

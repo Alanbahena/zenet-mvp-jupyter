@@ -41,6 +41,12 @@ jupyter notebook
 
 # Run examples (PYTHONPATH required — gradio_app and core are not installed packages)
 PYTHONPATH=. uv run python examples/graph_example.py
+
+# Pre-populate DB with test data (skip steps 1–3, go straight to step 4)
+uv run python scripts/seed_data.py
+
+# Wipe DB and re-seed
+uv run python scripts/reset_session.py && uv run python scripts/seed_data.py
 ```
 
 ### Environment variables
@@ -96,6 +102,7 @@ tests/
 docs/Architecture/       # Detailed architecture docs
 .taskmaster/             # Task management: tasks.json, subtask plans, PRD, docs
 notebooks/               # Jupyter notebooks (pipeline stages)
+scripts/                 # Dev utilities: seed_data.py, reset_session.py
 data/                    # raw, processed, normalized, outputs, sessions/
 examples/                # quickstart.py, tortilla_example.py, graph_example.py
 ```
@@ -169,7 +176,7 @@ Tasks and subtasks are tracked in `.taskmaster/tasks/tasks.json`.
 | 7 | Bienvenida section agent | **done** |
 | 8 | Clasificación section agent | **done** |
 | 9  | Configuración section agent           | **done** |
-| 10 | Alineamiento section                   | pending  |
+| 10 | Alineamiento section                   | **done** |
 | 11 | Estructura section                     | pending  |
 | 12 | Manual operativo section               | pending  |
 | 13 | Gradio UI entry point (cancelled)      | cancelled |
@@ -178,7 +185,7 @@ Tasks and subtasks are tracked in `.taskmaster/tasks/tasks.json`.
 | 16 | Documentation and user guide           | pending  |
 | 17 | Restaurant profile enrichment          | **done** |
 
-**Task 10** (Alineamiento) is next.
+**Task 11** (Estructura) is next.
 
 ### TaskMaster docs
 

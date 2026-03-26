@@ -26,6 +26,15 @@ def _file_path(data_dir: str, entity_type: str, entity_id: int | str) -> str:
     return os.path.join(data_dir, f"{entity_type}_{eid}.json")
 
 
+def _parse_ruc_id(entity_id: str) -> tuple[int, int | None, int | None]:
+    """Parse composite recipe_unit_conversion id string to (recipe_unit_id, family_id, inventory_item_id)."""
+    parts = str(entity_id).split("_")
+    recipe_unit_id = int(parts[0])
+    family_id = None if parts[1] == "None" else int(parts[1])
+    inventory_item_id = None if parts[2] == "None" else int(parts[2])
+    return recipe_unit_id, family_id, inventory_item_id
+
+
 class JsonStorage:
     """
     File-based storage: one JSON file per entity instance.
@@ -109,6 +118,7 @@ _SQLITE_ENTITY_TYPES = frozenset({
     "inventory_item",
     "recipe",
     "inventory_unit_equivalence",
+    "recipe_unit_conversion",
     "agent_state",
     "classification",
 })
@@ -325,6 +335,27 @@ class SqliteStorage:
                         data_dict["factor_to_base"],
                     ),
                 )
+            elif entity_type == "recipe_unit_conversion":
+                ruc_unit_id, ruc_family_id, ruc_item_id = _parse_ruc_id(entity_id)
+                cursor.execute(
+                    """
+                    INSERT INTO recipe_unit_conversion
+                        (recipe_unit_id, family_id, inventory_item_id, quantity, base_unit_id, source)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(recipe_unit_id, family_id, inventory_item_id) DO UPDATE SET
+                        quantity = excluded.quantity,
+                        base_unit_id = excluded.base_unit_id,
+                        source = excluded.source
+                    """,
+                    (
+                        ruc_unit_id,
+                        ruc_family_id,
+                        ruc_item_id,
+                        data_dict["quantity"],
+                        data_dict["base_unit_id"],
+                        data_dict.get("source", "agent_estimated"),
+                    ),
+                )
             elif entity_type == "agent_state":
                 cursor.execute(
                     """
@@ -423,6 +454,18 @@ class SqliteStorage:
                 )
                 row = cursor.fetchone()
                 return dict(row) if row else None
+            elif entity_type == "recipe_unit_conversion":
+                ruc_unit_id, ruc_family_id, ruc_item_id = _parse_ruc_id(entity_id)
+                cursor.execute(
+                    """
+                    SELECT recipe_unit_id, family_id, inventory_item_id, quantity, base_unit_id, source
+                    FROM recipe_unit_conversion
+                    WHERE recipe_unit_id = ? AND family_id IS ? AND inventory_item_id IS ?
+                    """,
+                    (ruc_unit_id, ruc_family_id, ruc_item_id),
+                )
+                row = cursor.fetchone()
+                return dict(row) if row else None
             elif entity_type == "agent_state":
                 cursor.execute(
                     "SELECT data FROM agent_state WHERE session_id = ?", (str(entity_id),)
@@ -456,6 +499,15 @@ class SqliteStorage:
                     """,
                     (unit_id, inventory_item_id),
                 )
+            elif entity_type == "recipe_unit_conversion":
+                ruc_unit_id, ruc_family_id, ruc_item_id = _parse_ruc_id(entity_id)
+                cursor.execute(
+                    """
+                    DELETE FROM recipe_unit_conversion
+                    WHERE recipe_unit_id = ? AND family_id IS ? AND inventory_item_id IS ?
+                    """,
+                    (ruc_unit_id, ruc_family_id, ruc_item_id),
+                )
             elif entity_type == "agent_state":
                 cursor.execute(
                     "DELETE FROM agent_state WHERE session_id = ?", (str(entity_id),)
@@ -476,6 +528,11 @@ class SqliteStorage:
             if entity_type == "inventory_unit_equivalence":
                 cursor.execute("SELECT unit_id, inventory_item_id FROM inventory_unit_equivalence")
                 return [f"{row[0]}_{row[1]}" for row in cursor.fetchall()]
+            elif entity_type == "recipe_unit_conversion":
+                cursor.execute(
+                    "SELECT recipe_unit_id, family_id, inventory_item_id FROM recipe_unit_conversion"
+                )
+                return [f"{row[0]}_{row[1]}_{row[2]}" for row in cursor.fetchall()]
             elif entity_type == "agent_state":
                 cursor.execute("SELECT session_id FROM agent_state")
                 return [row[0] for row in cursor.fetchall()]
@@ -492,6 +549,7 @@ class SqliteStorage:
 def _get_entity_registries() -> tuple[dict[type, str], dict[str, Any], dict[str, Any]]:
     from core.domain import data_model as dm
     from core.domain import serialization as ser
+    from core.operations import normalization as norm
     class_to_type: dict[type, str] = {
         dm.Restaurant: "restaurant",
         dm.User: "user",
@@ -502,6 +560,7 @@ def _get_entity_registries() -> tuple[dict[type, str], dict[str, Any], dict[str,
         dm.InventoryItem: "inventory_item",
         dm.Recipe: "recipe",
         dm.InventoryUnitEquivalence: "inventory_unit_equivalence",
+        norm.RecipeUnitConversionEntry: "recipe_unit_conversion",
     }
     type_to_from_dict: dict[str, Any] = {
         "restaurant": ser.restaurant_from_dict,
@@ -513,6 +572,7 @@ def _get_entity_registries() -> tuple[dict[type, str], dict[str, Any], dict[str,
         "inventory_item": ser.inventory_item_from_dict,
         "recipe": ser.recipe_from_dict,
         "inventory_unit_equivalence": ser.inventory_unit_equivalence_from_dict,
+        "recipe_unit_conversion": ser.recipe_unit_conversion_from_dict,
     }
     type_to_to_dict: dict[str, Any] = {
         "restaurant": ser.restaurant_to_dict,
@@ -524,6 +584,7 @@ def _get_entity_registries() -> tuple[dict[type, str], dict[str, Any], dict[str,
         "inventory_item": ser.inventory_item_to_dict,
         "recipe": ser.recipe_to_dict,
         "inventory_unit_equivalence": ser.inventory_unit_equivalence_to_dict,
+        "recipe_unit_conversion": ser.recipe_unit_conversion_to_dict,
     }
     return class_to_type, type_to_from_dict, type_to_to_dict
 

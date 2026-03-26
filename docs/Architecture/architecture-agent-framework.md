@@ -12,7 +12,7 @@ flowchart LR
     T4["Task 4<br/>LLM Framework<br/>LlmProvider<br/>ConversationMemory<br/>ToolRegistry"]
     T5["Task 5<br/>Agent Framework<br/>BaseAgent<br/>AgentRegistry<br/>create_agent()"]
     T6["Task 6<br/>Workflow Engine<br/>done"]
-    T712["Tasks 7–12<br/>Notebook Agents<br/>WelcomeAgent ✓<br/>ClassificationAgent ✓<br/>ConfigurationAgent ✓<br/>ConsistencyCheckAgent ✓<br/>..."]
+    T712["Tasks 7–12<br/>Notebook Agents<br/>WelcomeAgent ✓<br/>ClassificationAgent ✓<br/>ConfigurationAgent ✓<br/>ConsistencyCheckAgent ✓<br/>AlignmentAgent ✓<br/>..."]
 
     T4 -->|"provider, memory,<br/>tool registry"| T5
     T5 -->|"run(), INPUT_SCHEMA<br/>OUTPUT_SCHEMA<br/>AgentRegistry"| T6
@@ -361,20 +361,23 @@ that already accept a `context` dict require no changes beyond a new key in `_ge
 
 ---
 
-## 10. Deferred — external framework integration
+## 10. Note on external framework integration (LangGraph)
 
-## Note on External Frameworks (LangGraph, CrewAI, LangChain, Autogen)
+**Evaluation outcome for Task 10 (Alineamiento):**
 
-External framework integration is **not in scope for Task 5**.
+LangGraph was evaluated as part of Task 10 planning. A single conversational agent
+(`AlignmentAgent`) handles recipe extraction, inventory proposals, and entity creation
+in one LLM call. No multi-agent fan-out and no conditional branching between independent
+agents were needed — the file-vs-conversation branch is a simple `if/else` in the
+Gradio handler. LangGraph was not adopted for Task 10.
 
-The first concrete use case is **Task 10 (Alignment Agent)**: a user uploads a PDF, Excel, or
-image file and multiple agents collaborate to extract, normalize, and classify the data.
-That workflow — cyclic, conditional, multi-agent with shared state — maps well to **LangGraph**.
+**When LangGraph would be appropriate in this project:**
 
-When writing the Task 10 plan, evaluate LangGraph for orchestrating the file processing
-multi-agent workflow. At that point the requirements are concrete and the right tool can be
-chosen with confidence. Introducing adapters now — before any agent needs them — would be
-premature abstraction.
+| Use case | Why LangGraph fits |
+|----------|--------------------|
+| Multi-agent fan-out (e.g. parallel UnitResolver + PriceEstimator + NutritionAgent) | Independent subgraphs run in parallel; shared state merged after |
+| Retry loops with quality gate (e.g. AlignmentAgent → ConsistencyCheckAgent → loop back) | Cyclic edges not possible with sequential helpers |
+| Full pipeline API (all sections in sequence, no UI, API-only) | `StateGraph` over all section agents; no Gradio needed |
 
 `BaseAgent`'s clean, composable interface (simple dataclass, `run()` returns a dict)
-is easy to wrap with any framework later without breaking changes.
+is easy to wrap with any framework without breaking changes.
