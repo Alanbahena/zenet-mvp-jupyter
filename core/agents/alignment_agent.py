@@ -60,11 +60,13 @@ pregunta una sola vez al operador. Si el operador no los proporciona o dice que 
 tiene, guarda `recipe_steps` como null. No repitas la pregunta.
 
 **Equivalentes por ingrediente:** Para unidades de receta no estándar (taza, cda, cdta, \
-oz, manojo, pizca, etc.), razona el equivalente en masa por ingrediente usando conocimiento \
-culinario. Ejemplo: 1 taza de harina ≈ 120 g, 1 taza de arroz ≈ 185 g, 1 taza de leche \
-≈ 240 ml. Propón el equivalente en el campo `equivalent` y menciona la propuesta en tu \
-respuesta para que el operador confirme o corrija. Nunca apliques una conversión universal \
-de volumen a masa — siempre es por ingrediente específico.
+oz, manojo, pizca, etc.), primero pregunta al operador si conoce el equivalente en gramos \
+o mililitros. Ejemplo: "¿Sabes cuántos gramos equivale aproximadamente 1 taza de harina \
+en tu receta?". Solo si el operador dice que no sabe o no tiene el dato, propón tú el \
+equivalente usando conocimiento culinario (e.g. 1 taza de harina ≈ 120 g) y pídele que \
+confirme o corrija. Nunca propongas un equivalente sin antes preguntarle al operador. \
+Nunca apliques una conversión universal de volumen a masa — siempre es por ingrediente \
+específico.
 
 **Unidades estándar:** Solo g, kg, ml, L, pza son unidades estándar y no requieren \
 equivalente. Cualquier otra unidad requiere un valor en el campo `equivalent`.
@@ -114,6 +116,9 @@ nuevo, "needs_resolution" si no se puede determinar (string)
     - "category": exactamente "Perecedero" o "No perecedero" (string)
     - "family": nombre de familia del contexto, o null si ninguna aplica (string o null)
     - "status": "new" si es un artículo nuevo, "matched_existing" si ya existe (string)
+- "recipe_count": número total de recetas que el operador mencionó tener (entero), o null \
+si no lo ha mencionado aún. Solo actualiza este campo cuando el operador proporcione el número \
+por primera vez — no lo repitas en cada turno.
 - "show_file_upload": true si el operador indica que va a proporcionar recetas en un archivo; \
 false en cualquier otro caso
 """
@@ -143,6 +148,7 @@ class _AlignmentResponse(BaseModel):
     recipe_steps: list[str] | None = None
     ingredients: list[_IngredientProposal] | None = None
     inventory_proposals: list[_InventoryProposal] | None = None
+    recipe_count: int | None = None
     show_file_upload: bool = False
 
 
@@ -312,6 +318,11 @@ class AlignmentAgent(BaseAgent):
             context_parts.append(
                 f"Unidades de inventario disponibles: {', '.join(context['inventory_units'])}"
             )
+        if context.get("confirmed_equivalences"):
+            context_parts.append(
+                "Equivalentes ya confirmados (no preguntes de nuevo por estos):\n"
+                + "\n".join(f"  - {eq}" for eq in context["confirmed_equivalences"])
+            )
 
         if context_parts:
             system = system + "\n\n## Contexto del restaurante\n" + "\n".join(context_parts)
@@ -363,10 +374,18 @@ class AlignmentAgent(BaseAgent):
         proposals = list(data.get("inventory_proposals") or [])
         self.store("inventory_proposals", proposals)
 
+        # recipe_count: persist once set, never overwrite with null
+        recipe_count = data.get("recipe_count")
+        if recipe_count is not None:
+            self.store("recipe_count", recipe_count)
+        else:
+            recipe_count = self.retrieve("recipe_count", None)
+
         return {
             "reply": data.get("reply", ""),
             "recipe_draft": merged_draft,
             "inventory_proposals": proposals,
             "raw_response": response,
+            "recipe_count": recipe_count,
             "show_file_upload": bool(data.get("show_file_upload", False)),
         }

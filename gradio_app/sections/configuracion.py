@@ -18,6 +18,7 @@ from core.agents.configuration_agent import ConfigurationAgent
 from core.agents.consistency_check_agent import ConsistencyCheckAgent
 from core.agents.utils import create_agent
 from core.ai.providers import ClaudeProvider
+from gradio_app.session import stable_entity_id
 from core.domain.data_model import (
     DEFAULT_RESTAURANT_TYPES,
     CategoryRecipe,
@@ -116,7 +117,7 @@ _ENTITY_BUILDERS = {
 
 def _load_configuration_context(data_lake, session_id: str) -> dict:
     """Load restaurant type and classification level from DataLake for this session."""
-    entity_id = abs(hash(session_id)) % (2**31 - 1)
+    entity_id = stable_entity_id(session_id)
 
     restaurant_name = ""
     restaurant_type = ""

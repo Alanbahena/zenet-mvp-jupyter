@@ -1,3 +1,4 @@
+import hashlib
 import os
 
 from core.storage.persistence import DataLake
@@ -10,6 +11,15 @@ def get_data_lake() -> DataLake:
     """
     os.makedirs("data", exist_ok=True)
     return DataLake(db_path="data/zenet.db")
+
+
+def stable_entity_id(session_id: str) -> int:
+    """Return a stable integer entity ID for a session key.
+
+    Uses MD5 (not Python's built-in hash) so the result is identical
+    across Python restarts regardless of PYTHONHASHSEED.
+    """
+    return int(hashlib.md5(session_id.encode()).hexdigest(), 16) % (2**31 - 1)
 
 
 def create_session(data_lake: DataLake) -> str:

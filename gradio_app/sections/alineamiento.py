@@ -19,6 +19,7 @@ import gradio as gr
 from core.agents.alignment_agent import AlignmentAgent
 from core.agents.utils import create_agent
 from core.ai.providers import ClaudeProvider
+from gradio_app.session import stable_entity_id
 from core.domain.data_model import DEFAULT_RESTAURANT_TYPES, InventoryItem, Ingredient, Recipe
 from core.domain.serialization import (
     inventory_item_to_dict,
@@ -56,7 +57,7 @@ def _load_alignment_context(data_lake: Any, session_id: str) -> dict:
     Returns dict with restaurant info, entity lists, data_lake, and session_id.
     Mirrors _load_configuration_context pattern from configuracion.py.
     """
-    entity_id = abs(hash(session_id)) % (2**31 - 1)
+    entity_id = stable_entity_id(session_id)
 
     restaurant_name = ""
     restaurant_type = ""
@@ -105,18 +106,51 @@ def _load_alignment_context(data_lake: Any, session_id: str) -> dict:
         if e:
             existing_inventory_items.append(e["name"])
 
+    # Build lookup maps for resolving confirmed equivalences
+    ru_id_to_symbol: dict[int, str] = {}
+    for eid in data_lake.list_entity_ids("recipe_unit"):
+        e = data_lake.load_entity("recipe_unit", eid)
+        if e:
+            ru_id_to_symbol[int(eid)] = e["symbol"]
+
+    iu_id_to_symbol: dict[int, str] = {}
+    for eid in data_lake.list_entity_ids("inventory_unit"):
+        e = data_lake.load_entity("inventory_unit", eid)
+        if e:
+            iu_id_to_symbol[int(eid)] = e["symbol"]
+
+    item_id_to_name: dict[int, str] = {}
+    for eid in data_lake.list_entity_ids("inventory_item"):
+        e = data_lake.load_entity("inventory_item", eid)
+        if e:
+            item_id_to_name[int(eid)] = e["name"]
+
+    confirmed_equivalences: list[str] = []
+    for eid in data_lake.list_entity_ids("recipe_unit_conversion"):
+        e = data_lake.load_entity("recipe_unit_conversion", eid)
+        if not e:
+            continue
+        ru_symbol  = ru_id_to_symbol.get(e.get("recipe_unit_id", 0), "?")
+        base_sym   = iu_id_to_symbol.get(e.get("base_unit_id", 0), "?")
+        item_name  = item_id_to_name.get(e.get("inventory_item_id") or 0, "?")
+        qty        = e.get("quantity", "?")
+        confirmed_equivalences.append(
+            f"1 {ru_symbol} de {item_name} ≈ {qty} {base_sym}"
+        )
+
     return {
-        "restaurant_name":          restaurant_name,
-        "restaurant_type":          restaurant_type,
-        "restaurant_description":   restaurant_description,
-        "standardization_level":    standardization_level,
-        "categories":               categories,
-        "families":                 families,
-        "recipe_units":             recipe_units,
-        "inventory_units":          inventory_units,
-        "existing_inventory_items": existing_inventory_items,
-        "data_lake":                data_lake,
-        "session_id":               session_id,
+        "restaurant_name":           restaurant_name,
+        "restaurant_type":           restaurant_type,
+        "restaurant_description":    restaurant_description,
+        "standardization_level":     standardization_level,
+        "categories":                categories,
+        "families":                  families,
+        "recipe_units":              recipe_units,
+        "inventory_units":           inventory_units,
+        "existing_inventory_items":  existing_inventory_items,
+        "confirmed_equivalences":    confirmed_equivalences,
+        "data_lake":                 data_lake,
+        "session_id":                session_id,
     }
 
 
@@ -214,6 +248,18 @@ def _extract_file_text(file_path: str, client: Any = None) -> str:
 # Display helpers
 # ---------------------------------------------------------------------------
 
+_LINK_STATUS_ES = {
+    "matched_existing": "existente",
+    "new":              "nuevo",
+    "needs_resolution": "por resolver",
+}
+
+_PROPOSAL_STATUS_ES = {
+    "new":              "nuevo",
+    "matched_existing": "existente",
+}
+
+
 def _ingredients_to_rows(ingredients: list[dict]) -> list[list]:
     return [
         [
@@ -221,7 +267,9 @@ def _ingredients_to_rows(ingredients: list[dict]) -> list[list]:
             ing.get("quantity", ""),
             ing.get("unit_symbol", ""),
             ing.get("equivalent") or "",
-            ing.get("matched_item_name") or ing.get("inventory_link_status", ""),
+            ing.get("matched_item_name") or _LINK_STATUS_ES.get(
+                ing.get("inventory_link_status", ""), ing.get("inventory_link_status", "")
+            ),
         ]
         for ing in ingredients
     ]
@@ -233,7 +281,7 @@ def _proposals_to_rows(proposals: list[dict]) -> list[list]:
             p.get("name", ""),
             p.get("category", ""),
             p.get("family") or "",
-            p.get("status", ""),
+            _PROPOSAL_STATUS_ES.get(p.get("status", ""), p.get("status", "")),
         ]
         for p in proposals
     ]
@@ -272,10 +320,10 @@ def _make_chat_fn(provider: Any, data_lake: Any, initial_greeting_text: str):
         if not session_id:
             history = list(history)
             history.append({"role": "assistant", "content": "Sesión no iniciada. Recarga la página."})
-            return history, "", {}, [], False, False
+            return history, "", {}, [], False, False, None
 
         if not (message or "").strip():
-            return history, "", {}, [], False, False
+            return history, "", {}, [], False, False, None
 
         agent = create_agent(AlignmentAgent, provider=provider, name="alignment_agent")
         agent.load_state(data_lake, session_id=f"alignment_agent_{session_id}")
@@ -298,12 +346,14 @@ def _make_chat_fn(provider: Any, data_lake: Any, initial_greeting_text: str):
             reply               = result["reply"]
             recipe_draft        = result["recipe_draft"]
             inventory_proposals = result["inventory_proposals"]
+            recipe_count        = result.get("recipe_count")
             show_file_upload    = bool(result.get("show_file_upload", False))
             recipe_ready        = bool(recipe_draft.get("recipe_name"))
         except Exception:
             reply               = "Hubo un problema al conectar con el asistente. Por favor, intenta de nuevo."
             recipe_draft        = {}
             inventory_proposals = []
+            recipe_count        = None
             show_file_upload    = False
             recipe_ready        = False
 
@@ -313,7 +363,7 @@ def _make_chat_fn(provider: Any, data_lake: Any, initial_greeting_text: str):
         history.append({"role": "user",      "content": message})
         history.append({"role": "assistant", "content": reply})
 
-        return history, "", recipe_draft, inventory_proposals, show_file_upload, recipe_ready
+        return history, "", recipe_draft, inventory_proposals, show_file_upload, recipe_ready, recipe_count
 
     return chat_fn
 
@@ -482,6 +532,7 @@ def render(session_id: gr.State, data_lake: Any) -> None:
     inventory_proposals_state = gr.State([])
     recipe_source_state       = gr.State("conversation")
     current_page_index_state  = gr.State(0)
+    recipe_count_state        = gr.State(None)
     saved_recipes_state       = gr.State([])
     recipe_ready_state        = gr.State(False)
 
@@ -537,11 +588,14 @@ def render(session_id: gr.State, data_lake: Any) -> None:
 
     def _chat_and_format(
         message, history, sid,
-        recipe_source, page_index,
+        recipe_source, page_index, recipe_count,
     ):
-        history, text, draft, proposals, show_file, ready = chat_fn(
+        history, text, draft, proposals, show_file, ready, new_count = chat_fn(
             message, history, sid, recipe_source, page_index,
         )
+        resolved_count = new_count if new_count is not None else recipe_count
+        total = str(resolved_count) if resolved_count is not None else "?"
+        progress = f"Receta {page_index + 1} de {total}"
         ing_rows  = _ingredients_to_rows(draft.get("ingredients") or [])
         prop_rows = _proposals_to_rows(proposals)
         name_md   = f"### {draft.get('recipe_name', '')}" if draft.get("recipe_name") else ""
@@ -552,16 +606,18 @@ def render(session_id: gr.State, data_lake: Any) -> None:
             proposals,
             gr.update(visible=show_file),
             ready,
+            resolved_count,
             gr.update(interactive=ready),
             name_md,
             ing_rows,
             prop_rows,
+            progress,
         )
 
-    def _handle_file_upload(file_obj, history, sid, page_index):
+    def _handle_file_upload(file_obj, history, sid, page_index, recipe_count):
         """Extract text from uploaded file and run one agent turn."""
         if file_obj is None:
-            return history, "", {}, [], gr.update(), False, gr.update(interactive=False), "", [], []
+            return history, "", {}, [], gr.update(), False, None, gr.update(interactive=False), "", [], [], gr.update()
         text = _extract_file_text(
             file_obj.name if hasattr(file_obj, "name") else str(file_obj),
             client=provider.client,
@@ -572,15 +628,15 @@ def render(session_id: gr.State, data_lake: Any) -> None:
                 "role": "assistant",
                 "content": "No pude extraer texto del archivo. Intenta con un PDF o Excel con texto.",
             })
-            return history, "", {}, [], gr.update(), False, gr.update(interactive=False), "", [], []
+            return history, "", {}, [], gr.update(), False, None, gr.update(interactive=False), "", [], [], gr.update()
         # Inject file content as user turn
         return _chat_and_format(
-            f"[Contenido de archivo]\n{text}", history, sid, "file_content", page_index,
+            f"[Contenido de archivo]\n{text}", history, sid, "file_content", page_index, recipe_count,
         )
 
     def _confirm_and_save(
         draft, proposals, sid,
-        saved_recipes, page_index, history,
+        saved_recipes, page_index, history, recipe_count,
     ):
         # First yield: loading state
         yield (
@@ -592,6 +648,7 @@ def render(session_id: gr.State, data_lake: Any) -> None:
             gr.update(),                   # current_page_index_state
             gr.update(),                   # inventory_proposals_state
             gr.update(),                   # chatbot — no change yet
+            gr.update(),                   # progress_md — no change yet
         )
 
         status  = ""
@@ -628,6 +685,8 @@ def render(session_id: gr.State, data_lake: Any) -> None:
             new_proposals = proposals
 
         saved_list_md = "\n".join(f"- {r}" for r in saved) if saved else ""
+        total = str(recipe_count) if recipe_count is not None else "?"
+        new_progress = f"Receta {new_index + 1} de {total}"
 
         # Second yield: final state
         yield (
@@ -639,6 +698,7 @@ def render(session_id: gr.State, data_lake: Any) -> None:
             new_index,
             new_proposals,
             new_history,
+            new_progress,
         )
 
     # --- Wiring ---
@@ -646,24 +706,26 @@ def render(session_id: gr.State, data_lake: Any) -> None:
         fn=_chat_and_format,
         inputs=[
             textbox, chatbot, session_id,
-            recipe_source_state, current_page_index_state,
+            recipe_source_state, current_page_index_state, recipe_count_state,
         ],
         outputs=[
             chatbot, textbox,
             recipe_draft_state, inventory_proposals_state,
-            file_upload, recipe_ready_state,
+            file_upload, recipe_ready_state, recipe_count_state,
             confirm_btn, recipe_name_md, ingredients_tbl, proposals_tbl,
+            progress_md,
         ],
     )
 
     file_upload.upload(
         fn=_handle_file_upload,
-        inputs=[file_upload, chatbot, session_id, current_page_index_state],
+        inputs=[file_upload, chatbot, session_id, current_page_index_state, recipe_count_state],
         outputs=[
             chatbot, textbox,
             recipe_draft_state, inventory_proposals_state,
-            file_upload, recipe_ready_state,
+            file_upload, recipe_ready_state, recipe_count_state,
             confirm_btn, recipe_name_md, ingredients_tbl, proposals_tbl,
+            progress_md,
         ],
     )
 
@@ -671,12 +733,12 @@ def render(session_id: gr.State, data_lake: Any) -> None:
         fn=_confirm_and_save,
         inputs=[
             recipe_draft_state, inventory_proposals_state, session_id,
-            saved_recipes_state, current_page_index_state, chatbot,
+            saved_recipes_state, current_page_index_state, chatbot, recipe_count_state,
         ],
         outputs=[
             recipe_draft_state, confirm_btn, status_md, saved_md,
             saved_recipes_state, current_page_index_state, inventory_proposals_state,
-            chatbot,
+            chatbot, progress_md,
         ],
         show_progress="hidden",
     )
