@@ -361,6 +361,16 @@ to decide update vs. insert.
 **Suggested action:** 11.4 confirm fn: for each proposal, look up existing `inventory_item` by
 name; if found → update that record's id; if not found → insert with new id.
 
+### [OPEN] — recipe_source is an undocumented optional input
+**Source:** Validation of subtask 11.3
+**Problem:** `_generate_prompt` references `input_data.get("recipe_source")` to decide
+whether to prefix with `[Contenido de archivo]`, but `"recipe_source"` is not listed
+in `INPUT_SCHEMA` or documented anywhere in the plan as an optional input key.
+**Impact:** Callers in 11.4 may omit it and get wrong prompt framing; test writers
+won't know it exists.
+**Suggested action:** Add a note to step 6 that `"recipe_source"` is an optional input
+key (not in `INPUT_SCHEMA`) accepted by `_generate_prompt`. Valid values: `"file_content"` | `None`.
+
 ### [OPEN] — Factor question order not fully specified
 **Source:** Validation of subtask 11.3
 **Problem:** Phase B asks factors one item at a time, but the order is not defined when
