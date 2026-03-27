@@ -24,6 +24,10 @@ Python 3.13.5 | uv package manager | `.venv/` | OpenAI + Anthropic APIs in `.env
 - Always use `DataLake` abstraction, not raw JsonStorage/SqliteStorage
 - Tests in `tests/unit/`, one file per core module, standard unittest
 
+## Memory files
+- [project_task11_standard_units.md](project_task11_standard_units.md) — Task 11 must hardcode standard unit chains before deduction logic
+- [project_task11_vision.md](project_task11_vision.md) — Task 11 vision: inventory structuring via chat/file upload, building on Alineamiento base inventory
+
 ## Preferences
 - Use `uv` (never pip unless uv unavailable)
 - No emojis

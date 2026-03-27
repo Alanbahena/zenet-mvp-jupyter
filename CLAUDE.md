@@ -184,8 +184,9 @@ Tasks and subtasks are tracked in `.taskmaster/tasks/tasks.json`.
 | 15 | Unit and integration tests             | pending  |
 | 16 | Documentation and user guide           | pending  |
 | 17 | Restaurant profile enrichment          | **done** |
+| 18 | ngrok demo deployment                  | pending  |
 
-**Task 11** (Estructura) is next.
+**Task 18** (ngrok demo deployment) is next.
 
 ### TaskMaster docs
 

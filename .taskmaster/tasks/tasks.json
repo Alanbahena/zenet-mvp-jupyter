@@ -980,7 +980,7 @@
         "dependencies": [
           "10"
         ],
-        "status": "pending",
+        "status": "in-progress",
         "subtasks": []
       },
       {
@@ -1194,12 +1194,23 @@
           }
         ],
         "updatedAt": "2026-03-20T06:13:35.671Z"
+      },
+      {
+        "id": "18",
+        "title": "ngrok demo deployment — expose local Gradio app for iPad demos",
+        "description": "Configure the Gradio app to accept external connections and document the ngrok workflow so the operator can run demos from an iPad without needing HF Spaces deployment. Involves a one-line change to main.py (server_name=0.0.0.0) and a setup guide covering ngrok install, auth token, and the two-command launch sequence.",
+        "details": "Subtasks:\n\n18.1 — Update main.py launch call\nChange build_app().launch() to build_app().launch(server_name='0.0.0.0', server_port=7860) so Gradio accepts connections from outside localhost. This is the only code change required.\n\n18.2 — ngrok setup guide\nDocument the one-time setup (brew install ngrok, ngrok config add-authtoken <token>) and the per-demo launch sequence (uv run python main.py in Terminal 1, ngrok http 7860 in Terminal 2). Add to CLAUDE.md under Key commands.\n\n18.3 — Verify iPad layout\nTest the two-column Gradio layout on iPad Safari in landscape and portrait. Note any layout issues (cramped columns in portrait). No code changes unless critical — document findings.\n\n18.4 — seed_data.py demo reset\nVerify that scripts/reset_session.py && scripts/seed_data.py gives a clean, demo-ready state. Update seed data if needed to reflect a compelling demo scenario (realistic restaurant name, believable recipe count).",
+        "testStrategy": "Launch app with server_name=0.0.0.0, start ngrok tunnel, open URL on iPad, verify chat and file upload work end-to-end. Confirm two-column layout is usable in landscape mode.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-24T01:34:26.735561Z",
-      "taskCount": 17,
+      "lastModified": "2026-03-25T00:00:00.000Z",
+      "taskCount": 18,
       "completedCount": 9,
       "tags": [
         "master"
