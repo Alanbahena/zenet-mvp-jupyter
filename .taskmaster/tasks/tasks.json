@@ -1021,7 +1021,7 @@
             "title": "11.4 Estructura section UI",
             "description": "Replace stub in gradio_app/sections/estructura.py with full render(). Implement: _load_structuring_context (loads restaurant, classification, inventory_unit, family_inventory, inventory_item entities); _initial_greeting (opens with Perecederos count and data collection question); _make_chat_fn (load/run/save_state pattern, updates gr.State for table proposals, handles file upload via [Contenido de archivo...] prefix); _make_confirm_fn (generator: resolves stock_unit_id/purchase_unit_id from symbol→DataLake, creates new InventoryUnit if symbol not found, saves InventoryItem records, yields loading→result); render() two-column layout: left chat+upload, right editable gr.Dataframe (Artículo, Compra, Inventario, Factor, Familia, Categoría, Estado) + Confirm button. Category-by-category flow: Perecederos first, transition to No Perecederos after confirm.",
             "details": "See .taskmaster/docs/task-11/plan.md § 11.4",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [
               "11.3"
             ],
