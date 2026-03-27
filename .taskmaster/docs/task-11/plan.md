@@ -333,6 +333,12 @@ All sequential. 11.2 depends on 11.1 (dataclass must exist before schema/seriali
 
 ## Risks and open questions
 
+### [OPEN] — Configuración-created sessions lack standard unit chains
+**Source:** Validation of subtask 11.1
+**Problem:** `_INVENTORY_UNIT_TEMPLATES` uses `id=0` for all units; `kg.base_unit_id = g.id` cannot be wired at template definition time. Sessions created via the Configuración flow will have `base_unit_id=None` for all standard units. Only seeded sessions (seed_data.py) will have correct chains.
+**Impact:** `convert_quantity` and `to_base_quantity` will fail for cross-unit deductions (e.g. kg→g) in non-seeded sessions. This does not affect Task 11 (no deduction runs in Estructura) but will break Task 12 (Manual Operativo) for real operator sessions.
+**Suggested action:** Before starting Task 12, add `apply_standard_unit_chains(units)` helper to `data_model.py` (wires chains by symbol after real IDs assigned) and call it in `configuracion.py` after units get their real IDs. Defer to Task 12 planning.
+
 ### [OPEN] — Conversational path (no file) not specified
 **Source:** Validation of Task 11
 **Problem:** 11.3 system prompt and 11.4 chat fn mention "conversational path" as a valid option but give no detail on how the agent handles it differently from the file path. No turn-by-turn flow is defined.

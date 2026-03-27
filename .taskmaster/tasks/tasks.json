@@ -981,7 +981,90 @@
           "10"
         ],
         "status": "in-progress",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "11.1 Data model prerequisites",
+            "description": "Update _INVENTORY_UNIT_TEMPLATES for all 5 restaurant types with standard unit chains (g root, kg→g ×1000, ml root, L→ml ×1000, pza root). Update InventoryItem dataclass: remove unit_id, add stock_unit_id, purchase_unit_id, purchase_to_stock_factor. Remove InventoryUnitEquivalence and InventoryUnitEquivalenceRegistry from data_model.py. Update InventoryItem.add_ingredient and dependent methods. Update seed_data.py INVENTORY_UNITS with correct base_unit_id/factor_to_base chains. Note: unit chains cannot be wired at template definition time (all templates use id=0) — chains must be applied when assigning real IDs to a registry.",
+            "details": "See .taskmaster/docs/task-11/plan.md § 11.1",
+            "status": "in-progress",
+            "dependencies": [],
+            "parentTaskId": 11,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "11.2 Schema + serialization + persistence + normalization",
+            "description": "schema.py: update inventory_item table (replace unit_id with stock_unit_id, purchase_unit_id, purchase_to_stock_factor), remove inventory_unit_equivalence table, update indexes. serialization.py: update inventory_item_to_dict/from_dict, remove equivalence functions. persistence.py: update SqliteStorage save/load for inventory_item, remove inventory_unit_equivalence handler and _SQLITE_ENTITY_TYPES entry, update _get_entity_registries and _datalake_entity_id. normalization.py: replace item.unit_id with item.stock_unit_id in normalize_recipe_for_deduction; remove equivalence_registry and inventory_item_id parameters from to_base_quantity, from_base_quantity, to_base_quantity_by_id, from_base_quantity_by_id; remove equivalence lookup branch from each. data_model_utils.py: validate_recipe_for_deduction:162 change item.unit_id → item.stock_unit_id; units_used_by_recipe:234 same change; create_inventory_item_from_ingredient signature change to (ingredient, category_id, stock_unit_id, purchase_unit_id, purchase_to_stock_factor=1.0, family_id=None). alineamiento.py: update InventoryItem construction in confirm flow.",
+            "details": "See .taskmaster/docs/task-11/plan.md § 11.2. Run reset_session.py after this subtask to pick up schema changes.",
+            "status": "pending",
+            "dependencies": [
+              "11.1"
+            ],
+            "parentTaskId": 11,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "11.3 StructuringAgent",
+            "description": "Create core/agents/structuring_agent.py. Define _StructuringItemProposal(BaseModel): name, stock_unit_symbol, purchase_unit_symbol, purchase_to_stock_factor, family_name, category_name (Perecedero|No perecedero), description, confidence (high|estimated|missing), is_new_item. Define _StructuringResponse(BaseModel): reply, proposals, needs_supplier_doc, gap_questions. Implement StructuringAgent(BaseAgent): system prompt for batch inference; infer all fields from item name + restaurant type; flag missing purchase units as a group; only ask equivalence when purchase≠stock; pza always standard; no hallucination rule. _generate_prompt injects base inventory by category, restaurant type, families, standard unit symbols. _process_response merges proposals into _data_store; treats proposals matching existing base inventory items as enrichment (update), not new creation.",
+            "details": "See .taskmaster/docs/task-11/plan.md § 11.3",
+            "status": "pending",
+            "dependencies": [
+              "11.2"
+            ],
+            "parentTaskId": 11,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "11.4 Estructura section UI",
+            "description": "Replace stub in gradio_app/sections/estructura.py with full render(). Implement: _load_structuring_context (loads restaurant, classification, inventory_unit, family_inventory, inventory_item entities); _initial_greeting (opens with Perecederos count and data collection question); _make_chat_fn (load/run/save_state pattern, updates gr.State for table proposals, handles file upload via [Contenido de archivo...] prefix); _make_confirm_fn (generator: resolves stock_unit_id/purchase_unit_id from symbol→DataLake, creates new InventoryUnit if symbol not found, saves InventoryItem records, yields loading→result); render() two-column layout: left chat+upload, right editable gr.Dataframe (Artículo, Compra, Inventario, Factor, Familia, Categoría, Estado) + Confirm button. Category-by-category flow: Perecederos first, transition to No Perecederos after confirm.",
+            "details": "See .taskmaster/docs/task-11/plan.md § 11.4",
+            "status": "pending",
+            "dependencies": [
+              "11.3"
+            ],
+            "parentTaskId": 11,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "11.5 Exports",
+            "description": "core/agents/__init__.py: add StructuringAgent import and __all__ entry. core/__init__.py: add StructuringAgent import and __all__ entry; remove InventoryUnitEquivalence, InventoryUnitEquivalenceRegistry, inventory_unit_equivalence_to_dict, inventory_unit_equivalence_from_dict from imports and __all__.",
+            "details": "See .taskmaster/docs/task-11/plan.md § 11.5",
+            "status": "pending",
+            "dependencies": [
+              "11.4"
+            ],
+            "parentTaskId": 11,
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "11.6 Tests",
+            "description": "Create tests/unit/test_structuring_agent.py. 12 mocked tests: test_create_via_factory, test_response_model_fields, test_bulk_inference_standard_units, test_bulk_inference_non_standard_unit, test_missing_purchase_unit_flag, test_no_equivalence_for_pza, test_new_item_detection, test_data_store_accumulation, test_perecedero_category_inference, test_no_perecedero_category_inference, test_context_injection, test_confirm_fn_saves_inventory_items. 2 live tests guarded by ANTHROPIC_API_KEY: test_live_bulk_inference_taqueria, test_live_gap_question_non_standard_unit.",
+            "details": "See .taskmaster/docs/task-11/plan.md § 11.6. Use _MockProvider pattern from existing test files.",
+            "status": "pending",
+            "dependencies": [
+              "11.5"
+            ],
+            "parentTaskId": 11,
+            "parentId": "undefined"
+          },
+          {
+            "id": 7,
+            "title": "11.7 Documentation and closure",
+            "description": "Create docs/Architecture/sections/estructura.md (section overview, agent, context loader, UI layout, confirm flow, category flow, missing unit resolution, equivalence rule, Gradio wiring). Update architecture-data-model.md (InventoryItem two-unit fields, standard unit chains, InventoryUnitEquivalence removed). Update architecture-normalization.md (deduction path changes, equivalence registry removed). Update architecture-persistence.md (inventory_item table changes, inventory_unit_equivalence table dropped). Update architecture-agent-framework.md (add StructuringAgent). Update architecture-data-model-utils.md (updated function signatures). Update CLAUDE.md (Task 11 done, Task 12 next). Update tasks.json (Task 11 status → done).",
+            "details": "See .taskmaster/docs/task-11/plan.md § 11.7",
+            "status": "pending",
+            "dependencies": [
+              "11.6"
+            ],
+            "parentTaskId": 11,
+            "parentId": "undefined"
+          }
+        ]
       },
       {
         "id": "12",
