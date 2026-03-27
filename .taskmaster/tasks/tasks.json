@@ -997,7 +997,7 @@
             "title": "11.2 Schema + serialization + persistence + normalization",
             "description": "schema.py: update inventory_item table (replace unit_id with stock_unit_id, purchase_unit_id, purchase_to_stock_factor), remove inventory_unit_equivalence table, update indexes. serialization.py: update inventory_item_to_dict/from_dict, remove equivalence functions. persistence.py: update SqliteStorage save/load for inventory_item, remove inventory_unit_equivalence handler and _SQLITE_ENTITY_TYPES entry, update _get_entity_registries and _datalake_entity_id. normalization.py: replace item.unit_id with item.stock_unit_id in normalize_recipe_for_deduction; remove equivalence_registry and inventory_item_id parameters from to_base_quantity, from_base_quantity, to_base_quantity_by_id, from_base_quantity_by_id; remove equivalence lookup branch from each. data_model_utils.py: validate_recipe_for_deduction:162 change item.unit_id → item.stock_unit_id; units_used_by_recipe:234 same change; create_inventory_item_from_ingredient signature change to (ingredient, category_id, stock_unit_id, purchase_unit_id, purchase_to_stock_factor=1.0, family_id=None). alineamiento.py: update InventoryItem construction in confirm flow.",
             "details": "See .taskmaster/docs/task-11/plan.md § 11.2. Run reset_session.py after this subtask to pick up schema changes.",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               "11.1"
             ],
@@ -1009,7 +1009,7 @@
             "title": "11.3 StructuringAgent",
             "description": "Create core/agents/structuring_agent.py. Define _StructuringItemProposal(BaseModel): name, stock_unit_symbol, purchase_unit_symbol, purchase_to_stock_factor, family_name, category_name (Perecedero|No perecedero), description, confidence (high|estimated|missing), is_new_item. Define _StructuringResponse(BaseModel): reply, proposals, needs_supplier_doc, gap_questions. Implement StructuringAgent(BaseAgent): system prompt for batch inference; infer all fields from item name + restaurant type; flag missing purchase units as a group; only ask equivalence when purchase≠stock; pza always standard; no hallucination rule. _generate_prompt injects base inventory by category, restaurant type, families, standard unit symbols. _process_response merges proposals into _data_store; treats proposals matching existing base inventory items as enrichment (update), not new creation.",
             "details": "See .taskmaster/docs/task-11/plan.md § 11.3",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [
               "11.2"
             ],
