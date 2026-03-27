@@ -136,7 +136,7 @@ def _seed_family_inventory(dl: DataLake, fid: int, name: str) -> None:
 
 
 def _seed_inventory_item(dl: DataLake, iid: int, name: str) -> None:
-    item = InventoryItem(id=iid, name=name, unit_id=1, category_id=1)
+    item = InventoryItem(id=iid, name=name, stock_unit_id=1, purchase_unit_id=1, category_id=1)
     dl.save_entity("inventory_item", iid, inventory_item_to_dict(item))
 
 

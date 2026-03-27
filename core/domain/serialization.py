@@ -204,8 +204,10 @@ def inventory_item_to_dict(item: InventoryItem) -> dict[str, Any]:
     return {
         "id": item.id,
         "name": item.name,
-        "unit_id": item.unit_id,
+        "stock_unit_id": item.stock_unit_id,
+        "purchase_unit_id": item.purchase_unit_id,
         "category_id": item.category_id,
+        "purchase_to_stock_factor": item.purchase_to_stock_factor,
         "family_id": item.family_id,
         "description": item.description,
     }
@@ -216,8 +218,10 @@ def inventory_item_from_dict(d: dict[str, Any]) -> InventoryItem:
     return InventoryItem(
         id=int(_require(d, "id", "inventory_item")),
         name=_require(d, "name", "inventory_item"),
-        unit_id=int(_require(d, "unit_id", "inventory_item")),
+        stock_unit_id=int(_require(d, "stock_unit_id", "inventory_item")),
+        purchase_unit_id=int(_require(d, "purchase_unit_id", "inventory_item")),
         category_id=int(_require(d, "category_id", "inventory_item")),
+        purchase_to_stock_factor=float(d.get("purchase_to_stock_factor", 1.0)),
         family_id=d.get("family_id"),
         description=d.get("description"),
     )

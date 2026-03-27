@@ -68,7 +68,7 @@ class TestReadinessKpis(unittest.TestCase):
         cat_reg = _make_category_registry()
         fam_reg = _make_family_registry()
         item_reg = InventoryItemRegistry()
-        item_reg.add(InventoryItem(1, "Harina", 1, 1, family_id=1))
+        item_reg.add(InventoryItem(1, "Harina", 1, 1, 1, family_id=1))
 
         recipes = [
             Recipe(
@@ -109,7 +109,7 @@ class TestReadinessKpis(unittest.TestCase):
         cat_reg = _make_category_registry()
         fam_reg = _make_family_registry()
         item_reg = InventoryItemRegistry()
-        item_reg.add(InventoryItem(1, "Harina", 1, 1, family_id=1))
+        item_reg.add(InventoryItem(1, "Harina", 1, 1, 1, family_id=1))
 
         recipes = [
             Recipe(
@@ -153,7 +153,7 @@ class TestReadinessKpis(unittest.TestCase):
         cat_reg = _make_category_registry()
         fam_reg = _make_family_registry()
         item_reg = InventoryItemRegistry()
-        item_reg.add(InventoryItem(1, "Leche", 1, 1, family_id=1))
+        item_reg.add(InventoryItem(1, "Leche", 1, 1, 1, family_id=1))
 
         recipes = [
             Recipe(

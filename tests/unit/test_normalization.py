@@ -11,8 +11,6 @@ from core.domain.data_model import (
     Ingredient,
     InventoryItem,
     InventoryUnit,
-    InventoryUnitEquivalence,
-    InventoryUnitEquivalenceRegistry,
     InventoryUnitRegistry,
     Recipe,
 )
@@ -109,66 +107,6 @@ class TestFromBaseQuantity(unittest.TestCase):
         )
 
 
-class TestToBaseQuantityWithEquivalence(unittest.TestCase):
-    """Item-specific equivalence: e.g. 1 box strawberries = 2 kg, 1 box oranges = 10 kg."""
-
-    def test_item_specific_overrides_global(self):
-        reg = InventoryUnitRegistry()
-        reg.add(InventoryUnit(1, "gramo", "g", None, None, 1.0))
-        reg.add(InventoryUnit(2, "kilogramo", "kg", None, 1, 1000.0))
-        reg.add(InventoryUnit(3, "caja", "caja", None, 2, 10.0))
-        eq_reg = InventoryUnitEquivalenceRegistry()
-        eq_reg.add(
-            InventoryUnitEquivalence(unit_id=3, inventory_item_id=101, base_unit_id=1, factor_to_base=2.0),
-            reg,
-        )
-        caja = reg.get(3)
-        self.assertIsNotNone(caja)
-        self.assertEqual(
-            to_base_quantity(1.0, caja, reg, inventory_item_id=101, equivalence_registry=eq_reg),
-            2.0,
-        )
-        self.assertEqual(
-            to_base_quantity(3.0, caja, reg, inventory_item_id=101, equivalence_registry=eq_reg),
-            6.0,
-        )
-
-    def test_different_items_different_factors(self):
-        reg = InventoryUnitRegistry()
-        reg.add(InventoryUnit(1, "gramo", "g", None, None, 1.0))
-        reg.add(InventoryUnit(2, "kilogramo", "kg", None, 1, 1000.0))
-        reg.add(InventoryUnit(3, "caja", "caja", None, 2, 10.0))
-        eq_reg = InventoryUnitEquivalenceRegistry()
-        eq_reg.add(
-            InventoryUnitEquivalence(unit_id=3, inventory_item_id=101, base_unit_id=1, factor_to_base=2.0),
-            reg,
-        )
-        eq_reg.add(
-            InventoryUnitEquivalence(unit_id=3, inventory_item_id=102, base_unit_id=1, factor_to_base=10.0),
-            reg,
-        )
-        caja = reg.get(3)
-        self.assertIsNotNone(caja)
-        self.assertEqual(
-            to_base_quantity(1.0, caja, reg, inventory_item_id=101, equivalence_registry=eq_reg),
-            2.0,
-        )
-        self.assertEqual(
-            to_base_quantity(1.0, caja, reg, inventory_item_id=102, equivalence_registry=eq_reg),
-            10.0,
-        )
-
-    def test_no_equivalence_falls_back_to_unit_chain(self):
-        reg = _make_registry_chain()
-        eq_reg = InventoryUnitEquivalenceRegistry()
-        caja = reg.get(3)
-        self.assertIsNotNone(caja)
-        self.assertEqual(
-            to_base_quantity(1.0, caja, reg, inventory_item_id=999, equivalence_registry=eq_reg),
-            10000.0,
-        )
-
-
 class TestByIdOverloads(unittest.TestCase):
     def test_to_base_quantity_by_id_valid(self):
         reg = _make_registry_kg_g()
@@ -227,31 +165,6 @@ class TestConvertQuantity(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             convert_quantity(1.0, 2, 11, reg)
         self.assertIn("incompatible", str(ctx.exception).lower())
-
-    def test_convert_quantity_with_item_equivalence_uses_item_specific_factor(self):
-        """With inventory_item_id and equivalence_registry, from_unit uses item-specific conversion."""
-        reg = InventoryUnitRegistry()
-        reg.add(InventoryUnit(1, "gramo", "g", None, None, 1.0))
-        reg.add(InventoryUnit(2, "kilogramo", "kg", None, 1, 1000.0))
-        reg.add(InventoryUnit(3, "caja", "caja", None, 2, 10.0))  # global: 1 caja = 10 kg
-        eq_reg = InventoryUnitEquivalenceRegistry()
-        eq_reg.add(
-            InventoryUnitEquivalence(unit_id=3, inventory_item_id=101, base_unit_id=2, factor_to_base=2.0),
-            reg,
-        )  # item 101: 1 caja = 2 kg
-        # Without item: 1 caja -> 10 kg -> 10_000 g
-        self.assertEqual(convert_quantity(1.0, 3, 1, reg), 10000.0)
-        # With item 101: 1 caja -> 2 kg -> 2000 g
-        self.assertEqual(
-            convert_quantity(1.0, 3, 1, reg, inventory_item_id=101, equivalence_registry=eq_reg),
-            2000.0,
-        )
-        # Same item, convert to kg: 1 caja -> 2 kg
-        self.assertEqual(
-            convert_quantity(1.0, 3, 2, reg, inventory_item_id=101, equivalence_registry=eq_reg),
-            2.0,
-        )
-
 
 class TestGetFamilyBaseUnitId(unittest.TestCase):
     def test_family_with_base_returns_id(self):
@@ -402,46 +315,9 @@ class TestNormalizeRecipeForDeduction(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0], (201, 150.0, 1))
 
-    def test_fallback_with_equivalence_registry_item_specific(self):
-        unit_reg = InventoryUnitRegistry()
-        unit_reg.add(InventoryUnit(1, "gramo", "g", None, None, 1.0))
-        unit_reg.add(InventoryUnit(2, "kilogramo", "kg", None, 1, 1000.0))
-        unit_reg.add(InventoryUnit(3, "caja", "caja", None, 2, 10.0))
-        eq_reg = InventoryUnitEquivalenceRegistry()
-        eq_reg.add(
-            InventoryUnitEquivalence(unit_id=3, inventory_item_id=201, base_unit_id=1, factor_to_base=2.0),
-            unit_reg,
-        )
-        eq_reg.add(
-            InventoryUnitEquivalence(unit_id=3, inventory_item_id=202, base_unit_id=1, factor_to_base=10.0),
-            unit_reg,
-        )
-        tbl = RecipeUnitConversionRegistry()
-        fam_reg = FamilyInventoryRegistry()
-        fam_reg = FamilyInventoryRegistry()
-        recipe = Recipe(1, "Test", 1, "", [], ingredients=[
-            Ingredient("fresas", 1.0, 3, 201),
-            Ingredient("naranjas", 1.0, 3, 202),
-        ])
-        # items 201 and 202 use unit_id 1 (g); equivalence gives 1 caja -> 2 g and 10 g
-        def resolve(ing: Ingredient) -> tuple[int, Optional[int], int]:
-            return (ing.inventory_item_id or 0, 1, 1)
-
-        result = normalize_recipe_for_deduction(
-            recipe, fam_reg, unit_reg, tbl, resolve,
-            equivalence_registry=eq_reg,
-        )
-        self.assertEqual(len(result), 2)
-        by_item = {r[0]: (r[1], r[2]) for r in result}
-        self.assertEqual(by_item[201][0], 2.0)
-        self.assertEqual(by_item[202][0], 10.0)
-        self.assertEqual(by_item[201][1], 1)
-        self.assertEqual(by_item[202][1], 1)
-
-
 class TestMakeResolver(unittest.TestCase):
     def test_resolver_returns_item_id_family_id_unit_id(self):
-        item = InventoryItem(id=10, name="Harina", unit_id=1, category_id=1, family_id=2)
+        item = InventoryItem(id=10, name="Harina", stock_unit_id=1, purchase_unit_id=1, category_id=1, family_id=2)
         def get_item(ing: Ingredient) -> InventoryItem | None:
             return item
         resolve = make_resolver(get_item)

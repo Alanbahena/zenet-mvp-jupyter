@@ -297,7 +297,6 @@ def compute_readiness_report(
     family_inventory_registry: FamilyInventoryRegistry,
     inventory_item_registry: InventoryItemRegistry,
     conversion_table: RecipeUnitConversionRegistry,
-    equivalence_registry: Optional[Any] = None,
     ingredient_taxonomy: Optional[IngredientTaxonomy] = None,
     inventory_taxonomy: Optional[InventoryTaxonomy] = None,
     recipe_taxonomy: Optional[RecipeTaxonomy] = None,
@@ -723,11 +722,11 @@ def compute_readiness_report(
                 EvidenceRef("inventory_item", f"InventoryItem#{it.id}: {it.name!r}", f"Invalid category_id {it.category_id}")
             )
         # unit
-        if it.unit_id in valid_inventory_unit_ids:
+        if it.stock_unit_id in valid_inventory_unit_ids:
             inv_unit_ok += 1
         else:
             inv_unit_missing.append(
-                EvidenceRef("inventory_item", f"InventoryItem#{it.id}: {it.name!r}", f"unit_id {it.unit_id} not in InventoryUnitRegistry")
+                EvidenceRef("inventory_item", f"InventoryItem#{it.id}: {it.name!r}", f"stock_unit_id {it.stock_unit_id} not in InventoryUnitRegistry")
             )
         # family when set
         if it.family_id is not None:
@@ -751,8 +750,8 @@ def compute_readiness_report(
             reasons.append("Missing name")
         if it.category_id not in valid_item_category_ids:
             reasons.append(f"Invalid category_id {it.category_id}")
-        if it.unit_id not in valid_inventory_unit_ids:
-            reasons.append(f"unit_id {it.unit_id} not in InventoryUnitRegistry")
+        if it.stock_unit_id not in valid_inventory_unit_ids:
+            reasons.append(f"stock_unit_id {it.stock_unit_id} not in InventoryUnitRegistry")
         if reasons:
             inv_required_missing.append(
                 EvidenceRef("inventory_item", f"InventoryItem#{it.id}: {it.name!r}", "; ".join(reasons))
@@ -885,8 +884,7 @@ def compute_readiness_report(
             conversion_table,
             # normalize_recipe_for_deduction expects resolver returning (item_id, family_id, item_unit_id)
             # Use the already-agreed id-or-name resolution.
-            lambda x: (item.id, item.family_id, item.unit_id),
-            equivalence_registry=equivalence_registry,
+            lambda x: (item.id, item.family_id, item.stock_unit_id),
         )
         if lines:
             num_deducted += 1
@@ -897,11 +895,10 @@ def compute_readiness_report(
             ing=ing,
             item_id=item.id,
             family_id=item.family_id,
-            item_unit_id=item.unit_id,
+            item_unit_id=item.stock_unit_id,
             family_registry=family_inventory_registry,
             unit_registry=inventory_unit_registry,
             conversion_table=conversion_table,
-            equivalence_registry=equivalence_registry,
         )
         skipped_evidence.append(
             EvidenceRef("ingredient", f"Recipe#{r.id}: {ing.name!r}", reason)
@@ -1085,7 +1082,6 @@ def _classify_normalization_skip_reason(
     family_registry: FamilyInventoryRegistry,
     unit_registry: InventoryUnitRegistry,
     conversion_table: RecipeUnitConversionRegistry,
-    equivalence_registry: Optional[Any],
 ) -> str:
     if not math.isfinite(ing.quantity) or ing.quantity <= 0:
         return "Invalid quantity (must be finite and > 0)"
