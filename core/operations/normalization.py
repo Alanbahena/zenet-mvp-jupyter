@@ -12,14 +12,13 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from core.domain.data_model import (
     FamilyInventoryRegistry,
     Ingredient,
     InventoryItem,
     InventoryUnit,
-    InventoryUnitEquivalenceRegistry,
     InventoryUnitRegistry,
     Recipe,
 )
@@ -33,7 +32,7 @@ def to_base_quantity(
     registry: InventoryUnitRegistry,
     *,
     inventory_item_id: Optional[int] = None,
-    equivalence_registry: Optional[InventoryUnitEquivalenceRegistry] = None,
+    equivalence_registry: Optional[Any] = None,
 ) -> float:
     """Convert quantity from the given unit to its base (root of base_unit_id chain).
 
@@ -86,7 +85,7 @@ def from_base_quantity(
     registry: InventoryUnitRegistry,
     *,
     inventory_item_id: Optional[int] = None,
-    equivalence_registry: Optional[InventoryUnitEquivalenceRegistry] = None,
+    equivalence_registry: Optional[Any] = None,
 ) -> float:
     """Convert a quantity expressed in the base (root) of the unit's chain into the given unit.
 
@@ -144,7 +143,7 @@ def to_base_quantity_by_id(
     registry: InventoryUnitRegistry,
     *,
     inventory_item_id: Optional[int] = None,
-    equivalence_registry: Optional[InventoryUnitEquivalenceRegistry] = None,
+    equivalence_registry: Optional[Any] = None,
 ) -> float:
     """Look up unit by id and convert quantity to base. Raises ValueError if unit_id not found."""
     unit = registry.get(unit_id)
@@ -165,7 +164,7 @@ def from_base_quantity_by_id(
     registry: InventoryUnitRegistry,
     *,
     inventory_item_id: Optional[int] = None,
-    equivalence_registry: Optional[InventoryUnitEquivalenceRegistry] = None,
+    equivalence_registry: Optional[Any] = None,
 ) -> float:
     """Look up unit by id and convert base quantity to that unit. Raises if unit_id not found."""
     unit = registry.get(unit_id)
@@ -206,7 +205,7 @@ def convert_quantity(
     registry: InventoryUnitRegistry,
     *,
     inventory_item_id: Optional[int] = None,
-    equivalence_registry: Optional[InventoryUnitEquivalenceRegistry] = None,
+    equivalence_registry: Optional[Any] = None,
 ) -> float:
     """Convert quantity between two units that share the same root base.
 
@@ -374,7 +373,7 @@ def normalize_recipe_for_deduction(
     conversion_table: RecipeUnitConversionRegistry,
     resolve_ingredient_to_inventory: Callable[[Ingredient], tuple[int, Optional[int], int]],
     *,
-    equivalence_registry: Optional[InventoryUnitEquivalenceRegistry] = None,
+    equivalence_registry: Optional[Any] = None,
 ) -> list[DeductionLine]:
     """Produce the normalized recipe: list of (inventory_item_id, normalized_quantity, unit_id).
 

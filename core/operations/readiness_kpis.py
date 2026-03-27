@@ -18,7 +18,6 @@ from core.domain.data_model import (
     FamilyInventoryRegistry,
     Ingredient,
     InventoryItemRegistry,
-    InventoryUnitEquivalenceRegistry,
     InventoryUnitRegistry,
     Recipe,
     RecipeUnitRegistry,
@@ -298,7 +297,7 @@ def compute_readiness_report(
     family_inventory_registry: FamilyInventoryRegistry,
     inventory_item_registry: InventoryItemRegistry,
     conversion_table: RecipeUnitConversionRegistry,
-    equivalence_registry: Optional[InventoryUnitEquivalenceRegistry] = None,
+    equivalence_registry: Optional[Any] = None,
     ingredient_taxonomy: Optional[IngredientTaxonomy] = None,
     inventory_taxonomy: Optional[InventoryTaxonomy] = None,
     recipe_taxonomy: Optional[RecipeTaxonomy] = None,
@@ -1086,7 +1085,7 @@ def _classify_normalization_skip_reason(
     family_registry: FamilyInventoryRegistry,
     unit_registry: InventoryUnitRegistry,
     conversion_table: RecipeUnitConversionRegistry,
-    equivalence_registry: Optional[InventoryUnitEquivalenceRegistry],
+    equivalence_registry: Optional[Any],
 ) -> str:
     if not math.isfinite(ing.quantity) or ing.quantity <= 0:
         return "Invalid quantity (must be finite and > 0)"

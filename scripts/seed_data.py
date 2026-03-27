@@ -83,11 +83,11 @@ RECIPE_UNITS = [
 ]
 
 INVENTORY_UNITS = [
-    {"id": 1, "name": "gramo",      "symbol": "g",   "base_unit_id": None, "factor_to_base": 1.0},
-    {"id": 2, "name": "kilogramo",  "symbol": "kg",  "base_unit_id": None, "factor_to_base": 1.0},
-    {"id": 3, "name": "mililitro",  "symbol": "ml",  "base_unit_id": None, "factor_to_base": 1.0},
-    {"id": 4, "name": "litro",      "symbol": "L",   "base_unit_id": None, "factor_to_base": 1.0},
-    {"id": 5, "name": "pieza",      "symbol": "pza", "base_unit_id": None, "factor_to_base": 1.0},
+    {"id": 1, "name": "gramo",     "symbol": "g",   "base_unit_id": None, "factor_to_base": 1.0},
+    {"id": 2, "name": "kilogramo", "symbol": "kg",  "base_unit_id": 1,    "factor_to_base": 1000.0},
+    {"id": 3, "name": "mililitro", "symbol": "ml",  "base_unit_id": None, "factor_to_base": 1.0},
+    {"id": 4, "name": "litro",     "symbol": "L",   "base_unit_id": 3,    "factor_to_base": 1000.0},
+    {"id": 5, "name": "pieza",     "symbol": "pza", "base_unit_id": None, "factor_to_base": 1.0},
 ]
 
 # ---------------------------------------------------------------------------

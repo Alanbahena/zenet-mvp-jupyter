@@ -987,7 +987,7 @@
             "title": "11.1 Data model prerequisites",
             "description": "Update _INVENTORY_UNIT_TEMPLATES for all 5 restaurant types with standard unit chains (g root, kg→g ×1000, ml root, L→ml ×1000, pza root). Update InventoryItem dataclass: remove unit_id, add stock_unit_id, purchase_unit_id, purchase_to_stock_factor. Remove InventoryUnitEquivalence and InventoryUnitEquivalenceRegistry from data_model.py. Update InventoryItem.add_ingredient and dependent methods. Update seed_data.py INVENTORY_UNITS with correct base_unit_id/factor_to_base chains. Note: unit chains cannot be wired at template definition time (all templates use id=0) — chains must be applied when assigning real IDs to a registry.",
             "details": "See .taskmaster/docs/task-11/plan.md § 11.1",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 11,
             "parentId": "undefined"
