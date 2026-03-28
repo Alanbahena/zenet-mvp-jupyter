@@ -111,6 +111,7 @@ from core.agents import (
     ConsistencyCheckAgent,
     create_agent,
     RestaurantInfoAgent,
+    StructuringAgent,
     WelcomeAgent,
 )
 
@@ -225,5 +226,6 @@ __all__ = [
     "ConsistencyCheckAgent",
     "create_agent",
     "RestaurantInfoAgent",
+    "StructuringAgent",
     "WelcomeAgent",
 ]

@@ -1033,7 +1033,7 @@
             "title": "11.5 Exports",
             "description": "core/agents/__init__.py: add StructuringAgent import and __all__ entry. core/__init__.py: add StructuringAgent import and __all__ entry; remove InventoryUnitEquivalence, InventoryUnitEquivalenceRegistry, inventory_unit_equivalence_to_dict, inventory_unit_equivalence_from_dict from imports and __all__.",
             "details": "See .taskmaster/docs/task-11/plan.md § 11.5",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               "11.4"
             ],
