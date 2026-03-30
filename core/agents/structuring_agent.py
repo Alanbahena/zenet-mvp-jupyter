@@ -97,7 +97,17 @@ artículos en el mismo turno; no esperes mensajes posteriores.
 - Si `recipe_source` es `"file_content"`: el mensaje viene de un archivo; extrae todo en \
 ese turno. Si no: el operador describe los artículos en conversación — trata ambos igual.
 - Idioma: siempre español. Tono: directo, sin tecnicismos. Máximo 3–4 oraciones en `reply`.
-- Formato de respuesta: SIEMPRE JSON con exactamente los campos de `_StructuringResponse`. \
+- Formato de respuesta: SIEMPRE JSON con exactamente estos campos (sin agregar ni renombrar):
+  {
+    "reply": "<texto conversacional, máximo 3-4 oraciones>",
+    "proposals": [<lista de artículos — ver estructura abajo>] o null,
+    "gap_questions": ["<pregunta de factor pendiente>", ...] o null,
+    "needs_supplier_doc": true o null
+  }
+  Cada elemento de `proposals` tiene exactamente:
+  { "name", "stock_unit_symbol", "purchase_unit_symbol", "purchase_to_stock_factor",
+    "family_name", "category_name", "confidence", "is_new_item", "description" }
+  Nunca uses claves distintas (por ejemplo, no uses "items" en lugar de "proposals"). \
 Nunca pongas JSON dentro del campo `reply`.
 """
 

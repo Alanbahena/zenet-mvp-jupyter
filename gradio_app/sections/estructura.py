@@ -181,11 +181,17 @@ def _make_chat_fn(provider: Any, data_lake: Any, initial_greeting_text: str):
 
 def _make_confirm_fn(data_lake: Any):
     def confirm_fn(
-        proposals_rows: list,
+        proposals_rows,
         session_id: str,
         current_category: str,
     ):
-        if not session_id or not proposals_rows:
+        # gr.Dataframe passes a pandas DataFrame — normalize to list[list]
+        if hasattr(proposals_rows, "values"):
+            rows: list = proposals_rows.values.tolist()
+        else:
+            rows = list(proposals_rows or [])
+
+        if not session_id or not rows:
             yield "No hay artículos para guardar.", False
             return
 
@@ -233,7 +239,7 @@ def _make_confirm_fn(data_lake: Any):
                 return new_id
 
             count = 0
-            for row in proposals_rows:
+            for row in rows:
                 if not row or not row[0]:
                     continue
                 # Columns: [name, purchase_sym, stock_sym, factor, family_name, cat_name]
