@@ -1045,7 +1045,7 @@
             "title": "11.6 Tests",
             "description": "Create tests/unit/test_structuring_agent.py. 12 mocked tests: test_create_via_factory, test_response_model_fields, test_bulk_inference_standard_units, test_bulk_inference_non_standard_unit, test_missing_purchase_unit_flag, test_no_equivalence_for_pza, test_new_item_detection, test_data_store_accumulation, test_perecedero_category_inference, test_no_perecedero_category_inference, test_context_injection, test_confirm_fn_saves_inventory_items. 2 live tests guarded by ANTHROPIC_API_KEY: test_live_bulk_inference_taqueria, test_live_gap_question_non_standard_unit.",
             "details": "See .taskmaster/docs/task-11/plan.md § 11.6. Use _MockProvider pattern from existing test files.",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [
               "11.5"
             ],
