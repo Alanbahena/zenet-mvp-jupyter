@@ -1057,7 +1057,7 @@
             "title": "11.7 Documentation and closure",
             "description": "Create docs/Architecture/sections/estructura.md (section overview, agent, context loader, UI layout, confirm flow, category flow, missing unit resolution, equivalence rule, Gradio wiring). Update architecture-data-model.md (InventoryItem two-unit fields, standard unit chains, InventoryUnitEquivalence removed). Update architecture-normalization.md (deduction path changes, equivalence registry removed). Update architecture-persistence.md (inventory_item table changes, inventory_unit_equivalence table dropped). Update architecture-agent-framework.md (add StructuringAgent). Update architecture-data-model-utils.md (updated function signatures). Update CLAUDE.md (Task 11 done, Task 12 next). Update tasks.json (Task 11 status → done).",
             "details": "See .taskmaster/docs/task-11/plan.md § 11.7",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [
               "11.6"
             ],

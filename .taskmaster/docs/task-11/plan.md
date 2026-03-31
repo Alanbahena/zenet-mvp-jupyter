@@ -357,6 +357,12 @@ All sequential. 11.2 depends on 11.1 (dataclass must exist before schema/seriali
 **Impact:** Confirm will crash for restaurants using units not in their Configuración inventory_unit list.
 **Suggested action:** Add rule to 11.4 step 4: if symbol not found in DataLake, create new `InventoryUnit` record (`is_standard=False`) and save it before constructing `InventoryItem`.
 
+### [OPEN] — As-built 4-phase design diverges from parent plan spec
+**Source:** Validation of subtask 11.7
+**Problem:** Parent plan §11.4 describes a 2-phase flow (Perecederos → No Perecederos). The actual implementation uses a 4-phase state machine (`enrich_perecederos` → `add_perecederos` → `enrich_no_perecederos` → `add_no_perecederos` → `final_review`). No errata or amendment note exists in the parent plan.
+**Impact:** Future planners reading this file will see a different design than what was built. Task 12 planning may reference the stale spec.
+**Suggested action:** Use `docs/Architecture/sections/estructura.md` as the authoritative design reference for Task 12. The parent plan §11.4 is superseded by that doc.
+
 1. **Standard unit chain wiring in templates**: template units use `id=0`, so
    `kg.base_unit_id = g.id` cannot be set at template definition time. Chains must be
    applied when assigning real IDs to a registry. Implementation must document this clearly
