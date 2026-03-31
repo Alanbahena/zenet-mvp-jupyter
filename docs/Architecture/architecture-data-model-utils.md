@@ -77,7 +77,7 @@ This module intentionally composes:
   - Returns human-readable issues; empty list means “basic validation passed”.
   - Current checks:
     - ingredient can be resolved to an inventory item (id or name)
-    - resolved inventory item’s `unit_id` exists in `InventoryUnitRegistry`
+    - resolved inventory item’s `stock_unit_id` exists in `InventoryUnitRegistry`
   - Note: current implementation does **not** run full normalization coverage checks; `conversion_table` / `family_registry` are accepted but not used.
 
 - `validate_ingredient_with_registries(ingredient, valid_recipe_unit_ids) -> list[str]`
@@ -90,7 +90,7 @@ This module intentionally composes:
   - Otherwise fallback to name-based lookup (`get_by_name`).
 
 - `make_resolver_from_item_registry(item_registry) -> Callable[[Ingredient], tuple[int, int|None, int]]`
-  - Resolver output tuple is `(inventory_item_id, family_id, item_unit_id)`.
+  - Resolver output tuple is `(inventory_item_id, family_id, item_stock_unit_id)`.
   - Designed to plug into `normalize_recipe_for_deduction(..., resolve_ingredient_to_inventory=<resolver>)`.
 
 ### Convenience
@@ -99,7 +99,7 @@ This module intentionally composes:
   - Returns `(recipe_unit_ids, inventory_unit_ids)` used by a recipe.
   - Note: current implementation does not validate existence against the provided registries; it only extracts ids.
 
-- `create_inventory_item_from_ingredient(ingredient, category_id, unit_id_for_inventory, family_id=None) -> InventoryItem`
+- `create_inventory_item_from_ingredient(ingredient, category_id, stock_unit_id, purchase_unit_id, purchase_to_stock_factor=1.0, family_id=None) -> InventoryItem`
   - Returns `InventoryItem(id=0, ...)` for the caller to persist/add to `InventoryItemRegistry`.
 
 - `build_ingredient(name, quantity, unit_id, inventory_item_id=None) -> Ingredient`
