@@ -392,6 +392,7 @@ def render(session_id: gr.State, data_lake: Any) -> None:
     # State
     phase_state         = gr.State("enrich_perecederos")
     proposals_state     = gr.State([])
+    accumulated_state   = gr.State([])   # all rows collected across all phases (saved at the end)
     recipe_source_state = gr.State("conversation")
 
     # Layout
@@ -432,6 +433,9 @@ def render(session_id: gr.State, data_lake: Any) -> None:
     confirm_fn = _make_confirm_fn(data_lake)
 
     def _chat_and_format(message, history, sid, recipe_source, phase):
+        # final_review and done phases have no chat agent
+        if phase not in _PHASE_SEQUENCE:
+            return history, "", [], gr.update(), gr.update()
         history, text, proposals, ready = chat_fn(
             message, history, sid, recipe_source, phase,
         )
@@ -462,46 +466,70 @@ def render(session_id: gr.State, data_lake: Any) -> None:
             f"[Contenido de archivo]\n{text}", history, sid, "file_content", phase,
         )
 
-    def _confirm_and_save(table_rows, sid, current_phase, history):
-        if current_phase not in _PHASE_SEQUENCE:
+    def _confirm_and_save(table_rows, sid, current_phase, history, accumulated):
+        # Already done
+        if current_phase not in _PHASE_SEQUENCE and current_phase != "final_review":
             yield (
                 gr.update(interactive=False),
                 "El inventario ya está completamente estructurado.",
-                gr.update(),
-                current_phase,
-                gr.update(),
-                gr.update(),
+                gr.update(), current_phase, gr.update(), gr.update(), accumulated,
             )
             return
 
+        loading_msg = "Guardando inventario..." if current_phase == "final_review" else "Procesando..."
         # First yield: loading state
         yield (
             gr.update(interactive=False),   # confirm_btn
-            "Guardando...",                  # status_md
-            gr.update(),                     # chatbot
-            current_phase,                   # phase_state (unchanged during save)
-            gr.update(),                     # table
-            gr.update(),                     # phase_md
+            loading_msg,                    # status_md
+            gr.update(),                    # chatbot
+            current_phase,                  # phase_state (unchanged during processing)
+            gr.update(),                    # table
+            gr.update(),                    # phase_md
+            accumulated,                    # accumulated_state (unchanged)
         )
 
-        current_category = _PHASE_CATEGORY[current_phase]
-        status  = ""
-        success = False
-        for status, success in confirm_fn(table_rows, sid, current_category):
-            pass
+        # Normalize current table rows
+        if hasattr(table_rows, "values"):
+            raw_rows = table_rows.values.tolist()
+        else:
+            raw_rows = list(table_rows or [])
+        current_rows = [r for r in raw_rows if r and r[0] and str(r[0]).strip()]
 
         new_history  = list(history)
         new_phase    = current_phase
         new_table    = gr.update()
         new_phase_md = gr.update()
+        new_confirm_interactive = False
+        status       = ""
 
-        if success:
+        if current_phase == "final_review":
+            # ---- FINAL SAVE — write everything to DB ----
+            save_success = False
+            for status, save_success in confirm_fn(table_rows, sid, "Perecedero"):
+                pass
+            new_accumulated = accumulated
+            if save_success:
+                completion = (
+                    "¡Listo! Tu inventario está completamente estructurado y guardado. "
+                    "Puedes avanzar al siguiente paso: Manual Operativo."
+                )
+                new_history.append({"role": "assistant", "content": completion})
+                new_phase = "done"
+                new_table = gr.update(value=[])
+            else:
+                new_confirm_interactive = True   # let operator retry
+
+        else:
+            # ---- PHASE TRANSITION — collect rows, do NOT save to DB yet ----
+            new_accumulated = list(accumulated) + current_rows
+
             phase_idx = _PHASE_SEQUENCE.index(current_phase)
             if phase_idx < len(_PHASE_SEQUENCE) - 1:
+                # Advance to next data-collection phase
                 new_phase = _PHASE_SEQUENCE[phase_idx + 1]
                 greeting  = _phase_greeting(new_phase, data_lake)
                 new_history.append({"role": "assistant", "content": greeting})
-                # Pre-seed next phase agent memory with its greeting
+                # Pre-seed next phase agent memory
                 _next = create_agent(
                     StructuringAgent, provider=provider, name="structuring_agent"
                 )
@@ -511,31 +539,43 @@ def render(session_id: gr.State, data_lake: Any) -> None:
                     _next.save_state(data_lake, session_id=_agent_session_key(sid, new_phase))
                 new_table    = gr.update(value=[])
                 new_phase_md = gr.update(value=_PHASE_LABEL[new_phase])
+                status       = f"{len(current_rows)} artículo(s) registrado(s)."
             else:
-                completion = (
-                    "¡Listo! Tu inventario está completamente estructurado. "
-                    "Puedes avanzar al siguiente paso: Manual Operativo."
+                # Last data phase (add_no_perecederos) → show final review table
+                new_phase  = "final_review"
+                per_count  = sum(
+                    1 for r in new_accumulated
+                    if len(r) > 5 and str(r[5]).strip() == "Perecedero"
                 )
-                new_history.append({"role": "assistant", "content": completion})
-                new_phase    = "done"
-                new_table    = gr.update(value=[])
+                noper_count = len(new_accumulated) - per_count
+                summary_msg = (
+                    f"Aquí está el resumen completo de tu inventario estructurado: "
+                    f"{per_count} perecedero(s) y {noper_count} no perecedero(s). "
+                    "Revisa los artículos y cuando todo esté correcto, confirma para guardarlos."
+                )
+                new_history.append({"role": "assistant", "content": summary_msg})
+                new_table            = gr.update(value=new_accumulated)
+                new_phase_md         = gr.update(value="### Resumen completo")
+                new_confirm_interactive = True   # enable final confirm
+                status = ""
 
         # Second yield: final state
         yield (
-            gr.update(interactive=False),   # confirm_btn
-            status,                          # status_md
-            new_history,                     # chatbot
-            new_phase,                       # phase_state
-            new_table,                       # table
-            new_phase_md,                    # phase_md
+            gr.update(interactive=new_confirm_interactive),  # confirm_btn
+            status,                                           # status_md
+            new_history,                                      # chatbot
+            new_phase,                                        # phase_state
+            new_table,                                        # table
+            new_phase_md,                                     # phase_md
+            new_accumulated,                                  # accumulated_state
         )
 
     # Wiring
-    send_btn.click(
-        fn=_chat_and_format,
-        inputs=[textbox, chatbot, session_id, recipe_source_state, phase_state],
-        outputs=[chatbot, textbox, proposals_state, table, confirm_btn],
-    )
+    _chat_inputs  = [textbox, chatbot, session_id, recipe_source_state, phase_state]
+    _chat_outputs = [chatbot, textbox, proposals_state, table, confirm_btn]
+
+    send_btn.click(fn=_chat_and_format, inputs=_chat_inputs, outputs=_chat_outputs)
+    textbox.submit(fn=_chat_and_format, inputs=_chat_inputs, outputs=_chat_outputs)
 
     file_upload.upload(
         fn=_handle_file_upload,
@@ -545,7 +585,7 @@ def render(session_id: gr.State, data_lake: Any) -> None:
 
     confirm_btn.click(
         fn=_confirm_and_save,
-        inputs=[table, session_id, phase_state, chatbot],
-        outputs=[confirm_btn, status_md, chatbot, phase_state, table, phase_md],
+        inputs=[table, session_id, phase_state, chatbot, accumulated_state],
+        outputs=[confirm_btn, status_md, chatbot, phase_state, table, phase_md, accumulated_state],
         show_progress="hidden",
     )

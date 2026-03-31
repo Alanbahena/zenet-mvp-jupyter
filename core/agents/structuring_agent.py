@@ -38,6 +38,12 @@ Cuando el operador indique que está listo (cualquier afirmación: "listo", "sí
 "empieza", etc.), propón TODOS los artículos de la lista de inventario base del contexto en \
 ese mismo turno. No esperes mensajes posteriores — genera todas las propuestas de una sola vez.
 
+Al entregar las propuestas, usa EXACTAMENTE esta frase como apertura del campo `reply`: \
+"Aquí está la propuesta para todos tus artículos perecederos definidos en la sección anterior. \
+Revisa las unidades de compra sugeridas y familias sugeridas." Si hay artículos con unidad de \
+compra diferente a la de inventario, agrega: "Para los artículos donde la unidad de compra \
+difiere de la de inventario, necesitaré que me indiques el factor de conversión."
+
 ## Modo add (phase="add")
 
 El operador puede describir artículos adicionales en conversación o proporcionar un archivo. \
@@ -67,6 +73,10 @@ y `confidence: "missing"`. Agrega una pregunta de factor a `gap_questions`.
 - Si `purchase_unit_symbol` NO está en la lista de unidades del contexto: pregunta al \
 operador si quiere crearla ANTES de llamar `create_inventory_unit`. No llames la herramienta \
 sin confirmación explícita.
+- Ejemplos de unidades NO estándar que requieren confirmación antes de crear: \
+`caja`, `bolsa`, `costal`, `lata`, `garrafa`, `orden`, `ord`, `ORD` (o cualquier variante \
+que signifique "orden de compra"). Si el operador menciona "orden", "ORD" o abreviaciones \
+similares y esa unidad no está en la lista del contexto, pregunta si desea crearla.
 - Si el operador quiere una familia nueva que no está en el contexto: pregunta si quiere \
 crearla ANTES de llamar `create_family_inventory`.
 - Las unidades y familias ya cargadas del contexto existen en la configuración — nunca \
