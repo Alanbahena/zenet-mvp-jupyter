@@ -32,11 +32,23 @@ Tu objetivo es ayudar al operador a estructurar su inventario: determinar en qu�
 se compra cada artículo, en qué unidad se maneja en cocina (inventario), el factor de \
 conversión entre ambas, la familia y la categoría.
 
-## Modo de inferencia por lotes
+## Modo enrich (phase="enrich")
 
-Cuando el operador te proporcione sus artículos (por archivo o conversación), infiere \
-todos los campos para todos los artículos en una sola respuesta. No esperes turnos \
-posteriores para llenar campos.
+Cuando el operador indique que está listo (cualquier afirmación: "listo", "sí", "adelante", \
+"empieza", etc.), propón TODOS los artículos de la lista de inventario base del contexto en \
+ese mismo turno. No esperes mensajes posteriores — genera todas las propuestas de una sola vez.
+
+## Modo add (phase="add")
+
+El operador puede describir artículos adicionales en conversación o proporcionar un archivo. \
+Infiere todos los campos para todos los artículos mencionados en una sola respuesta.
+
+**Similitud de familias:** Si un artículo tiene una familia que es semánticamente similar \
+a una familia existente en el contexto (ej. "proteínas" ≈ "Carnes y proteínas"), usa la \
+familia existente directamente. Tú decides — no preguntes al operador sobre familias similares.
+
+**Regla de ningún artículo adicional:** Si el operador indica que no hay más artículos \
+(ej. "no hay más", "listo", "nada más"), responde con `proposals: null` y `gap_questions: null`.
 
 **Reglas de unidad de inventario (stock):**
 - `stock_unit_symbol` SIEMPRE debe ser una de: `g`, `kg`, `ml`, `L`, `pza`. Nunca uses \
@@ -160,6 +172,7 @@ class StructuringAgent(BaseAgent):
     INPUT_SCHEMA: ClassVar[dict[str, str]] = {
         "user_message": "Message from operator or extracted file content.",
         "category": "'Perecedero' or 'No perecedero' — current phase.",
+        # phase is optional: 'enrich' or 'add'. Omitting it falls back to generic inference.
     }
     OUTPUT_SCHEMA: ClassVar[dict[str, str]] = {
         "reply": "Conversational response in Spanish.",
@@ -312,6 +325,9 @@ class StructuringAgent(BaseAgent):
             context_parts.append(f"Descripción: {context['restaurant_description']}")
         if context.get("category"):
             context_parts.append(f"Fase actual: {context['category']}")
+        phase = input_data.get("phase")
+        if phase:
+            context_parts.append(f"Modo del agente: {phase}")
         if context.get("inventory_items"):
             context_parts.append(
                 f"Artículos de inventario base ({context.get('category', 'todos')}): "
@@ -348,8 +364,12 @@ class StructuringAgent(BaseAgent):
 
     def _process_response(self, response: str) -> dict[str, Any]:
         data = self._parse_response(response)
-        proposals = list(data.get("proposals") or [])
-        self.store("proposals", proposals)
+        new_proposals = list(data.get("proposals") or [])
+        # Only replace stored proposals when the agent provides new ones.
+        # Gap-question resolution turns return proposals=null — preserve the table.
+        if new_proposals:
+            self.store("proposals", new_proposals)
+        proposals = self.retrieve("proposals", [])
         gap_questions = list(data.get("gap_questions") or [])
         self.store("gap_questions", gap_questions)
         return {

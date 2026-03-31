@@ -1,13 +1,13 @@
 """Estructura section — inventory structuring UI.
 
-Guides the operator through enriching the base inventory (from Alineamiento)
-with purchase unit, stock unit, conversion factor, family, and category via a
-batch-inference agent and editable Gradio table. Processes Perecederos first,
-then No Perecederos. Persists fully structured InventoryItem records to DataLake.
+Guides the operator through 4 phases:
+  1. enrich_perecederos     — propose units/family for base perishable items
+  2. add_perecederos        — capture additional perishable items
+  3. enrich_no_perecederos  — same for base non-perishable items
+  4. add_no_perecederos     — capture additional non-perishable items
 
-No LangGraph — StructuringAgent is called directly per turn. Proposals accumulate
-inside StructuringAgent's _data_store across turns; gr.State holds proposals for
-the right-column editable table.
+Each phase uses a dedicated StructuringAgent session (separate memory/data_store).
+No LangGraph — StructuringAgent is called directly per turn.
 """
 from __future__ import annotations
 
@@ -24,6 +24,79 @@ from gradio_app.sections.alineamiento import _extract_file_text
 from gradio_app.session import stable_entity_id
 
 _INVENTORY_CATEGORY_IDS = {"Perecedero": 1, "No perecedero": 2}
+
+_PHASE_SEQUENCE = [
+    "enrich_perecederos",
+    "add_perecederos",
+    "enrich_no_perecederos",
+    "add_no_perecederos",
+]
+
+_PHASE_CATEGORY: dict[str, str] = {
+    "enrich_perecederos":    "Perecedero",
+    "add_perecederos":       "Perecedero",
+    "enrich_no_perecederos": "No perecedero",
+    "add_no_perecederos":    "No perecedero",
+}
+
+_PHASE_MODE: dict[str, str] = {
+    "enrich_perecederos":    "enrich",
+    "add_perecederos":       "add",
+    "enrich_no_perecederos": "enrich",
+    "add_no_perecederos":    "add",
+}
+
+_PHASE_LABEL: dict[str, str] = {
+    "enrich_perecederos":    "### Perecederos — Base",
+    "add_perecederos":       "### Perecederos — Adicionales",
+    "enrich_no_perecederos": "### No Perecederos — Base",
+    "add_no_perecederos":    "### No Perecederos — Adicionales",
+}
+
+
+# ---------------------------------------------------------------------------
+# Phase helpers
+# ---------------------------------------------------------------------------
+
+def _agent_session_key(session_id: str, phase: str) -> str:
+    return f"structuring_{phase}_{session_id}"
+
+
+def _count_items_by_category(data_lake: Any, category_id: int) -> int:
+    return sum(
+        1
+        for eid in data_lake.list_entity_ids("inventory_item")
+        if (data_lake.load_entity("inventory_item", eid) or {}).get("category_id") == category_id
+    )
+
+
+def _phase_greeting(phase: str, data_lake: Any) -> str:
+    if phase == "enrich_perecederos":
+        count = _count_items_by_category(data_lake, 1)
+        return (
+            f"Vamos a estructurar tu inventario. Comenzaremos con los {count} artículo(s) "
+            "perecederos de tu inventario base. Cuando estés listo, dímelo y te haré una "
+            "propuesta de unidades y familias para cada uno."
+        )
+    if phase == "add_perecederos":
+        return (
+            "¿Tienes artículos perecederos adicionales que no provienen de tus recetas? "
+            "Puedes describírmelos o subir un archivo. "
+            'Si no tienes más, di "listo" para continuar.'
+        )
+    if phase == "enrich_no_perecederos":
+        count = _count_items_by_category(data_lake, 2)
+        return (
+            f"Perfecto, ahora pasamos a los no perecederos. Tienes {count} artículo(s) "
+            "en tu inventario base. Cuando estés listo, dímelo y te haré una propuesta."
+        )
+    if phase == "add_no_perecederos":
+        return (
+            "¿Tienes artículos no perecederos adicionales? "
+            "Puedes describírmelos o subir un archivo. "
+            'Si no tienes más, di "listo" para continuar.'
+        )
+    return ""
 
 
 # ---------------------------------------------------------------------------
@@ -86,21 +159,6 @@ def _load_structuring_context(
 
 
 # ---------------------------------------------------------------------------
-# Initial greeting
-# ---------------------------------------------------------------------------
-
-def _initial_greeting(perecedero_count: int) -> list[dict]:
-    """Return opening message for the Estructura section."""
-    content = (
-        f"Vamos a estructurar tu inventario. Comenzaremos con los perecederos "
-        f"— tienes {perecedero_count} artículo(s). "
-        "¿Tienes un archivo con tu inventario de perecederos, "
-        "o prefieres hacerlo de forma conversacional?"
-    )
-    return [{"role": "assistant", "content": content}]
-
-
-# ---------------------------------------------------------------------------
 # Display helpers
 # ---------------------------------------------------------------------------
 
@@ -123,13 +181,13 @@ def _proposals_to_rows(proposals: list[dict]) -> list[list]:
 # Chat handler
 # ---------------------------------------------------------------------------
 
-def _make_chat_fn(provider: Any, data_lake: Any, initial_greeting_text: str):
+def _make_chat_fn(provider: Any, data_lake: Any):
     def chat_fn(
         message: str,
         history: list,
         session_id: str,
         recipe_source: str,
-        current_category: str,
+        phase: str,
     ):
         if not session_id:
             history = list(history)
@@ -139,32 +197,48 @@ def _make_chat_fn(provider: Any, data_lake: Any, initial_greeting_text: str):
         if not (message or "").strip():
             return history, "", [], False
 
+        if phase not in _PHASE_SEQUENCE:
+            return history, "", [], False
+
+        category  = _PHASE_CATEGORY[phase]
+        mode      = _PHASE_MODE[phase]
+        agent_key = _agent_session_key(session_id, phase)
+
         agent = create_agent(StructuringAgent, provider=provider, name="structuring_agent")
-        agent.load_state(data_lake, session_id=f"structuring_agent_{session_id}")
+        agent.load_state(data_lake, session_id=agent_key)
 
+        greeting = _phase_greeting(phase, data_lake)
         if not agent.memory.get_messages():
-            agent.memory.add_assistant(initial_greeting_text)
+            agent.memory.add_assistant(greeting)
 
-        ctx = _load_structuring_context(data_lake, session_id, category=current_category)
+        ctx = _load_structuring_context(data_lake, session_id, category=category)
 
         try:
             result = agent.run(
                 input_data={
                     "user_message":  message,
                     "recipe_source": recipe_source,
-                    "category":      current_category,
+                    "category":      category,
+                    "phase":         mode,
                 },
                 context=ctx,
             )
-            reply     = result["reply"]
-            proposals = result.get("proposals") or []
-            ready     = bool(proposals)
-        except Exception:
-            reply     = "Hubo un problema al conectar con el asistente. Por favor, intenta de nuevo."
-            proposals = []
-            ready     = False
+            reply         = result["reply"]
+            proposals     = result.get("proposals") or []
+            gap_questions = result.get("gap_questions") or []
 
-        agent.save_state(data_lake, session_id=f"structuring_agent_{session_id}")
+            if mode == "enrich":
+                # Enrich phase: confirm only when proposals exist and no pending questions
+                ready = bool(proposals) and not gap_questions
+            else:
+                # Add phase: operator can confirm even with 0 new items
+                ready = not gap_questions
+        except Exception:
+            reply         = "Hubo un problema al conectar con el asistente. Por favor, intenta de nuevo."
+            proposals     = []
+            ready         = False
+
+        agent.save_state(data_lake, session_id=agent_key)
 
         history = list(history)
         history.append({"role": "user",      "content": message})
@@ -191,8 +265,8 @@ def _make_confirm_fn(data_lake: Any):
         else:
             rows = list(proposals_rows or [])
 
-        if not session_id or not rows:
-            yield "No hay artículos para guardar.", False
+        if not session_id:
+            yield "Sesión no iniciada.", False
             return
 
         yield "Guardando...", False
@@ -227,9 +301,9 @@ def _make_confirm_fn(data_lake: Any):
                 existing_unit_ids = data_lake.list_entity_ids("inventory_unit")
                 new_id = max((int(i) for i in existing_unit_ids), default=0) + 1
                 data_lake.save_entity("inventory_unit", new_id, {
-                    "id": new_id,
-                    "name": symbol,
-                    "symbol": symbol,
+                    "id":          new_id,
+                    "name":        symbol,
+                    "symbol":      symbol,
                     "description": None,
                     "base_unit_id": None,
                     "factor_to_base": 1.0,
@@ -312,34 +386,31 @@ def _make_confirm_fn(data_lake: Any):
 def render(session_id: gr.State, data_lake: Any) -> None:
     provider = ClaudeProvider()
 
+    initial_greeting  = _phase_greeting("enrich_perecederos", data_lake)
+    initial_history   = [{"role": "assistant", "content": initial_greeting}]
+
     # State
+    phase_state         = gr.State("enrich_perecederos")
     proposals_state     = gr.State([])
-    category_state      = gr.State("Perecedero")
     recipe_source_state = gr.State("conversation")
-
-    # Count Perecedero items for initial greeting
-    perecedero_count = sum(
-        1
-        for eid in data_lake.list_entity_ids("inventory_item")
-        if (data_lake.load_entity("inventory_item", eid) or {}).get("category_id") == 1
-    )
-
-    greeting_messages = _initial_greeting(perecedero_count)
-    greeting_text     = greeting_messages[0]["content"]
 
     # Layout
     with gr.Row():
         # LEFT — chat
         with gr.Column(scale=1):
             gr.Markdown("## Asistente de estructuración")
-            chatbot = gr.Chatbot(label="Asistente Zenet", height="60vh", value=greeting_messages)
+            chatbot = gr.Chatbot(
+                label="Asistente Zenet",
+                height="60vh",
+                value=initial_history,
+            )
             textbox = gr.Textbox(
                 placeholder="Escribe tu mensaje...",
                 show_label=False,
                 lines=3,
                 max_lines=3,
             )
-            send_btn = gr.Button("Enviar")
+            send_btn    = gr.Button("Enviar")
             file_upload = gr.File(
                 label="Subir archivo de inventario",
                 file_types=[".pdf", ".xlsx", ".xls", ".jpg", ".jpeg", ".png", ".webp"],
@@ -347,8 +418,8 @@ def render(session_id: gr.State, data_lake: Any) -> None:
 
         # RIGHT — table
         with gr.Column(scale=1):
-            phase_md = gr.Markdown("### Perecederos")
-            table = gr.Dataframe(
+            phase_md    = gr.Markdown(_PHASE_LABEL["enrich_perecederos"])
+            table       = gr.Dataframe(
                 headers=["Artículo", "Compra", "Inventario", "Factor", "Familia", "Categoría"],
                 interactive=True,
                 label="Propuesta de inventario",
@@ -357,12 +428,12 @@ def render(session_id: gr.State, data_lake: Any) -> None:
             status_md   = gr.Markdown("")
 
     # Handlers
-    chat_fn    = _make_chat_fn(provider, data_lake, greeting_text)
+    chat_fn    = _make_chat_fn(provider, data_lake)
     confirm_fn = _make_confirm_fn(data_lake)
 
-    def _chat_and_format(message, history, sid, recipe_source, current_category):
+    def _chat_and_format(message, history, sid, recipe_source, phase):
         history, text, proposals, ready = chat_fn(
-            message, history, sid, recipe_source, current_category,
+            message, history, sid, recipe_source, phase,
         )
         rows = _proposals_to_rows(proposals)
         return (
@@ -373,7 +444,7 @@ def render(session_id: gr.State, data_lake: Any) -> None:
             gr.update(interactive=ready),
         )
 
-    def _handle_file_upload(file_obj, history, sid, current_category):
+    def _handle_file_upload(file_obj, history, sid, phase):
         if file_obj is None:
             return history, "", [], gr.update(), gr.update(interactive=False)
         text = _extract_file_text(
@@ -383,86 +454,98 @@ def render(session_id: gr.State, data_lake: Any) -> None:
         if not text.strip():
             history = list(history)
             history.append({
-                "role": "assistant",
+                "role":    "assistant",
                 "content": "No pude extraer texto del archivo. Intenta con un PDF o Excel con texto.",
             })
             return history, "", [], gr.update(), gr.update(interactive=False)
         return _chat_and_format(
-            f"[Contenido de archivo]\n{text}", history, sid, "file_content", current_category,
+            f"[Contenido de archivo]\n{text}", history, sid, "file_content", phase,
         )
 
-    def _confirm_and_save(table_rows, sid, current_category, history):
+    def _confirm_and_save(table_rows, sid, current_phase, history):
+        if current_phase not in _PHASE_SEQUENCE:
+            yield (
+                gr.update(interactive=False),
+                "El inventario ya está completamente estructurado.",
+                gr.update(),
+                current_phase,
+                gr.update(),
+                gr.update(),
+            )
+            return
+
         # First yield: loading state
         yield (
-            gr.update(interactive=False),  # confirm_btn
-            "Guardando...",                # status_md
-            gr.update(),                   # chatbot
-            current_category,              # category_state
-            gr.update(),                   # phase_md
+            gr.update(interactive=False),   # confirm_btn
+            "Guardando...",                  # status_md
+            gr.update(),                     # chatbot
+            current_phase,                   # phase_state (unchanged during save)
+            gr.update(),                     # table
+            gr.update(),                     # phase_md
         )
 
+        current_category = _PHASE_CATEGORY[current_phase]
         status  = ""
         success = False
         for status, success in confirm_fn(table_rows, sid, current_category):
             pass
 
         new_history  = list(history)
-        new_category = current_category
+        new_phase    = current_phase
+        new_table    = gr.update()
         new_phase_md = gr.update()
 
         if success:
-            if current_category == "Perecedero":
-                new_category = "No perecedero"
-                no_per_count = sum(
-                    1
-                    for eid in data_lake.list_entity_ids("inventory_item")
-                    if (data_lake.load_entity("inventory_item", eid) or {}).get("category_id") == 2
+            phase_idx = _PHASE_SEQUENCE.index(current_phase)
+            if phase_idx < len(_PHASE_SEQUENCE) - 1:
+                new_phase = _PHASE_SEQUENCE[phase_idx + 1]
+                greeting  = _phase_greeting(new_phase, data_lake)
+                new_history.append({"role": "assistant", "content": greeting})
+                # Pre-seed next phase agent memory with its greeting
+                _next = create_agent(
+                    StructuringAgent, provider=provider, name="structuring_agent"
                 )
-                transition = (
-                    "Perfecto, perecederos listos. Ahora pasemos a los no perecederos "
-                    f"— tienes {no_per_count} artículo(s) en tu inventario base. "
-                    "Antes de continuar, ¿hay algún artículo no perecedero que quieras "
-                    "agregar que no venga de tus recetas?"
-                )
-                new_history.append({"role": "assistant", "content": transition})
-                new_phase_md = gr.update(value="### No Perecederos")
-
-                _agent = create_agent(StructuringAgent, provider=provider, name="structuring_agent")
-                _agent.load_state(data_lake, session_id=f"structuring_agent_{sid}")
-                _agent.memory.add_assistant(transition)
-                _agent.save_state(data_lake, session_id=f"structuring_agent_{sid}")
+                _next.load_state(data_lake, session_id=_agent_session_key(sid, new_phase))
+                if not _next.memory.get_messages():
+                    _next.memory.add_assistant(greeting)
+                    _next.save_state(data_lake, session_id=_agent_session_key(sid, new_phase))
+                new_table    = gr.update(value=[])
+                new_phase_md = gr.update(value=_PHASE_LABEL[new_phase])
             else:
                 completion = (
                     "¡Listo! Tu inventario está completamente estructurado. "
-                    "Cuando estés listo, puedes avanzar al siguiente paso: Manual Operativo."
+                    "Puedes avanzar al siguiente paso: Manual Operativo."
                 )
                 new_history.append({"role": "assistant", "content": completion})
+                new_phase    = "done"
+                new_table    = gr.update(value=[])
 
         # Second yield: final state
         yield (
-            gr.update(interactive=False),  # confirm_btn
-            status,                        # status_md
-            new_history,                   # chatbot
-            new_category,                  # category_state
-            new_phase_md,                  # phase_md
+            gr.update(interactive=False),   # confirm_btn
+            status,                          # status_md
+            new_history,                     # chatbot
+            new_phase,                       # phase_state
+            new_table,                       # table
+            new_phase_md,                    # phase_md
         )
 
     # Wiring
     send_btn.click(
         fn=_chat_and_format,
-        inputs=[textbox, chatbot, session_id, recipe_source_state, category_state],
+        inputs=[textbox, chatbot, session_id, recipe_source_state, phase_state],
         outputs=[chatbot, textbox, proposals_state, table, confirm_btn],
     )
 
     file_upload.upload(
         fn=_handle_file_upload,
-        inputs=[file_upload, chatbot, session_id, category_state],
+        inputs=[file_upload, chatbot, session_id, phase_state],
         outputs=[chatbot, textbox, proposals_state, table, confirm_btn],
     )
 
     confirm_btn.click(
         fn=_confirm_and_save,
-        inputs=[table, session_id, category_state, chatbot],
-        outputs=[confirm_btn, status_md, chatbot, category_state, phase_md],
+        inputs=[table, session_id, phase_state, chatbot],
+        outputs=[confirm_btn, status_md, chatbot, phase_state, table, phase_md],
         show_progress="hidden",
     )
