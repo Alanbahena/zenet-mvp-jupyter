@@ -58,6 +58,38 @@ _PHASE_LABEL: dict[str, str] = {
 # Phase helpers
 # ---------------------------------------------------------------------------
 
+_PROGRESS_STEPS: list[tuple[str, str]] = [
+    ("enrich_perecederos",    "Perecederos — Base"),
+    ("add_perecederos",       "Perecederos — Adicionales"),
+    ("enrich_no_perecederos", "No Perecederos — Base"),
+    ("add_no_perecederos",    "No Perecederos — Adicionales"),
+]
+
+
+def _progress_md(current_phase: str) -> str:
+    """Render a one-line progress stepper showing completed / active / pending phases."""
+    phase_idx = next(
+        (i for i, (k, _) in enumerate(_PROGRESS_STEPS) if k == current_phase), -1
+    )
+    all_done = current_phase in ("final_review", "done")
+
+    parts: list[str] = []
+    for i, (_, label) in enumerate(_PROGRESS_STEPS):
+        if all_done or i < phase_idx:
+            parts.append(f"~~{label}~~")       # completed — strikethrough
+        elif i == phase_idx:
+            parts.append(f"**{label}**")        # active — bold
+        else:
+            parts.append(label)                 # pending — normal
+
+    if current_phase == "final_review":
+        parts.append("**Revision final**")
+    elif current_phase == "done":
+        parts.append("~~Revision final~~")
+
+    return "**Progreso:** " + " &nbsp;›&nbsp; ".join(parts)
+
+
 def _agent_session_key(session_id: str, phase: str) -> str:
     return f"structuring_{phase}_{session_id}"
 
@@ -70,7 +102,23 @@ def _count_items_by_category(data_lake: Any, category_id: int) -> int:
     )
 
 
-def _phase_greeting(phase: str, data_lake: Any) -> str:
+def _unprocessed_item_count(data_lake: Any, already_names: set) -> int:
+    """Count items in the data lake that are not yet in accumulated proposals."""
+    count = 0
+    for eid in data_lake.list_entity_ids("inventory_item"):
+        e = data_lake.load_entity("inventory_item", eid)
+        if e:
+            name = e.get("name", "")
+            if name and name not in already_names:
+                count += 1
+    return count
+
+
+def _phase_greeting(
+    phase: str,
+    data_lake: Any,
+    already_names: set | None = None,
+) -> str:
     if phase == "enrich_perecederos":
         count = _count_items_by_category(data_lake, 1)
         return (
@@ -85,10 +133,15 @@ def _phase_greeting(phase: str, data_lake: Any) -> str:
             'Si no tienes más, di "listo" para continuar.'
         )
     if phase == "enrich_no_perecederos":
+        # Prefer items explicitly labelled as No perecedero (category_id=2).
+        # Fall back to all unprocessed items when Alineamiento set everything to category_id=1.
         count = _count_items_by_category(data_lake, 2)
+        if count == 0 and already_names is not None:
+            count = _unprocessed_item_count(data_lake, already_names)
         return (
-            f"Perfecto, ahora pasamos a los no perecederos. Tienes {count} artículo(s) "
-            "en tu inventario base. Cuando estés listo, dímelo y te haré una propuesta."
+            f"Perfecto, ahora pasamos a los no perecederos. Tengo {count} artículo(s) "
+            "pendiente(s) en tu inventario base. "
+            "Cuando estés listo, dímelo y te haré una propuesta."
         )
     if phase == "add_no_perecederos":
         return (
@@ -107,8 +160,14 @@ def _load_structuring_context(
     data_lake: Any,
     session_id: str,
     category: str = "Perecedero",
+    already_names: set | None = None,
 ) -> dict:
-    """Load all entities needed by StructuringAgent._generate_prompt."""
+    """Load all entities needed by StructuringAgent._generate_prompt.
+
+    already_names: names of items already accumulated in previous phases.
+    When the category filter returns no items (Alineamiento may have labelled
+    everything as Perecedero), falls back to ALL items minus already_names.
+    """
     entity_id = stable_entity_id(session_id)
 
     restaurant_name = ""
@@ -126,12 +185,25 @@ def _load_structuring_context(
     if classification_data:
         restaurant_description = classification_data.get("restaurant_description", "")
 
+    exclude = already_names or set()
     category_id = _INVENTORY_CATEGORY_IDS.get(category, 1)
     inventory_items: list[str] = []
     for eid in data_lake.list_entity_ids("inventory_item"):
         e = data_lake.load_entity("inventory_item", eid)
         if e and e.get("category_id") == category_id:
-            inventory_items.append(e["name"])
+            name = e.get("name", "")
+            if name and name not in exclude:
+                inventory_items.append(name)
+
+    # Fallback: Alineamiento may have assigned category_id=1 to all items.
+    # Load every unprocessed item so the agent can categorize by name knowledge.
+    if not inventory_items:
+        for eid in data_lake.list_entity_ids("inventory_item"):
+            e = data_lake.load_entity("inventory_item", eid)
+            if e:
+                name = e.get("name", "")
+                if name and name not in exclude:
+                    inventory_items.append(name)
 
     families: list[str] = []
     for eid in data_lake.list_entity_ids("family_inventory"):
@@ -188,6 +260,7 @@ def _make_chat_fn(provider: Any, data_lake: Any):
         session_id: str,
         recipe_source: str,
         phase: str,
+        accumulated: list,
     ):
         if not session_id:
             history = list(history)
@@ -200,18 +273,21 @@ def _make_chat_fn(provider: Any, data_lake: Any):
         if phase not in _PHASE_SEQUENCE:
             return history, "", [], False
 
-        category  = _PHASE_CATEGORY[phase]
-        mode      = _PHASE_MODE[phase]
-        agent_key = _agent_session_key(session_id, phase)
+        category      = _PHASE_CATEGORY[phase]
+        mode          = _PHASE_MODE[phase]
+        agent_key     = _agent_session_key(session_id, phase)
+        already_names = {str(r[0]).strip() for r in (accumulated or []) if r and r[0]}
 
         agent = create_agent(StructuringAgent, provider=provider, name="structuring_agent")
         agent.load_state(data_lake, session_id=agent_key)
 
-        greeting = _phase_greeting(phase, data_lake)
+        greeting = _phase_greeting(phase, data_lake, already_names=already_names)
         if not agent.memory.get_messages():
             agent.memory.add_assistant(greeting)
 
-        ctx = _load_structuring_context(data_lake, session_id, category=category)
+        ctx = _load_structuring_context(
+            data_lake, session_id, category=category, already_names=already_names
+        )
 
         try:
             result = agent.run(
@@ -388,6 +464,7 @@ def render(session_id: gr.State, data_lake: Any) -> None:
 
     initial_greeting  = _phase_greeting("enrich_perecederos", data_lake)
     initial_history   = [{"role": "assistant", "content": initial_greeting}]
+    initial_progress  = _progress_md("enrich_perecederos")
 
     # State
     phase_state         = gr.State("enrich_perecederos")
@@ -396,6 +473,8 @@ def render(session_id: gr.State, data_lake: Any) -> None:
     recipe_source_state = gr.State("conversation")
 
     # Layout
+    progress_md = gr.Markdown(initial_progress)
+
     with gr.Row():
         # LEFT — chat
         with gr.Column(scale=1):
@@ -432,12 +511,12 @@ def render(session_id: gr.State, data_lake: Any) -> None:
     chat_fn    = _make_chat_fn(provider, data_lake)
     confirm_fn = _make_confirm_fn(data_lake)
 
-    def _chat_and_format(message, history, sid, recipe_source, phase):
+    def _chat_and_format(message, history, sid, recipe_source, phase, accumulated):
         # final_review and done phases have no chat agent
         if phase not in _PHASE_SEQUENCE:
             return history, "", [], gr.update(), gr.update()
         history, text, proposals, ready = chat_fn(
-            message, history, sid, recipe_source, phase,
+            message, history, sid, recipe_source, phase, accumulated,
         )
         rows = _proposals_to_rows(proposals)
         return (
@@ -448,7 +527,7 @@ def render(session_id: gr.State, data_lake: Any) -> None:
             gr.update(interactive=ready),
         )
 
-    def _handle_file_upload(file_obj, history, sid, phase):
+    def _handle_file_upload(file_obj, history, sid, phase, accumulated):
         if file_obj is None:
             return history, "", [], gr.update(), gr.update(interactive=False)
         text = _extract_file_text(
@@ -463,7 +542,7 @@ def render(session_id: gr.State, data_lake: Any) -> None:
             })
             return history, "", [], gr.update(), gr.update(interactive=False)
         return _chat_and_format(
-            f"[Contenido de archivo]\n{text}", history, sid, "file_content", phase,
+            f"[Contenido de archivo]\n{text}", history, sid, "file_content", phase, accumulated,
         )
 
     def _confirm_and_save(table_rows, sid, current_phase, history, accumulated):
@@ -473,6 +552,7 @@ def render(session_id: gr.State, data_lake: Any) -> None:
                 gr.update(interactive=False),
                 "El inventario ya está completamente estructurado.",
                 gr.update(), current_phase, gr.update(), gr.update(), accumulated,
+                gr.update(),
             )
             return
 
@@ -486,6 +566,7 @@ def render(session_id: gr.State, data_lake: Any) -> None:
             gr.update(),                    # table
             gr.update(),                    # phase_md
             accumulated,                    # accumulated_state (unchanged)
+            gr.update(),                    # progress_md (unchanged during loading)
         )
 
         # Normalize current table rows
@@ -510,12 +591,18 @@ def render(session_id: gr.State, data_lake: Any) -> None:
             new_accumulated = accumulated
             if save_success:
                 completion = (
-                    "¡Listo! Tu inventario está completamente estructurado y guardado. "
-                    "Puedes avanzar al siguiente paso: Manual Operativo."
+                    "¡Felicidades, has completado la estructuración de tu inventario! "
+                    "Ahora cada artículo tiene definida su unidad de compra, unidad de inventario, "
+                    "factor de conversión y familia. "
+                    "Esta es la base que necesita tu restaurante para operar con mayor control: "
+                    "menos merma, compras más precisas y decisiones basadas en datos reales. "
+                    "Estás un paso más cerca de tener una operación completamente estandarizada y eficiente. "
+                    "Cuando estés listo, continúa al siguiente paso: Manual Operativo."
                 )
                 new_history.append({"role": "assistant", "content": completion})
-                new_phase = "done"
-                new_table = gr.update(value=[])
+                new_phase    = "done"
+                new_table    = gr.update(value=[])
+                new_phase_md = gr.update(value="### Inventario estructurado")
             else:
                 new_confirm_interactive = True   # let operator retry
 
@@ -526,8 +613,16 @@ def render(session_id: gr.State, data_lake: Any) -> None:
             phase_idx = _PHASE_SEQUENCE.index(current_phase)
             if phase_idx < len(_PHASE_SEQUENCE) - 1:
                 # Advance to next data-collection phase
-                new_phase = _PHASE_SEQUENCE[phase_idx + 1]
-                greeting  = _phase_greeting(new_phase, data_lake)
+                new_phase     = _PHASE_SEQUENCE[phase_idx + 1]
+                already_names = {str(r[0]).strip() for r in new_accumulated if r and r[0]}
+                # Skip enrich_no_perecederos only when there are truly no items left to enrich
+                # (neither by category_id=2 nor via the fallback of unprocessed items)
+                if new_phase == "enrich_no_perecederos":
+                    has_cat2    = _count_items_by_category(data_lake, 2) > 0
+                    has_unproc  = _unprocessed_item_count(data_lake, already_names) > 0
+                    if not has_cat2 and not has_unproc:
+                        new_phase = "add_no_perecederos"
+                greeting = _phase_greeting(new_phase, data_lake, already_names=already_names)
                 new_history.append({"role": "assistant", "content": greeting})
                 # Pre-seed next phase agent memory
                 _next = create_agent(
@@ -568,10 +663,11 @@ def render(session_id: gr.State, data_lake: Any) -> None:
             new_table,                                        # table
             new_phase_md,                                     # phase_md
             new_accumulated,                                  # accumulated_state
+            gr.update(value=_progress_md(new_phase)),         # progress_md
         )
 
     # Wiring
-    _chat_inputs  = [textbox, chatbot, session_id, recipe_source_state, phase_state]
+    _chat_inputs  = [textbox, chatbot, session_id, recipe_source_state, phase_state, accumulated_state]
     _chat_outputs = [chatbot, textbox, proposals_state, table, confirm_btn]
 
     send_btn.click(fn=_chat_and_format, inputs=_chat_inputs, outputs=_chat_outputs)
@@ -579,13 +675,13 @@ def render(session_id: gr.State, data_lake: Any) -> None:
 
     file_upload.upload(
         fn=_handle_file_upload,
-        inputs=[file_upload, chatbot, session_id, phase_state],
+        inputs=[file_upload, chatbot, session_id, phase_state, accumulated_state],
         outputs=[chatbot, textbox, proposals_state, table, confirm_btn],
     )
 
     confirm_btn.click(
         fn=_confirm_and_save,
         inputs=[table, session_id, phase_state, chatbot, accumulated_state],
-        outputs=[confirm_btn, status_md, chatbot, phase_state, table, phase_md, accumulated_state],
+        outputs=[confirm_btn, status_md, chatbot, phase_state, table, phase_md, accumulated_state, progress_md],
         show_progress="hidden",
     )

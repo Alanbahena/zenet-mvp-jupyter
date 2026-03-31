@@ -44,6 +44,11 @@ Revisa las unidades de compra sugeridas y familias sugeridas." Si hay artículos
 compra diferente a la de inventario, agrega: "Para los artículos donde la unidad de compra \
 difiere de la de inventario, necesitaré que me indiques el factor de conversión."
 
+**Regla de categoría en modo enrich:** Propón ÚNICAMENTE los artículos que según tu \
+conocimiento pertenezcan a la categoría de la Fase actual. Si un artículo de la lista \
+no corresponde a esa categoría (ej. Aceite o Harina en la fase Perecedero), omítelo — \
+será propuesto en la fase correspondiente.
+
 ## Modo add (phase="add")
 
 El operador puede describir artículos adicionales en conversación o proporcionar un archivo. \
@@ -375,10 +380,14 @@ class StructuringAgent(BaseAgent):
     def _process_response(self, response: str) -> dict[str, Any]:
         data = self._parse_response(response)
         new_proposals = list(data.get("proposals") or [])
-        # Only replace stored proposals when the agent provides new ones.
-        # Gap-question resolution turns return proposals=null — preserve the table.
+        # Replace stored proposals only when the new batch is at least as large as
+        # what is already stored. This prevents a factor-resolution turn (where the
+        # agent re-proposes only the item being discussed) from overwriting the full
+        # table built in the initial batch turn.
         if new_proposals:
-            self.store("proposals", new_proposals)
+            stored = self.retrieve("proposals", [])
+            if len(new_proposals) >= len(stored):
+                self.store("proposals", new_proposals)
         proposals = self.retrieve("proposals", [])
         gap_questions = list(data.get("gap_questions") or [])
         self.store("gap_questions", gap_questions)
