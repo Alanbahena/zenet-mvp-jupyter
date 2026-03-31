@@ -15,7 +15,6 @@ from core.domain.data_model import (
     Ingredient,
     InventoryItem,
     InventoryUnit,
-    InventoryUnitEquivalence,
     Recipe,
     RecipeUnit,
     Restaurant,
@@ -205,8 +204,10 @@ def inventory_item_to_dict(item: InventoryItem) -> dict[str, Any]:
     return {
         "id": item.id,
         "name": item.name,
-        "unit_id": item.unit_id,
+        "stock_unit_id": item.stock_unit_id,
+        "purchase_unit_id": item.purchase_unit_id,
         "category_id": item.category_id,
+        "purchase_to_stock_factor": item.purchase_to_stock_factor,
         "family_id": item.family_id,
         "description": item.description,
     }
@@ -217,8 +218,10 @@ def inventory_item_from_dict(d: dict[str, Any]) -> InventoryItem:
     return InventoryItem(
         id=int(_require(d, "id", "inventory_item")),
         name=_require(d, "name", "inventory_item"),
-        unit_id=int(_require(d, "unit_id", "inventory_item")),
+        stock_unit_id=int(_require(d, "stock_unit_id", "inventory_item")),
+        purchase_unit_id=int(_require(d, "purchase_unit_id", "inventory_item")),
         category_id=int(_require(d, "category_id", "inventory_item")),
+        purchase_to_stock_factor=float(d.get("purchase_to_stock_factor", 1.0)),
         family_id=d.get("family_id"),
         description=d.get("description"),
     )
@@ -248,31 +251,6 @@ def recipe_from_dict(d: dict[str, Any]) -> Recipe:
         description=d.get("description"),
         steps=d.get("steps"),
         ingredients=[ingredient_from_dict(ing_d) for ing_d in d.get("ingredients", [])],
-    )
-
-
-# --- InventoryUnitEquivalence (no id field; composite key external) ---
-
-
-def inventory_unit_equivalence_to_dict(eq: InventoryUnitEquivalence) -> dict[str, Any]:
-    """Serialize InventoryUnitEquivalence to contract dict."""
-    return {
-        "unit_id": eq.unit_id,
-        "inventory_item_id": eq.inventory_item_id,
-        "base_unit_id": eq.base_unit_id,
-        "factor_to_base": eq.factor_to_base,
-        "equivalence_source": eq.equivalence_source,
-    }
-
-
-def inventory_unit_equivalence_from_dict(d: dict[str, Any]) -> InventoryUnitEquivalence:
-    """Build InventoryUnitEquivalence from contract dict."""
-    return InventoryUnitEquivalence(
-        unit_id=int(_require(d, "unit_id", "inventory_unit_equivalence")),
-        inventory_item_id=int(_require(d, "inventory_item_id", "inventory_unit_equivalence")),
-        base_unit_id=int(_require(d, "base_unit_id", "inventory_unit_equivalence")),
-        factor_to_base=float(_require(d, "factor_to_base", "inventory_unit_equivalence")),
-        equivalence_source=d.get("equivalence_source", "operator"),
     )
 
 

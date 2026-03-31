@@ -16,9 +16,6 @@ flowchart TB
         to_base --> from_base
         to_base_id --> to_base
         from_base_id --> from_base
-        eq_reg[InventoryUnitEquivalenceRegistry optional]
-        eq_reg -.-> to_base
-        eq_reg -.-> from_base
     end
 
     subgraph layer2["Same-family conversion (2.3.5)"]
@@ -51,7 +48,6 @@ flowchart TB
         to_base_id --> norm_recipe
         from_base_id --> norm_recipe
         root --> norm_recipe
-        eq_reg -.-> norm_recipe
         norm_recipe --> DeductionLine
     end
 
@@ -85,8 +81,6 @@ flowchart LR
         normalize_recipe_for_deduction
     end
 
-    equiv[InventoryUnitEquivalenceRegistry optional]
-
     from_base_quantity --> _factor
     to_base_quantity_by_id --> to_base_quantity
     from_base_quantity_by_id --> from_base_quantity
@@ -98,12 +92,6 @@ flowchart LR
     normalize_recipe_for_deduction --> to_base_quantity_by_id
     normalize_recipe_for_deduction --> from_base_quantity_by_id
     normalize_recipe_for_deduction --> _root
-
-    equiv -.-> to_base_quantity
-    equiv -.-> from_base_quantity
-    equiv -.-> to_base_quantity_by_id
-    equiv -.-> convert_quantity
-    equiv -.-> normalize_recipe_for_deduction
 ```
 
 ![Function dependency graph](images/normalization-02-function-deps.png)
@@ -164,7 +152,6 @@ flowchart LR
     Table -->|No| FamilyBase[get_family_base_unit_id]
     FamilyBase --> SameRoot{Same root base?}
     SameRoot -->|Yes| ToBase[to_base_quantity_by_id]
-    EqReg[InventoryUnitEquivalenceRegistry optional] -.-> ToBase
     ToBase --> FromBase[from_base_quantity_by_id]
     FromBase --> Append2[Append DeductionLine]
     SameRoot -->|No| Skip[Skip ingredient]
@@ -194,7 +181,6 @@ flowchart TB
         Ingredient
         InventoryUnit
         InventoryUnitRegistry
-        InventoryUnitEquivalenceRegistry
         FamilyInventoryRegistry
     end
 
@@ -212,10 +198,6 @@ flowchart TB
     InventoryUnitRegistry --> to_base_quantity
     InventoryUnitRegistry --> from_base_quantity
     InventoryUnitRegistry --> convert_quantity
-    InventoryUnitEquivalenceRegistry --> to_base_quantity
-    InventoryUnitEquivalenceRegistry --> from_base_quantity
-    InventoryUnitEquivalenceRegistry --> convert_quantity
-    InventoryUnitEquivalenceRegistry --> normalize_recipe_for_deduction
     FamilyInventoryRegistry --> get_family_base_unit_id
     InventoryUnitRegistry --> get_family_base_unit_id
     Recipe --> normalize_recipe_for_deduction
@@ -245,22 +227,21 @@ flowchart TB
 
 ### Unit chain conversion
 
-- `to_base_quantity(quantity, unit, registry, *, inventory_item_id=None, equivalence_registry=None) -> float`
+- `to_base_quantity(quantity, unit, registry) -> float`
   - Converts `quantity` from `unit` to its root base unit via the `base_unit_id` chain.
-  - If `inventory_item_id` and `equivalence_registry` are provided and an item-specific equivalence exists, uses it for the first step.
 
-- `from_base_quantity(base_quantity, unit, registry, *, inventory_item_id=None, equivalence_registry=None) -> float`
+- `from_base_quantity(base_quantity, unit, registry) -> float`
   - Inverse of `to_base_quantity`: converts a quantity expressed in the base (root) into the given `unit`.
 
-- `to_base_quantity_by_id(quantity, unit_id, registry, *, inventory_item_id=None, equivalence_registry=None) -> float`
+- `to_base_quantity_by_id(quantity, unit_id, registry) -> float`
   - Looks up `unit` by `unit_id` and calls `to_base_quantity`.
 
-- `from_base_quantity_by_id(base_quantity, unit_id, registry, *, inventory_item_id=None, equivalence_registry=None) -> float`
+- `from_base_quantity_by_id(base_quantity, unit_id, registry) -> float`
   - Looks up `unit` by `unit_id` and calls `from_base_quantity`.
 
 ### Same-dimension conversion
 
-- `convert_quantity(quantity, from_unit_id, to_unit_id, registry, *, inventory_item_id=None, equivalence_registry=None) -> float`
+- `convert_quantity(quantity, from_unit_id, to_unit_id, registry) -> float`
   - Converts between two units that share the same root base (e.g., `g` ↔ `kg`).
   - Raises `ValueError` if the units have different root bases (different dimensions).
 
@@ -278,9 +259,9 @@ flowchart TB
 
 ### Normalized recipe for deduction
 
-- `normalize_recipe_for_deduction(recipe, family_registry, unit_registry, conversion_table, resolve_ingredient_to_inventory, *, equivalence_registry=None) -> list[DeductionLine]`
-  - Returns a list of `(inventory_item_id, normalized_quantity, unit_id)` where each line is **expressed in the inventory item's own unit** (not a family-wide base).
-  - `resolve_ingredient_to_inventory: Callable[[Ingredient], tuple[int, int|None, int]]` must return `(inventory_item_id, family_id, item_unit_id)`.
+- `normalize_recipe_for_deduction(recipe, family_registry, unit_registry, conversion_table, resolve_ingredient_to_inventory) -> list[DeductionLine]`
+  - Returns a list of `(inventory_item_id, normalized_quantity, unit_id)` where each line is **expressed in the inventory item's own `stock_unit_id`** (always a standard unit).
+  - `resolve_ingredient_to_inventory: Callable[[Ingredient], tuple[int, int|None, int]]` must return `(inventory_item_id, family_id, item_stock_unit_id)`.
   - Ingredients that cannot be normalized are **skipped** (no exception; just omitted from the result).
 
 ### Resolver factory and deduction application
@@ -297,19 +278,17 @@ flowchart TB
 
 ## 8. Concrete examples
 
-### Example 1: Same dimension (caja → kg, via unit chain + equivalence)
+### Example 1: Same dimension (caja → kg, via unit chain + purchase factor)
 
 Setup:
 - Recipe ingredient: `2 cajas` of strawberries
-- Inventory item: strawberries stored in `kg`
+- Inventory item: strawberries with `stock_unit=kg`, `purchase_unit=caja`, `purchase_to_stock_factor=2.0` (1 caja = 2 kg)
 - Inventory units: `kg` (root), `caja` (contextual, `is_standard=False`)
-- Item-specific equivalence: `(unit_id=caja, inventory_item_id=strawberries) -> (base_unit_id=kg, factor_to_base=2.0)` (1 caja = 2 kg)
 
 Flow:
-- Resolve ingredient → `inventory_item_id=strawberries`, `item_unit_id=kg`
+- Resolve ingredient → `inventory_item_id=strawberries`, `item_stock_unit_id=kg`
 - No conversion table entry needed (same dimension: both `caja` and `kg` are in the mass family)
-- Fallback path: `to_base_quantity_by_id(2.0, caja, registry, inventory_item_id=strawberries, equivalence_registry=...)` → `4.0 kg` (uses equivalence)
-- `from_base_quantity_by_id(4.0, kg, registry)` → `4.0 kg` (already in target unit)
+- Fallback path: `to_base_quantity_by_id(2.0, caja, registry)` resolves via the standard `kg` chain — non-standard units without a `base_unit_id` chain pass through unchanged; the caller applies `purchase_to_stock_factor` from the `InventoryItem` directly (factor=2.0) → `4.0 kg`
 - Result: `DeductionLine = (strawberries, 4.0, kg)`
 
 ### Example 2: Different dimension (tortilla → kg, requires table entry)

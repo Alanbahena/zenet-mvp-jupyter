@@ -117,7 +117,6 @@ _SQLITE_ENTITY_TYPES = frozenset({
     "family_inventory",
     "inventory_item",
     "recipe",
-    "inventory_unit_equivalence",
     "recipe_unit_conversion",
     "agent_state",
     "classification",
@@ -261,20 +260,24 @@ class SqliteStorage:
             elif entity_type == "inventory_item":
                 cursor.execute(
                     """
-                    INSERT INTO inventory_item (id, name, unit_id, category_id, family_id, description)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    INSERT INTO inventory_item (id, name, stock_unit_id, purchase_unit_id, category_id, purchase_to_stock_factor, family_id, description)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE SET
                         name = excluded.name,
-                        unit_id = excluded.unit_id,
+                        stock_unit_id = excluded.stock_unit_id,
+                        purchase_unit_id = excluded.purchase_unit_id,
                         category_id = excluded.category_id,
+                        purchase_to_stock_factor = excluded.purchase_to_stock_factor,
                         family_id = excluded.family_id,
                         description = excluded.description
                     """,
                     (
                         data_dict["id"],
                         data_dict["name"],
-                        data_dict["unit_id"],
+                        data_dict["stock_unit_id"],
+                        data_dict["purchase_unit_id"],
                         data_dict["category_id"],
+                        data_dict.get("purchase_to_stock_factor", 1.0),
                         data_dict.get("family_id"),
                         data_dict.get("description"),
                     ),
@@ -318,23 +321,6 @@ class SqliteStorage:
                             ing.get("inventory_item_id"),
                         ),
                     )
-            elif entity_type == "inventory_unit_equivalence":
-                unit_id, inventory_item_id = map(int, str(entity_id).split("_"))
-                cursor.execute(
-                    """
-                    INSERT INTO inventory_unit_equivalence (unit_id, inventory_item_id, base_unit_id, factor_to_base)
-                    VALUES (?, ?, ?, ?)
-                    ON CONFLICT(unit_id, inventory_item_id) DO UPDATE SET
-                        base_unit_id = excluded.base_unit_id,
-                        factor_to_base = excluded.factor_to_base
-                    """,
-                    (
-                        unit_id,
-                        inventory_item_id,
-                        data_dict["base_unit_id"],
-                        data_dict["factor_to_base"],
-                    ),
-                )
             elif entity_type == "recipe_unit_conversion":
                 ruc_unit_id, ruc_family_id, ruc_item_id = _parse_ruc_id(entity_id)
                 cursor.execute(
@@ -442,18 +428,6 @@ class SqliteStorage:
                     for ing in cursor.fetchall()
                 ]
                 return recipe_dict
-            elif entity_type == "inventory_unit_equivalence":
-                unit_id, inventory_item_id = map(int, str(entity_id).split("_"))
-                cursor.execute(
-                    """
-                    SELECT unit_id, inventory_item_id, base_unit_id, factor_to_base
-                    FROM inventory_unit_equivalence
-                    WHERE unit_id = ? AND inventory_item_id = ?
-                    """,
-                    (unit_id, inventory_item_id),
-                )
-                row = cursor.fetchone()
-                return dict(row) if row else None
             elif entity_type == "recipe_unit_conversion":
                 ruc_unit_id, ruc_family_id, ruc_item_id = _parse_ruc_id(entity_id)
                 cursor.execute(
@@ -490,15 +464,6 @@ class SqliteStorage:
             cursor = self._conn.cursor()
             if entity_type == "recipe":
                 cursor.execute("DELETE FROM recipe WHERE id = ?", (entity_id,))
-            elif entity_type == "inventory_unit_equivalence":
-                unit_id, inventory_item_id = map(int, str(entity_id).split("_"))
-                cursor.execute(
-                    """
-                    DELETE FROM inventory_unit_equivalence
-                    WHERE unit_id = ? AND inventory_item_id = ?
-                    """,
-                    (unit_id, inventory_item_id),
-                )
             elif entity_type == "recipe_unit_conversion":
                 ruc_unit_id, ruc_family_id, ruc_item_id = _parse_ruc_id(entity_id)
                 cursor.execute(
@@ -525,10 +490,7 @@ class SqliteStorage:
             raise ValueError(f"Unknown entity_type: {entity_type}")
         try:
             cursor = self._conn.cursor()
-            if entity_type == "inventory_unit_equivalence":
-                cursor.execute("SELECT unit_id, inventory_item_id FROM inventory_unit_equivalence")
-                return [f"{row[0]}_{row[1]}" for row in cursor.fetchall()]
-            elif entity_type == "recipe_unit_conversion":
+            if entity_type == "recipe_unit_conversion":
                 cursor.execute(
                     "SELECT recipe_unit_id, family_id, inventory_item_id FROM recipe_unit_conversion"
                 )
@@ -559,7 +521,6 @@ def _get_entity_registries() -> tuple[dict[type, str], dict[str, Any], dict[str,
         dm.FamilyInventory: "family_inventory",
         dm.InventoryItem: "inventory_item",
         dm.Recipe: "recipe",
-        dm.InventoryUnitEquivalence: "inventory_unit_equivalence",
         norm.RecipeUnitConversionEntry: "recipe_unit_conversion",
     }
     type_to_from_dict: dict[str, Any] = {
@@ -571,7 +532,6 @@ def _get_entity_registries() -> tuple[dict[type, str], dict[str, Any], dict[str,
         "family_inventory": ser.family_inventory_from_dict,
         "inventory_item": ser.inventory_item_from_dict,
         "recipe": ser.recipe_from_dict,
-        "inventory_unit_equivalence": ser.inventory_unit_equivalence_from_dict,
         "recipe_unit_conversion": ser.recipe_unit_conversion_from_dict,
     }
     type_to_to_dict: dict[str, Any] = {
@@ -583,16 +543,13 @@ def _get_entity_registries() -> tuple[dict[type, str], dict[str, Any], dict[str,
         "family_inventory": ser.family_inventory_to_dict,
         "inventory_item": ser.inventory_item_to_dict,
         "recipe": ser.recipe_to_dict,
-        "inventory_unit_equivalence": ser.inventory_unit_equivalence_to_dict,
         "recipe_unit_conversion": ser.recipe_unit_conversion_to_dict,
     }
     return class_to_type, type_to_from_dict, type_to_to_dict
 
 
 def _datalake_entity_id(entity: Any, entity_type: str) -> str | int:
-    """Extract entity_id from entity for save_entity_obj. Composite key for inventory_unit_equivalence."""
-    if entity_type == "inventory_unit_equivalence":
-        return f"{entity.unit_id}_{entity.inventory_item_id}"
+    """Extract entity_id from entity for save_entity_obj."""
     return entity.id
 
 

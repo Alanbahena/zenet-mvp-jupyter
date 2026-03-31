@@ -8,7 +8,6 @@ from core.domain.data_model import (
     Ingredient,
     InventoryItem,
     InventoryUnit,
-    InventoryUnitEquivalence,
     Recipe,
     RecipeUnit,
     Restaurant,
@@ -21,8 +20,6 @@ from core.domain.serialization import (
     family_inventory_to_dict,
     inventory_item_from_dict,
     inventory_item_to_dict,
-    inventory_unit_equivalence_from_dict,
-    inventory_unit_equivalence_to_dict,
     inventory_unit_from_dict,
     inventory_unit_to_dict,
     recipe_from_dict,
@@ -238,8 +235,10 @@ class TestInventoryItemRoundTrip(unittest.TestCase):
         item = InventoryItem(
             id=15,
             name="Leche",
-            unit_id=2,
+            stock_unit_id=2,
+            purchase_unit_id=5,
             category_id=1,
+            purchase_to_stock_factor=10.0,
             family_id=1,
             description="Leche entera",
         )
@@ -247,27 +246,18 @@ class TestInventoryItemRoundTrip(unittest.TestCase):
         restored = inventory_item_from_dict(d)
         self.assertEqual(restored.id, item.id)
         self.assertEqual(restored.name, item.name)
-        self.assertEqual(restored.unit_id, item.unit_id)
+        self.assertEqual(restored.stock_unit_id, item.stock_unit_id)
+        self.assertEqual(restored.purchase_unit_id, item.purchase_unit_id)
         self.assertEqual(restored.category_id, item.category_id)
+        self.assertEqual(restored.purchase_to_stock_factor, item.purchase_to_stock_factor)
         self.assertEqual(restored.family_id, item.family_id)
         self.assertEqual(restored.description, item.description)
 
     def test_inventory_item_with_null_description_round_trip(self) -> None:
-        item = InventoryItem(id=20, name="Arroz", unit_id=1, category_id=2, family_id=3, description=None)
+        item = InventoryItem(id=20, name="Arroz", stock_unit_id=1, purchase_unit_id=1, category_id=2, family_id=3, description=None)
         d = inventory_item_to_dict(item)
         restored = inventory_item_from_dict(d)
         self.assertEqual(restored.id, item.id)
         self.assertIsNone(restored.description)
 
 
-class TestInventoryUnitEquivalenceRoundTrip(unittest.TestCase):
-    """Round-trip tests for InventoryUnitEquivalence (Task 3.7)."""
-
-    def test_inventory_unit_equivalence_round_trip(self) -> None:
-        eq = InventoryUnitEquivalence(unit_id=10, inventory_item_id=15, base_unit_id=1, factor_to_base=2.5)
-        d = inventory_unit_equivalence_to_dict(eq)
-        restored = inventory_unit_equivalence_from_dict(d)
-        self.assertEqual(restored.unit_id, eq.unit_id)
-        self.assertEqual(restored.inventory_item_id, eq.inventory_item_id)
-        self.assertEqual(restored.base_unit_id, eq.base_unit_id)
-        self.assertEqual(restored.factor_to_base, eq.factor_to_base)

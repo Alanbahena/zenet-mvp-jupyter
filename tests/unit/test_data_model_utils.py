@@ -51,7 +51,7 @@ class TestFormatDeductionLineForDisplay(unittest.TestCase):
     def test_valid_line(self):
         unit_reg = _make_inventory_unit_registry()
         item_reg = InventoryItemRegistry()
-        item_reg.add(InventoryItem(1, "Leche", 2, 1))  # unit_id 2 = kg
+        item_reg.add(InventoryItem(1, "Leche", 2, 2, 1))  # stock_unit_id 2 = kg
         line = (1, 0.5, 2)
         out = format_deduction_line_for_display(line, unit_reg, item_reg)
         self.assertEqual(out, "0.5 kg Leche")
@@ -59,7 +59,7 @@ class TestFormatDeductionLineForDisplay(unittest.TestCase):
     def test_missing_unit_fallback(self):
         unit_reg = InventoryUnitRegistry()
         item_reg = InventoryItemRegistry()
-        item_reg.add(InventoryItem(1, "X", 99, 1))
+        item_reg.add(InventoryItem(1, "X", 99, 99, 1))
         line = (1, 1.0, 99)
         out = format_deduction_line_for_display(line, unit_reg, item_reg)
         self.assertIn("99", out)
@@ -105,7 +105,7 @@ class TestIngredientsToDisplay(unittest.TestCase):
         recipe = Recipe(0, "R", 1, "D", [], ingredients=[Ingredient("Leche", 100.0, 1)])
         ru_reg = _make_recipe_unit_registry()
         item_reg = InventoryItemRegistry()
-        item_reg.add(InventoryItem(1, "Leche", 1, 1))
+        item_reg.add(InventoryItem(1, "Leche", 1, 1, 1))
         out = ingredients_to_display(recipe, ru_reg, inventory_item_registry=item_reg)
         self.assertEqual(len(out), 1)
         self.assertEqual(out[0]["inventory_item_name"], "Leche")
@@ -140,7 +140,7 @@ class TestParseQuantityAndUnit(unittest.TestCase):
 class TestValidateRecipeForDeduction(unittest.TestCase):
     def test_valid_recipe_empty_issues(self):
         item_reg = InventoryItemRegistry()
-        item_reg.add(InventoryItem(1, "Leche", 1, 1))
+        item_reg.add(InventoryItem(1, "Leche", 1, 1, 1))
         recipe = Recipe(0, "R", 1, "D", [], ingredients=[Ingredient("Leche", 100.0, 1)])
         unit_reg = _make_inventory_unit_registry()
         conv = RecipeUnitConversionRegistry()
@@ -188,7 +188,7 @@ class TestValidateIngredientWithRegistries(unittest.TestCase):
 class TestResolveIngredientToInventoryItem(unittest.TestCase):
     def test_by_id(self):
         item_reg = InventoryItemRegistry()
-        item_reg.add(InventoryItem(1, "Leche", 1, 1))
+        item_reg.add(InventoryItem(1, "Leche", 1, 1, 1))
         ing = Ingredient("Leche", 100.0, 1, inventory_item_id=1)
         out = resolve_ingredient_to_inventory_item(ing, item_reg)
         self.assertIsNotNone(out)
@@ -196,7 +196,7 @@ class TestResolveIngredientToInventoryItem(unittest.TestCase):
 
     def test_by_name(self):
         item_reg = InventoryItemRegistry()
-        item_reg.add(InventoryItem(1, "Leche", 1, 1))
+        item_reg.add(InventoryItem(1, "Leche", 1, 1, 1))
         ing = Ingredient("Leche", 100.0, 1)
         out = resolve_ingredient_to_inventory_item(ing, item_reg)
         self.assertIsNotNone(out)
@@ -212,7 +212,7 @@ class TestResolveIngredientToInventoryItem(unittest.TestCase):
 class TestMakeResolverFromItemRegistry(unittest.TestCase):
     def test_use_with_normalize_recipe_for_deduction(self):
         item_reg = InventoryItemRegistry()
-        item_reg.add(InventoryItem(1, "Harina", 1, 1))
+        item_reg.add(InventoryItem(1, "Harina", 1, 1, 1))
         recipe = Recipe(0, "R", 1, "D", [], ingredients=[Ingredient("Harina", 500.0, 1)])
         ru_reg = _make_recipe_unit_registry()
         iu_reg = _make_inventory_unit_registry()
@@ -231,7 +231,7 @@ class TestMakeResolverFromItemRegistry(unittest.TestCase):
 class TestUnitsUsedByRecipe(unittest.TestCase):
     def test_one_ingredient(self):
         item_reg = InventoryItemRegistry()
-        item_reg.add(InventoryItem(1, "Leche", 2, 1))
+        item_reg.add(InventoryItem(1, "Leche", 2, 2, 1))
         recipe = Recipe(0, "R", 1, "D", [], ingredients=[Ingredient("Leche", 100.0, 1)])
         ru_reg = _make_recipe_unit_registry()
         iu_reg = _make_inventory_unit_registry()
@@ -257,11 +257,13 @@ class TestCreateInventoryItemFromIngredient(unittest.TestCase):
     def test_returns_correct_fields(self):
         ing = Ingredient("Leche", 100.0, 1)
         item = create_inventory_item_from_ingredient(
-            ing, category_id=1, unit_id_for_inventory=2, family_id=None
+            ing, category_id=1, stock_unit_id=2, purchase_unit_id=2,
+            purchase_to_stock_factor=1.0, family_id=None
         )
         self.assertEqual(item.id, 0)
         self.assertEqual(item.name, "Leche")
-        self.assertEqual(item.unit_id, 2)
+        self.assertEqual(item.stock_unit_id, 2)
+        self.assertEqual(item.purchase_unit_id, 2)
         self.assertEqual(item.category_id, 1)
         self.assertIsNone(item.family_id)
 
