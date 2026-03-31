@@ -19,7 +19,6 @@ from core.domain.data_model import (
     Ingredient,
     InventoryItem,
     InventoryUnit,
-    InventoryUnitEquivalenceRegistry,
     InventoryUnitRegistry,
     Recipe,
 )
@@ -31,33 +30,15 @@ def to_base_quantity(
     quantity: float,
     unit: InventoryUnit,
     registry: InventoryUnitRegistry,
-    *,
-    inventory_item_id: Optional[int] = None,
-    equivalence_registry: Optional[InventoryUnitEquivalenceRegistry] = None,
 ) -> float:
     """Convert quantity from the given unit to its base (root of base_unit_id chain).
 
-    If inventory_item_id and equivalence_registry are provided and an item-specific
-    equivalence exists, use it for the first step (e.g. 1 box strawberries = 2 kg);
-    otherwise use the unit's built-in base_unit_id/factor_to_base chain.
-    If unit.base_unit_id is None (and no equivalence), returns quantity * unit.factor_to_base.
+    Uses the unit's built-in base_unit_id/factor_to_base chain.
+    If unit.base_unit_id is None, returns quantity * unit.factor_to_base.
     Detects cycles and broken chains; raises ValueError.
     """
     if not math.isfinite(quantity):
         raise ValueError("quantity must be finite")
-
-    if inventory_item_id is not None and equivalence_registry is not None:
-        equiv = equivalence_registry.get(unit.id, inventory_item_id)
-        if equiv is not None:
-            result = quantity * equiv.factor_to_base
-            base_unit = registry.get(equiv.base_unit_id)
-            if base_unit is None:
-                raise ValueError(
-                    f"equivalence base_unit_id {equiv.base_unit_id} not found in registry"
-                )
-            if base_unit.base_unit_id is None:
-                return result
-            return to_base_quantity(result, base_unit, registry)
 
     visited: set[int] = set()
     current: Optional[InventoryUnit] = unit
@@ -84,29 +65,13 @@ def from_base_quantity(
     base_quantity: float,
     unit: InventoryUnit,
     registry: InventoryUnitRegistry,
-    *,
-    inventory_item_id: Optional[int] = None,
-    equivalence_registry: Optional[InventoryUnitEquivalenceRegistry] = None,
 ) -> float:
     """Convert a quantity expressed in the base (root) of the unit's chain into the given unit.
 
-    If inventory_item_id and equivalence_registry are provided and an item-specific
-    equivalence exists, use it; otherwise use the unit's built-in chain.
     Inverse of to_base_quantity. Detects cycles and broken chains; raises ValueError.
     """
     if not math.isfinite(base_quantity):
         raise ValueError("base_quantity must be finite")
-
-    if inventory_item_id is not None and equivalence_registry is not None:
-        equiv = equivalence_registry.get(unit.id, inventory_item_id)
-        if equiv is not None:
-            base_unit = registry.get(equiv.base_unit_id)
-            if base_unit is None:
-                raise ValueError(
-                    f"equivalence base_unit_id {equiv.base_unit_id} not found in registry"
-                )
-            product_rest = _factor_product_to_base(base_unit, registry)
-            return base_quantity / (equiv.factor_to_base * product_rest)
 
     product = _factor_product_to_base(unit, registry)
     return base_quantity / product
@@ -142,42 +107,24 @@ def to_base_quantity_by_id(
     quantity: float,
     unit_id: int,
     registry: InventoryUnitRegistry,
-    *,
-    inventory_item_id: Optional[int] = None,
-    equivalence_registry: Optional[InventoryUnitEquivalenceRegistry] = None,
 ) -> float:
     """Look up unit by id and convert quantity to base. Raises ValueError if unit_id not found."""
     unit = registry.get(unit_id)
     if unit is None:
         raise ValueError(f"unit_id {unit_id} not found")
-    return to_base_quantity(
-        quantity,
-        unit,
-        registry,
-        inventory_item_id=inventory_item_id,
-        equivalence_registry=equivalence_registry,
-    )
+    return to_base_quantity(quantity, unit, registry)
 
 
 def from_base_quantity_by_id(
     base_quantity: float,
     unit_id: int,
     registry: InventoryUnitRegistry,
-    *,
-    inventory_item_id: Optional[int] = None,
-    equivalence_registry: Optional[InventoryUnitEquivalenceRegistry] = None,
 ) -> float:
     """Look up unit by id and convert base quantity to that unit. Raises if unit_id not found."""
     unit = registry.get(unit_id)
     if unit is None:
         raise ValueError(f"unit_id {unit_id} not found")
-    return from_base_quantity(
-        base_quantity,
-        unit,
-        registry,
-        inventory_item_id=inventory_item_id,
-        equivalence_registry=equivalence_registry,
-    )
+    return from_base_quantity(base_quantity, unit, registry)
 
 
 # --- Step 2.3.5: convert_quantity (same family) ------------------------------
@@ -204,16 +151,10 @@ def convert_quantity(
     from_unit_id: int,
     to_unit_id: int,
     registry: InventoryUnitRegistry,
-    *,
-    inventory_item_id: Optional[int] = None,
-    equivalence_registry: Optional[InventoryUnitEquivalenceRegistry] = None,
 ) -> float:
     """Convert quantity between two units that share the same root base.
 
     If the two units have different root bases (e.g. kg vs L), raises ValueError.
-    Optional inventory_item_id and equivalence_registry apply when converting
-    from_unit_id to base (e.g. 1 caja strawberries = 2 kg); the step from base
-    to to_unit_id uses the unit chain only.
     """
     if not math.isfinite(quantity):
         raise ValueError("quantity must be finite")
@@ -224,13 +165,7 @@ def convert_quantity(
             f"incompatible units: from_unit_id {from_unit_id} (root {root_from}) "
             f"and to_unit_id {to_unit_id} (root {root_to})"
         )
-    base_qty = to_base_quantity_by_id(
-        quantity,
-        from_unit_id,
-        registry,
-        inventory_item_id=inventory_item_id,
-        equivalence_registry=equivalence_registry,
-    )
+    base_qty = to_base_quantity_by_id(quantity, from_unit_id, registry)
     return from_base_quantity_by_id(base_qty, to_unit_id, registry)
 
 
@@ -373,8 +308,6 @@ def normalize_recipe_for_deduction(
     unit_registry: InventoryUnitRegistry,
     conversion_table: RecipeUnitConversionRegistry,
     resolve_ingredient_to_inventory: Callable[[Ingredient], tuple[int, Optional[int], int]],
-    *,
-    equivalence_registry: Optional[InventoryUnitEquivalenceRegistry] = None,
 ) -> list[DeductionLine]:
     """Produce the normalized recipe: list of (inventory_item_id, normalized_quantity, unit_id).
 
@@ -382,13 +315,13 @@ def normalize_recipe_for_deduction(
     in the same family can use different units (e.g. kg for meat, pza for eggs).
     Resolver returns (inventory_item_id, family_id, item_unit_id). We normalize using the
     conversion table (recipe unit -> quantity, base_unit_id) then convert to item_unit_id,
-    or fallback: convert ingredient quantity to item_unit_id via unit chain and optional
-    equivalence_registry. Ingredients that cannot be normalized are skipped.
+    or fallback: convert ingredient quantity to item_unit_id via unit chain.
+    Ingredients that cannot be normalized are skipped.
     Returns "consumo teórico por platillo" for one order of this recipe.
 
     Recipe unit vs inventory unit (same vs different dimension):
-    - Same dimension (e.g. recipe "2 cajas", item in kg): fallback converts via unit chain
-      and optional equivalence_registry (e.g. 1 caja = 5 kg). No conversion table entry needed.
+    - Same dimension (e.g. recipe "2 cajas", item in kg): fallback converts via unit chain.
+      No conversion table entry needed.
     - Different dimension (e.g. recipe "1 tortilla" in pza, item stored in kg): a conversion
       table entry is required (e.g. "1 pza = 0.05 kg" for that item). Without it, the
       ingredient is skipped because pza and kg have different roots.
@@ -433,8 +366,6 @@ def normalize_recipe_for_deduction(
                     ing.quantity,
                     ing.unit_id,
                     unit_registry,
-                    inventory_item_id=inventory_item_id,
-                    equivalence_registry=equivalence_registry,
                 )
                 norm_qty = from_base_quantity_by_id(
                     base_qty, item_unit_id, unit_registry
@@ -460,7 +391,7 @@ def make_resolver(
         item = get_item(ing)
         if item is None:
             raise ValueError(f"no inventory item for ingredient {ing.name!r}")
-        return (item.id, item.family_id, item.unit_id)
+        return (item.id, item.family_id, item.stock_unit_id)
     return resolve
 
 

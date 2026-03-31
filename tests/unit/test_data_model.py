@@ -16,8 +16,6 @@ from core.domain.data_model import (
     InventoryItem,
     InventoryItemRegistry,
     InventoryUnit,
-    InventoryUnitEquivalence,
-    InventoryUnitEquivalenceRegistry,
     InventoryUnitRegistry,
     Recipe,
     RecipeUnit,
@@ -147,11 +145,13 @@ class TestInventoryItem(unittest.TestCase):
         i = InventoryItem(
             id=1,
             name="Leche",
-            unit_id=1,
+            stock_unit_id=1,
+            purchase_unit_id=1,
             category_id=1,
         )
         self.assertEqual(i.name, "Leche")
-        self.assertEqual(i.unit_id, 1)
+        self.assertEqual(i.stock_unit_id, 1)
+        self.assertEqual(i.purchase_unit_id, 1)
         self.assertEqual(i.category_id, 1)
         self.assertIsNone(i.family_id)
 
@@ -159,7 +159,8 @@ class TestInventoryItem(unittest.TestCase):
         i = InventoryItem(
             id=2,
             name="Arroz",
-            unit_id=2,
+            stock_unit_id=2,
+            purchase_unit_id=2,
             category_id=2,
             family_id=1,
         )
@@ -304,13 +305,14 @@ class TestRecipeAddIngredient(unittest.TestCase):
             ing,
             valid_units,
             category_id=1,
-            unit_id_for_inventory=1,
+            stock_unit_id_for_inventory=1,
             valid_inventory_unit_ids=valid_inv_units,
         )
         self.assertIsNotNone(new_item)
         self.assertEqual(new_item.id, 0)
         self.assertEqual(new_item.name, "Leche")
-        self.assertEqual(new_item.unit_id, 1)
+        self.assertEqual(new_item.stock_unit_id, 1)
+        self.assertEqual(new_item.purchase_unit_id, 1)
         self.assertEqual(new_item.category_id, 1)
         self.assertEqual(len(recipe.ingredients), 1)
 
@@ -318,7 +320,7 @@ class TestRecipeAddIngredient(unittest.TestCase):
         recipe = Recipe(0, "R", 1, "D", [])
         ing = Ingredient("Leche", 1.0, 1)
         with self.assertRaises(ValueError) as ctx:
-            recipe.add_ingredient(ing, {1}, category_id=1, unit_id_for_inventory=1)
+            recipe.add_ingredient(ing, {1}, category_id=1, stock_unit_id_for_inventory=1)
         self.assertIn("valid_inventory_unit_ids", str(ctx.exception))
 
     def test_add_ingredient_family_id_requires_valid_family_ids(self):
@@ -327,7 +329,7 @@ class TestRecipeAddIngredient(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             recipe.add_ingredient(
                 ing, {1},
-                category_id=1, unit_id_for_inventory=1,
+                category_id=1, stock_unit_id_for_inventory=1,
                 valid_inventory_unit_ids={1},
                 family_id=99,
                 valid_family_inventory_ids={1, 2},
@@ -341,14 +343,14 @@ class TestRecipeAddIngredient(unittest.TestCase):
             recipe.add_ingredient(
                 ing, {1},
                 category_id=99,
-                unit_id_for_inventory=1,
+                stock_unit_id_for_inventory=1,
                 valid_inventory_unit_ids={1},
             )
         self.assertIn("category_id", str(ctx.exception))
         self.assertIn("Perecedero", str(ctx.exception))
 
-    def test_add_ingredient_new_item_standard_unit_no_equivalence(self):
-        """Creating new item with standard unit does not require equivalence args."""
+    def test_add_ingredient_new_item_creates_shell_with_equal_units(self):
+        """New item shell sets stock_unit_id = purchase_unit_id with factor 1.0."""
         recipe = Recipe(0, "R", 1, "D", [])
         ing = Ingredient("Harina", 500.0, 1)
         valid_units = {1}
@@ -357,82 +359,14 @@ class TestRecipeAddIngredient(unittest.TestCase):
             ing,
             valid_units,
             category_id=1,
-            unit_id_for_inventory=1,
+            stock_unit_id_for_inventory=1,
             valid_inventory_unit_ids=valid_inv_units,
-            unit_requires_equivalence=False,
         )
         self.assertIsNotNone(new_item)
-        self.assertEqual(new_item.unit_id, 1)
+        self.assertEqual(new_item.stock_unit_id, 1)
+        self.assertEqual(new_item.purchase_unit_id, 1)
+        self.assertEqual(new_item.purchase_to_stock_factor, 1.0)
         self.assertEqual(len(recipe.ingredients), 1)
-
-    def test_add_ingredient_new_item_non_standard_unit_without_equivalence_raises(self):
-        """Creating new item with unit_requires_equivalence=True but no equivalence args raises."""
-        recipe = Recipe(0, "R", 1, "D", [])
-        ing = Ingredient("Fresas", 2.0, 1)
-        valid_units = {1}
-        valid_inv_units = {1, 2}  # 1=kg, 2=caja
-        with self.assertRaises(ValueError) as ctx:
-            recipe.add_ingredient(
-                ing,
-                valid_units,
-                category_id=1,
-                unit_id_for_inventory=2,
-                valid_inventory_unit_ids=valid_inv_units,
-                unit_requires_equivalence=True,
-            )
-        self.assertIn("equivalence_base_unit_id", str(ctx.exception))
-        self.assertIn("equivalence_factor_to_base", str(ctx.exception))
-
-    def test_add_ingredient_new_item_non_standard_unit_with_valid_equivalence_succeeds(self):
-        """Creating new item with unit_requires_equivalence=True and valid equivalence args succeeds."""
-        recipe = Recipe(0, "R", 1, "D", [])
-        ing = Ingredient("Fresas", 2.0, 1)
-        valid_units = {1}
-        valid_inv_units = {1, 2}  # 1=kg (base), 2=caja
-        new_item = recipe.add_ingredient(
-            ing,
-            valid_units,
-            category_id=1,
-            unit_id_for_inventory=2,
-            valid_inventory_unit_ids=valid_inv_units,
-            unit_requires_equivalence=True,
-            equivalence_base_unit_id=1,
-            equivalence_factor_to_base=5.0,
-        )
-        self.assertIsNotNone(new_item)
-        self.assertEqual(new_item.unit_id, 2)
-        self.assertEqual(len(recipe.ingredients), 1)
-
-    def test_add_ingredient_equivalence_base_unit_id_not_in_valid_raises(self):
-        recipe = Recipe(0, "R", 1, "D", [])
-        ing = Ingredient("Fresas", 1.0, 1)
-        with self.assertRaises(ValueError) as ctx:
-            recipe.add_ingredient(
-                ing, {1},
-                category_id=1,
-                unit_id_for_inventory=2,
-                valid_inventory_unit_ids={1, 2},
-                unit_requires_equivalence=True,
-                equivalence_base_unit_id=99,
-                equivalence_factor_to_base=5.0,
-            )
-        self.assertIn("equivalence_base_unit_id", str(ctx.exception))
-        self.assertIn("valid_inventory_unit_ids", str(ctx.exception))
-
-    def test_add_ingredient_equivalence_factor_invalid_raises(self):
-        recipe = Recipe(0, "R", 1, "D", [])
-        ing = Ingredient("Fresas", 1.0, 1)
-        with self.assertRaises(ValueError) as ctx:
-            recipe.add_ingredient(
-                ing, {1},
-                category_id=1,
-                unit_id_for_inventory=2,
-                valid_inventory_unit_ids={1, 2},
-                unit_requires_equivalence=True,
-                equivalence_base_unit_id=1,
-                equivalence_factor_to_base=0.0,
-            )
-        self.assertIn("equivalence_factor_to_base", str(ctx.exception))
 
     def test_add_ingredient_duplicate_name_replaces_and_returns_none(self):
         """Adding an ingredient with same name (case-insensitive) updates existing and returns None."""
@@ -566,12 +500,12 @@ class TestRestaurantUpdateClear(unittest.TestCase):
 
 class TestInventoryItemUpdateFamilyId(unittest.TestCase):
     def test_update_family_id_success(self):
-        item = InventoryItem(1, "Leche", 1, 1)
+        item = InventoryItem(1, "Leche", 1, 1, 1)
         item.update_family_id(2, valid_ids={1, 2, 3})
         self.assertEqual(item.family_id, 2)
 
     def test_update_family_id_invalid_raises(self):
-        item = InventoryItem(1, "Leche", 1, 1)
+        item = InventoryItem(1, "Leche", 1, 1, 1)
         with self.assertRaises(ValueError) as ctx:
             item.update_family_id(99, valid_ids={1, 2})
         self.assertIn("valid_ids", str(ctx.exception))
@@ -579,12 +513,12 @@ class TestInventoryItemUpdateFamilyId(unittest.TestCase):
 
 class TestInventoryItemUpdateCategoryId(unittest.TestCase):
     def test_update_category_id_default_valid_ids(self):
-        item = InventoryItem(1, "Leche", 1, 1)
+        item = InventoryItem(1, "Leche", 1, 1, 1)
         item.update_category_id(2)  # No perecedero; valid_ids=None uses fixed set {1, 2}
         self.assertEqual(item.category_id, 2)
 
     def test_update_category_id_invalid_raises(self):
-        item = InventoryItem(1, "Leche", 1, 1)
+        item = InventoryItem(1, "Leche", 1, 1, 1)
         with self.assertRaises(ValueError) as ctx:
             item.update_category_id(99)
         self.assertIn("valid_ids", str(ctx.exception))
@@ -691,96 +625,9 @@ class TestInventoryUnitRegistry(unittest.TestCase):
     def test_remove_in_use_raises(self):
         reg = InventoryUnitRegistry()
         reg.add(InventoryUnit(1, "kg", "kg"))
-        items = [InventoryItem(1, "X", 1, 1)]
+        items = [InventoryItem(1, "X", 1, 1, 1)]
         with self.assertRaises(ValueError):
             reg.remove(1, inventory_items=items)
-
-
-class TestInventoryUnitEquivalence(unittest.TestCase):
-    def test_instantiation(self):
-        eq = InventoryUnitEquivalence(
-            unit_id=3,
-            inventory_item_id=101,
-            base_unit_id=1,
-            factor_to_base=2.0,
-        )
-        self.assertEqual(eq.unit_id, 3)
-        self.assertEqual(eq.inventory_item_id, 101)
-        self.assertEqual(eq.base_unit_id, 1)
-        self.assertEqual(eq.factor_to_base, 2.0)
-
-
-class TestInventoryUnitEquivalenceRegistry(unittest.TestCase):
-    def _unit_registry(self):
-        reg = InventoryUnitRegistry()
-        reg.add(InventoryUnit(1, "gramo", "g"))
-        reg.add(InventoryUnit(2, "kilogramo", "kg", base_unit_id=1, factor_to_base=1000.0))
-        reg.add(InventoryUnit(3, "caja", "caja"))
-        return reg
-
-    def test_add_and_get(self):
-        unit_reg = self._unit_registry()
-        eq_reg = InventoryUnitEquivalenceRegistry()
-        eq = InventoryUnitEquivalence(
-            unit_id=3, inventory_item_id=10, base_unit_id=1, factor_to_base=2.0
-        )
-        eq_reg.add(eq, unit_reg)
-        self.assertIs(eq_reg.get(3, 10), eq)
-        self.assertIsNone(eq_reg.get(3, 99))
-        self.assertIsNone(eq_reg.get(2, 10))
-
-    def test_add_duplicate_raises(self):
-        unit_reg = self._unit_registry()
-        eq_reg = InventoryUnitEquivalenceRegistry()
-        eq = InventoryUnitEquivalence(
-            unit_id=3, inventory_item_id=10, base_unit_id=1, factor_to_base=2.0
-        )
-        eq_reg.add(eq, unit_reg)
-        with self.assertRaises(ValueError) as ctx:
-            eq_reg.add(eq, unit_reg)
-        self.assertIn("duplicate", str(ctx.exception))
-
-    def test_add_invalid_unit_id_raises(self):
-        unit_reg = self._unit_registry()
-        eq_reg = InventoryUnitEquivalenceRegistry()
-        eq = InventoryUnitEquivalence(
-            unit_id=99, inventory_item_id=10, base_unit_id=1, factor_to_base=2.0
-        )
-        with self.assertRaises(ValueError) as ctx:
-            eq_reg.add(eq, unit_reg)
-        self.assertIn("unit_id", str(ctx.exception))
-
-    def test_add_invalid_base_unit_id_raises(self):
-        unit_reg = self._unit_registry()
-        eq_reg = InventoryUnitEquivalenceRegistry()
-        eq = InventoryUnitEquivalence(
-            unit_id=3, inventory_item_id=10, base_unit_id=99, factor_to_base=2.0
-        )
-        with self.assertRaises(ValueError) as ctx:
-            eq_reg.add(eq, unit_reg)
-        self.assertIn("base_unit_id", str(ctx.exception))
-
-    def test_add_factor_to_base_zero_raises(self):
-        unit_reg = self._unit_registry()
-        eq_reg = InventoryUnitEquivalenceRegistry()
-        eq = InventoryUnitEquivalence(
-            unit_id=3, inventory_item_id=10, base_unit_id=1, factor_to_base=0.0
-        )
-        with self.assertRaises(ValueError) as ctx:
-            eq_reg.add(eq, unit_reg)
-        self.assertIn("factor_to_base", str(ctx.exception))
-
-    def test_remove(self):
-        unit_reg = self._unit_registry()
-        eq_reg = InventoryUnitEquivalenceRegistry()
-        eq = InventoryUnitEquivalence(
-            unit_id=3, inventory_item_id=10, base_unit_id=1, factor_to_base=2.0
-        )
-        eq_reg.add(eq, unit_reg)
-        removed = eq_reg.remove(3, 10)
-        self.assertIs(removed, eq)
-        self.assertIsNone(eq_reg.get(3, 10))
-        self.assertIsNone(eq_reg.remove(3, 10))
 
 
 class TestGetCategoryRecipeTemplate(unittest.TestCase):
@@ -890,7 +737,7 @@ class TestFamilyInventoryRegistry(unittest.TestCase):
     def test_remove_in_use_raises(self):
         reg = FamilyInventoryRegistry()
         reg.add(FamilyInventory(1, "L"))
-        items = [InventoryItem(1, "X", 1, 1, family_id=1)]
+        items = [InventoryItem(1, "X", 1, 1, 1, family_id=1)]
         with self.assertRaises(ValueError):
             reg.remove(1, inventory_items=items)
 
@@ -898,7 +745,7 @@ class TestFamilyInventoryRegistry(unittest.TestCase):
 class TestInventoryItemRegistry(unittest.TestCase):
     def test_add_get_get_by_name_valid_ids_list_all(self):
         reg = InventoryItemRegistry()
-        item = InventoryItem(1, "Leche", 1, 1)
+        item = InventoryItem(1, "Leche", 1, 1, 1)
         reg.add(item)
         self.assertEqual(reg.get(1), item)
         self.assertEqual(reg.get_by_name("Leche"), item)
@@ -908,35 +755,35 @@ class TestInventoryItemRegistry(unittest.TestCase):
 
     def test_add_duplicate_name_raises(self):
         reg = InventoryItemRegistry()
-        reg.add(InventoryItem(1, "Queso", 1, 1))
+        reg.add(InventoryItem(1, "Queso", 1, 1, 1))
         with self.assertRaises(ValueError) as ctx:
-            reg.add(InventoryItem(2, "queso", 1, 1))
+            reg.add(InventoryItem(2, "queso", 1, 1, 1))
         self.assertIn("duplicate", str(ctx.exception).lower())
         self.assertIn("name", str(ctx.exception).lower())
 
     def test_add_duplicate_id_raises(self):
         reg = InventoryItemRegistry()
-        reg.add(InventoryItem(1, "A", 1, 1))
+        reg.add(InventoryItem(1, "A", 1, 1, 1))
         with self.assertRaises(ValueError) as ctx:
-            reg.add(InventoryItem(1, "B", 1, 1))
+            reg.add(InventoryItem(1, "B", 1, 1, 1))
         self.assertIn("duplicate", str(ctx.exception).lower())
         self.assertIn("id", str(ctx.exception).lower())
 
     def test_add_empty_name_raises(self):
         reg = InventoryItemRegistry()
         with self.assertRaises(ValueError) as ctx:
-            reg.add(InventoryItem(1, "  ", 1, 1))
+            reg.add(InventoryItem(1, "  ", 1, 1, 1))
         self.assertIn("non-empty", str(ctx.exception))
 
     def test_add_invalid_category_id_raises(self):
         reg = InventoryItemRegistry()
         with self.assertRaises(ValueError) as ctx:
-            reg.add(InventoryItem(1, "X", 1, 99))
+            reg.add(InventoryItem(1, "X", 1, 1, 99))
         self.assertIn("category_id", str(ctx.exception))
 
     def test_remove_returns_item(self):
         reg = InventoryItemRegistry()
-        item = InventoryItem(1, "Harina", 1, 1)
+        item = InventoryItem(1, "Harina", 1, 1, 1)
         reg.add(item)
         removed = reg.remove(1)
         self.assertIs(removed, item)
@@ -945,12 +792,12 @@ class TestInventoryItemRegistry(unittest.TestCase):
 
     def test_remove_missing_returns_none(self):
         reg = InventoryItemRegistry()
-        reg.add(InventoryItem(1, "X", 1, 1))
+        reg.add(InventoryItem(1, "X", 1, 1, 1))
         self.assertIsNone(reg.remove(99))
 
     def test_remove_when_in_use_by_recipe_raises(self):
         reg = InventoryItemRegistry()
-        item = InventoryItem(1, "Leche", 1, 1)
+        item = InventoryItem(1, "Leche", 1, 1, 1)
         reg.add(item)
         recipe = Recipe(0, "R", 1, "D", [], ingredients=[Ingredient("Leche", 100.0, 1)])
         with self.assertRaises(ValueError) as ctx:
@@ -959,7 +806,7 @@ class TestInventoryItemRegistry(unittest.TestCase):
 
     def test_get_by_name_case_insensitive(self):
         reg = InventoryItemRegistry()
-        reg.add(InventoryItem(1, "Queso Oaxaca", 1, 1))
+        reg.add(InventoryItem(1, "Queso Oaxaca", 1, 1, 1))
         self.assertEqual(reg.get_by_name("QUESO OAXACA").id, 1)
         self.assertEqual(reg.get_by_name("queso oaxaca").id, 1)
 

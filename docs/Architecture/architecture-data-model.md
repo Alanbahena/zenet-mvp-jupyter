@@ -25,7 +25,6 @@ flowchart TB
         II[InventoryItem]
         RU[RecipeUnit]
         IU[InventoryUnit]
-        IUE[InventoryUnitEquivalence]
         CR[CategoryRecipe]
         FI[FamilyInventory]
     end
@@ -34,7 +33,6 @@ flowchart TB
         RUR[RecipeUnitRegistry]
         IUR[InventoryUnitRegistry]
         IIR[InventoryItemRegistry]
-        IUE_R[InventoryUnitEquivalenceRegistry]
         CRR[CategoryRecipeRegistry]
         FIR[FamilyInventoryRegistry]
         UR[UserRegistry]
@@ -45,7 +43,8 @@ flowchart TB
     Rec -->|ingredients| Ing
     Ing -->|unit_id| RU
     Ing -.->|inventory_item_id| II
-    II -->|unit_id| IU
+    II -->|stock_unit_id| IU
+    II -->|purchase_unit_id| IU
     II -->|category_id| IC
     II -.->|family_id| FI
     U -->|role| ROLES[admin, mesero, cocinero, inventario]
@@ -53,14 +52,9 @@ flowchart TB
     RUR -.->|stores| RU
     IUR -.->|stores| IU
     IIR -.->|stores| II
-    IUE_R -.->|stores| IUE
     CRR -.->|stores| CR
     FIR -.->|stores| FI
     UR -.->|stores| U
-
-    %% Item-specific unit equivalence: (unit_id, inventory_item_id) -> (base_unit_id, factor_to_base)
-    IUE -->|unit_id / base_unit_id| IU
-    IUE -->|inventory_item_id| II
 ```
 
 ![Entity and registry overview](images/data-model-01-entity-registry.png)
@@ -128,19 +122,14 @@ classDiagram
     class InventoryItem {
         +int id
         +str name
-        +int unit_id
+        +int stock_unit_id
+        +int purchase_unit_id
+        +float purchase_to_stock_factor
         +int category_id
         +int? family_id
         +str? description
         +update_family_id()
         +update_category_id()
-    }
-    class InventoryUnitEquivalence {
-        +int unit_id
-        +int inventory_item_id
-        +int base_unit_id
-        +float factor_to_base
-        +str equivalence_source
     }
     class Ingredient {
         +str name
@@ -168,16 +157,14 @@ classDiagram
     Ingredient ..> InventoryItem : inventory_item_id
     Recipe --> CategoryRecipe : category_id
     Restaurant --> RestaurantType : restaurant_type_id
-    InventoryItem --> InventoryUnit : unit_id
+    InventoryItem --> InventoryUnit : stock_unit_id
+    InventoryItem --> InventoryUnit : purchase_unit_id
     InventoryItem --> InventoryCategory : category_id
     InventoryItem ..> FamilyInventory : family_id
-    InventoryUnitEquivalence --> InventoryUnit : unit_id
-    InventoryUnitEquivalence --> InventoryUnit : base_unit_id
-    InventoryUnitEquivalence --> InventoryItem : inventory_item_id
 ```
 
 ![Class diagram](images/data-model-02-class-diagram.png)
-<!-- NOTE: PNG is stale — class diagram Mermaid source updated for Task 10 (InventoryUnitEquivalence unfrozen, equivalence_source added). Regenerate from Mermaid source. -->
+<!-- NOTE: PNG is stale — class diagram Mermaid source updated for Task 11 (InventoryItem two-unit model; InventoryUnitEquivalence removed). Regenerate from Mermaid source. -->
 
 ---
 
@@ -245,7 +232,6 @@ Validation helpers: `_valid_restaurant_type_ids()`, `_valid_inventory_category_i
 |----------|--------|--------------|
 | `RecipeUnitRegistry` | `RecipeUnit` | add/remove, `valid_ids()`, `get()`. Remove guarded by optional ingredient list. |
 | `InventoryUnitRegistry` | `InventoryUnit` | add/remove (cycle check on base_unit_id chain), `valid_ids()`, `get()`. Remove guarded by optional inventory items. |
-| `InventoryUnitEquivalenceRegistry` | `InventoryUnitEquivalence` | add/get/remove keyed by `(unit_id, inventory_item_id)`; validates referenced units using `InventoryUnitRegistry`. |
 | `CategoryRecipeRegistry` | `CategoryRecipe` | add/update/remove, `valid_ids()`, `get()`. Remove guarded by optional recipes. |
 | `FamilyInventoryRegistry` | `FamilyInventory` | add/remove, `valid_ids()`, `get()`. Remove guarded by optional inventory items. |
 | `InventoryItemRegistry` | `InventoryItem` | add/remove/get/get_by_name/list_all/valid_ids; enforces unique item name (case-insensitive). |
@@ -257,18 +243,22 @@ Roles for `User`: `ALLOWED_USER_ROLES = {"admin", "mesero", "cocinero", "inventa
 
 ## 6. Key workflows & invariants (how the model is intended to be used)
 
-### Inventory units: `is_standard` and item-specific equivalences
+### Inventory units: `is_standard` and purchase-to-stock factor
 
 `InventoryUnit.is_standard` distinguishes:
 
-- **Standard units** (e.g. `kg`, `g`, `L`, `ml`, `pza`): conversions can be expressed via a unit chain (`base_unit_id` + `factor_to_base`) and are generally global.
-- **Non-standard / contextual units** (e.g. `caja`, `bolsa`, `bote`, `pkg`, `bot`): conversions can be **item-specific** (1 caja of strawberries ≠ 1 caja of oranges).
+- **Standard units** (`kg`, `g`, `L`, `ml`, `pza`): conversions are expressed via the unit chain (`base_unit_id` + `factor_to_base`) and are global.
+- **Non-standard / contextual units** (`caja`, `bolsa`, `costal`, `lata`, etc.): used as purchase units only. Conversion to the stock unit is stored directly on `InventoryItem.purchase_to_stock_factor`.
 
-For contextual units, the intended mechanism is `InventoryUnitEquivalenceRegistry`, keyed by:
+The **two-unit model** on `InventoryItem` (introduced in Task 11):
 
-- `(unit_id, inventory_item_id) -> (base_unit_id, factor_to_base)`
+| Field | Type | Default | Meaning |
+|-------|------|---------|---------|
+| `stock_unit_id` | `int` | required | Always a standard unit — used for deduction and cross-recipe comparison |
+| `purchase_unit_id` | `int` | required | How the operator buys it — can be non-standard |
+| `purchase_to_stock_factor` | `float` | `1.0` | 1 purchase unit = X stock units |
 
-This enables normalization to convert quantities for a specific item when the unit is contextual.
+When `purchase_unit == stock_unit`, the factor is always `1.0`. When they differ, the Estructura section collects the factor from the operator. `InventoryUnitEquivalenceRegistry` was removed — this field replaces it for all deduction purposes.
 
 ### Recipe → Ingredient → (optional) InventoryItem creation
 
@@ -276,8 +266,6 @@ This enables normalization to convert quantities for a specific item when the un
 
 - **Ingredient-only:** add the ingredient to the recipe (no inventory item created).
 - **Ingredient + inventory creation:** if `category_id` is provided, `add_ingredient` returns a new `InventoryItem(id=0, ...)` for the caller to persist/add to `InventoryItemRegistry`.
-
-If the inventory unit is contextual and requires a conversion, callers set `unit_requires_equivalence=True` and then, **after persisting** the item and obtaining a real id, add an equivalence entry.
 
 ```mermaid
 flowchart TB
@@ -297,14 +285,9 @@ flowchart TB
         AddToReg["InventoryItemRegistry.add item"]
     end
 
-    subgraph equivalence["Item-specific unit equivalence (optional)"]
-        AddEq["InventoryUnitEquivalenceRegistry.add: (unit_id, item_id) -> (base_unit_id, factor_to_base)"]
-    end
-
     AddIng -->|existing ingredient name| NoNewItem
     AddIng -->|category_id provided| NewItem
     NewItem --> Persist --> AddToReg
-    Persist -->|if unit_requires_equivalence| AddEq
 ```
 
 ![Key workflows](images/data-model-04-keyworkflows.png)
@@ -335,15 +318,6 @@ def is_standard_recipe_unit(symbol: str) -> bool:
 Standard units need no per-ingredient mass equivalent. Any other symbol (taza, cda, cdta,
 oz, manojo, pizca, etc.) is non-standard and requires an equivalent proposed per-ingredient
 by `AlignmentAgent`.
-
-### InventoryUnitEquivalence — unfrozen + equivalence_source
-
-`InventoryUnitEquivalence` was `@dataclass(frozen=True)` prior to Task 10. Task 10
-removed `frozen=True` to allow future updates by Task 11, and added:
-
-| Field | Type | Default | Meaning |
-|-------|------|---------|---------|
-| `equivalence_source` | `str` | `"operator"` | `"operator"` / `"agent_confirmed"` / `"agent_estimated"` |
 
 ### RecipeUnitConversionEntry.source
 

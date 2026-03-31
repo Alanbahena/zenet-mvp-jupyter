@@ -5,7 +5,7 @@ import os
 import tempfile
 import unittest
 
-from core.domain.data_model import Ingredient, InventoryUnitEquivalence, Recipe, Restaurant
+from core.domain.data_model import Ingredient, Recipe, Restaurant
 from core.storage.persistence import DataLake, JsonStorage, SqliteStorage
 
 
@@ -33,14 +33,6 @@ class TestJsonStorage(unittest.TestCase):
     def test_load_missing_returns_none(self) -> None:
         self.assertIsNone(self.storage.load("recipe", 999))
 
-    def test_save_and_load_with_composite_entity_id(self) -> None:
-        data = {"unit_id": 10, "inventory_item_id": 15, "base_unit_id": 1, "factor_to_base": 2.5}
-        entity_id = "10_15"
-        self.storage.save("inventory_unit_equivalence", entity_id, data)
-        loaded = self.storage.load("inventory_unit_equivalence", entity_id)
-        self.assertIsNotNone(loaded)
-        self.assertEqual(loaded, data)
-
     def test_delete_removes_file(self) -> None:
         self.storage.save("recipe", 1, {"id": 1})
         self.assertIsNotNone(self.storage.load("recipe", 1))
@@ -58,11 +50,6 @@ class TestJsonStorage(unittest.TestCase):
 
     def test_list_ids_empty_for_type_with_no_files(self) -> None:
         self.assertEqual(self.storage.list_ids("user"), [])
-
-    def test_list_ids_composite_returns_string_ids(self) -> None:
-        self.storage.save("inventory_unit_equivalence", "10_15", {"unit_id": 10, "inventory_item_id": 15})
-        ids = self.storage.list_ids("inventory_unit_equivalence")
-        self.assertIn("10_15", ids)
 
     def test_corrupt_json_raises(self) -> None:
         """Corrupt JSON file raises JSONDecodeError (not None like missing file)."""
@@ -106,8 +93,10 @@ class TestSqliteStorageSchema(unittest.TestCase):
             "inventory_item",
             "recipe",
             "recipe_ingredient",
-            "inventory_unit_equivalence",
+            "recipe_unit_conversion",
             "schema_version",
+            "agent_state",
+            "classification",
         }
         # sqlite_sequence is auto-created by SQLite for AUTOINCREMENT; allow it
         self.assertTrue(
@@ -237,26 +226,9 @@ class TestSqliteStorageSaveLoad(unittest.TestCase):
         self.assertIsNotNone(loaded)
         self.assertFalse(loaded["is_standard"])
 
-    def test_inventory_unit_equivalence_save_and_load_round_trip(self) -> None:
-        # Prerequisites: inventory_unit 1 and 10, inventory_item 15 (FKs)
-        self.storage.save("inventory_unit", 1, {"id": 1, "name": "kg", "symbol": "kg", "description": None, "base_unit_id": None, "factor_to_base": 1.0, "is_standard": True})
-        self.storage.save("inventory_unit", 10, {"id": 10, "name": "caja", "symbol": "caja", "description": None, "base_unit_id": 1, "factor_to_base": 10.0, "is_standard": False})
-        self.storage.save("family_inventory", 1, {"id": 1, "name": "Fam", "description": None, "base_unit_id": 1})
-        self.storage.save("inventory_item", 15, {"id": 15, "name": "Item", "unit_id": 10, "category_id": 1, "family_id": 1, "description": None})
-        data = {"unit_id": 10, "inventory_item_id": 15, "base_unit_id": 1, "factor_to_base": 2.5}
-        entity_id = "10_15"
-        self.storage.save("inventory_unit_equivalence", entity_id, data)
-        loaded = self.storage.load("inventory_unit_equivalence", entity_id)
-        self.assertIsNotNone(loaded)
-        self.assertEqual(loaded["unit_id"], 10)
-        self.assertEqual(loaded["inventory_item_id"], 15)
-        self.assertEqual(loaded["base_unit_id"], 1)
-        self.assertEqual(loaded["factor_to_base"], 2.5)
-
     def test_load_missing_returns_none(self) -> None:
         self.assertIsNone(self.storage.load("restaurant", 999))
         self.assertIsNone(self.storage.load("recipe", 999))
-        self.assertIsNone(self.storage.load("inventory_unit_equivalence", "99_99"))
 
     def test_delete_removes_entity(self) -> None:
         self.storage.save("restaurant", 1, {"id": 1, "name": "Test", "address": None, "restaurant_type_id": None, "notes": None})
@@ -276,15 +248,6 @@ class TestSqliteStorageSaveLoad(unittest.TestCase):
         self.storage.save("restaurant", 2, {"id": 2, "name": "B", "address": None, "restaurant_type_id": None, "notes": None})
         ids = self.storage.list_ids("restaurant")
         self.assertEqual(set(ids), {"1", "2"})
-
-    def test_list_ids_composite_returns_formatted_ids(self) -> None:
-        self.storage.save("inventory_unit", 1, {"id": 1, "name": "kg", "symbol": "kg", "description": None, "base_unit_id": None, "factor_to_base": 1.0, "is_standard": True})
-        self.storage.save("inventory_unit", 10, {"id": 10, "name": "caja", "symbol": "caja", "description": None, "base_unit_id": 1, "factor_to_base": 10.0, "is_standard": False})
-        self.storage.save("family_inventory", 1, {"id": 1, "name": "Fam", "description": None, "base_unit_id": 1})
-        self.storage.save("inventory_item", 15, {"id": 15, "name": "Item", "unit_id": 10, "category_id": 1, "family_id": 1, "description": None})
-        self.storage.save("inventory_unit_equivalence", "10_15", {"unit_id": 10, "inventory_item_id": 15, "base_unit_id": 1, "factor_to_base": 2.5})
-        ids = self.storage.list_ids("inventory_unit_equivalence")
-        self.assertIn("10_15", ids)
 
     def test_unknown_entity_type_save_raises(self) -> None:
         with self.assertRaises(ValueError) as ctx:
@@ -434,16 +397,6 @@ class TestDataLake(unittest.TestCase):
             self.assertEqual(loaded.name, recipe.name)
             self.assertEqual(len(loaded.ingredients), 1)
             self.assertEqual(loaded.ingredients[0].name, "Flour")
-
-    def test_save_entity_obj_inventory_unit_equivalence_round_trip(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            lake = DataLake(data_dir=tmpdir)
-            eq = InventoryUnitEquivalence(unit_id=10, inventory_item_id=15, base_unit_id=1, factor_to_base=2.5)
-            lake.save_entity_obj(eq)
-            loaded = lake.load_entity_obj("inventory_unit_equivalence", "10_15")
-            self.assertIsInstance(loaded, InventoryUnitEquivalence)
-            self.assertEqual(loaded.unit_id, 10)
-            self.assertEqual(loaded.inventory_item_id, 15)
 
     def test_load_entity_obj_missing_returns_none(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

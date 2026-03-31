@@ -441,8 +441,10 @@ def _make_confirm_fn(data_lake: Any):
                     item = InventoryItem(
                         id=next_item_id,
                         name=name,
-                        unit_id=unit_id,
+                        stock_unit_id=unit_id,
+                        purchase_unit_id=unit_id,
                         category_id=cat_id,
+                        purchase_to_stock_factor=1.0,
                         family_id=fam_id,
                     )
                     data_lake.save_entity(

@@ -76,7 +76,7 @@ ids = storage.list_ids("restaurant")  # list[str]
 
 Stores entities in a single SQLite database file with tables and relationships:
 
-**Schema:** Defined in `core/schema.py` (11 entity tables + recipe_ingredient junction table)
+**Schema:** Defined in `core/schema.py` (10 entity tables + recipe_ingredient junction table)
 
 ```python
 from core import SqliteStorage
@@ -115,7 +115,6 @@ storage.close()
 
 **Special handling:**
 - **Recipe:** Saved to `recipe` table; ingredients saved to `recipe_ingredient` junction table
-- **InventoryUnitEquivalence:** Composite key `"unit_id_inventory_item_id"` (e.g., `"10_15"`)
 
 **Error handling:**
 - Missing entity → returns `None`
@@ -216,13 +215,15 @@ if loaded:
     print(type(loaded))  # <class 'core.data_model.Restaurant'>
 ```
 
-**Supported entity types (11 total):**
+**Supported entity types (10 total):**
 - `Restaurant`, `User`, `RecipeUnit`, `InventoryUnit`
 - `CategoryRecipe`, `FamilyInventory`, `InventoryItem`
 - `Recipe` (with embedded `Ingredient` list)
-- `InventoryUnitEquivalence` (composite key: uses `f"{unit_id}_{inventory_item_id}"`)
 - `agent_state` — JSON blob only (dict-level API); schema: `session_id` (str key) + `data TEXT`
 - `classification` — JSON blob only (dict-level API); schema: `{"standardization_level": 1|2|3}`
+
+**Note:** `InventoryUnitEquivalence` was removed in Task 11. Purchase-to-stock conversion is
+now stored directly on `InventoryItem` via `purchase_unit_id` and `purchase_to_stock_factor`.
 
 **Note:** `agent_state` and `classification` do not have domain object classes or
 `to_dict`/`from_dict` serializers. Use the dict-level API (`save_entity` / `load_entity`)

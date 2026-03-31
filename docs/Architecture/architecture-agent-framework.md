@@ -12,7 +12,7 @@ flowchart LR
     T4["Task 4<br/>LLM Framework<br/>LlmProvider<br/>ConversationMemory<br/>ToolRegistry"]
     T5["Task 5<br/>Agent Framework<br/>BaseAgent<br/>AgentRegistry<br/>create_agent()"]
     T6["Task 6<br/>Workflow Engine<br/>done"]
-    T712["Tasks 7–12<br/>Notebook Agents<br/>WelcomeAgent ✓<br/>ClassificationAgent ✓<br/>ConfigurationAgent ✓<br/>ConsistencyCheckAgent ✓<br/>AlignmentAgent ✓<br/>..."]
+    T712["Tasks 7–12<br/>Notebook Agents<br/>WelcomeAgent ✓<br/>ClassificationAgent ✓<br/>ConfigurationAgent ✓<br/>ConsistencyCheckAgent ✓<br/>AlignmentAgent ✓<br/>StructuringAgent ✓"]
 
     T4 -->|"provider, memory,<br/>tool registry"| T5
     T5 -->|"run(), INPUT_SCHEMA<br/>OUTPUT_SCHEMA<br/>AgentRegistry"| T6
@@ -24,7 +24,7 @@ flowchart LR
 | Task 4 — LLM Framework | `LlmProvider`, `ConversationMemory`, `ToolRegistry` |
 | Task 5 — Agent Framework | `BaseAgent`, `AgentRegistry`, `create_agent()` |
 | Task 6 — Workflow Engine | Pipeline orchestration (done) |
-| Tasks 7–12 — Notebook Agents | Concrete agents extending `BaseAgent` (`WelcomeAgent` done, `ClassificationAgent` done, `ConfigurationAgent` done, `ConsistencyCheckAgent` done; 10–12 pending) |
+| Tasks 7–12 — Notebook Agents | Concrete agents extending `BaseAgent` (`WelcomeAgent` ✓, `ClassificationAgent` ✓, `ConfigurationAgent` ✓, `ConsistencyCheckAgent` ✓, `AlignmentAgent` ✓, `StructuringAgent` ✓; Task 12 pending) |
 
 ---
 
@@ -361,7 +361,20 @@ that already accept a `context` dict require no changes beyond a new key in `_ge
 
 ---
 
-## 10. Note on external framework integration (LangGraph)
+## 10. Concrete agent inventory
+
+| Agent | File | Task | Tools | Key output keys |
+|-------|------|------|-------|----------------|
+| `WelcomeAgent` | `core/agents/welcome_agent.py` | 7 | none | `reply` |
+| `ClassificationAgent` | `core/agents/classification_agent.py` | 8 | none | `reply`, `standardization_level`, `restaurant_description` |
+| `ConfigurationAgent` | `core/agents/configuration_agent.py` | 9 | `create_entity` | `reply`, `show_file_upload` |
+| `ConsistencyCheckAgent` | `core/agents/consistency_check_agent.py` | 9 | none | `reply`, `issues`, `is_consistent` |
+| `AlignmentAgent` | `core/agents/alignment_agent.py` | 10 | `create_entity` | `reply`, `recipe_draft`, `inventory_proposals`, `ready_to_save` |
+| `StructuringAgent` | `core/agents/structuring_agent.py` | 11 | `create_inventory_unit`, `create_family_inventory` | `reply`, `proposals`, `gap_questions`, `needs_supplier_doc` |
+
+---
+
+## 11. Note on external framework integration (LangGraph)
 
 **Evaluation outcome for Task 10 (Alineamiento):**
 

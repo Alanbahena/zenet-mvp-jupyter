@@ -285,7 +285,9 @@ def get_recipe_unit_template(restaurant_type_id: int) -> tuple[RecipeUnit, ...]:
 
 
 # Inventory unit templates by restaurant type (id=0 means template; assign real id when applying).
-# base_unit_id=None and factor_to_base=1.0 for all; equivalences can be set when applying to registry.
+# Standard unit chains (kg→g ×1000, L→ml ×1000) are wired in seed_data.py
+# where real IDs are known. Templates intentionally omit chains because all
+# template units use id=0 and base_unit_id cannot reference another id=0 unit.
 # is_standard: True for kg, g, L, ml, pza; False for caja, bolsa, bote, etc. (require conversion).
 # Use get_inventory_unit_template(restaurant_type_id) to obtain the tuple for a given type.
 _INVENTORY_UNIT_TEMPLATES: dict[int, tuple[InventoryUnit, ...]] = {
@@ -405,21 +407,19 @@ class User:
 @dataclass
 class InventoryItem:
     """
-    One inventory item; unit of measure via unit_id (InventoryUnit).
+    One inventory item with two unit fields.
+    stock_unit_id: always a standard unit (kg, g, L, ml, pza) — used for deduction.
+    purchase_unit_id: the unit on the supplier invoice (may be non-standard: caja, bolsa, etc.).
+    purchase_to_stock_factor: how many stock units equal one purchase unit (e.g. 1 caja = 10 kg → 10.0).
     category_id references InventoryCategory (e.g. perecedero, no perecedero).
-
-    The unit (InventoryUnit) may be standard (kg, g, L, ml, pza) or non-standard
-    (caja, bolsa, bote, etc.). When non-standard, conversion to base quantities
-    can use an item-specific equivalence from InventoryUnitEquivalenceRegistry
-    keyed by (unit_id, inventory_item_id). Callers that create items with
-    non-standard units must register the equivalence after persisting the item
-    (see Recipe.add_ingredient docstring for the flow).
     """
 
     id: int
     name: str
-    unit_id: int
+    stock_unit_id: int
+    purchase_unit_id: int
     category_id: int
+    purchase_to_stock_factor: float = 1.0
     family_id: Optional[int] = None
     description: Optional[str] = None
 
@@ -471,32 +471,20 @@ class Recipe:
         ingredient: Ingredient,
         valid_unit_ids: set[int],
         category_id: Optional[int] = None,
-        unit_id_for_inventory: Optional[int] = None,
+        stock_unit_id_for_inventory: Optional[int] = None,
         family_id: Optional[int] = None,
         valid_inventory_unit_ids: Optional[set[int]] = None,
         valid_family_inventory_ids: Optional[set[int]] = None,
-        unit_requires_equivalence: bool = False,
-        equivalence_base_unit_id: Optional[int] = None,
-        equivalence_factor_to_base: Optional[float] = None,
     ) -> Optional[InventoryItem]:
         """Add an ingredient to this recipe.
 
         If an ingredient with the same name (case-insensitive) already exists,
         the existing entry is updated (quantity, unit_id) and None is returned
         (no new InventoryItem). Otherwise the ingredient is appended and, when
-        category_id is provided, a new InventoryItem is built (id=0) and returned
-        for the caller to persist. If unit_requires_equivalence is True, the caller
-        must after persisting the item call
-        InventoryUnitEquivalenceRegistry.add(
-            InventoryUnitEquivalence(
-                unit_id=unit_id_for_inventory,
-                inventory_item_id=<new_item_id>,
-                base_unit_id=equivalence_base_unit_id,
-                factor_to_base=equivalence_factor_to_base,
-            ),
-            unit_registry,
-        )
-        so that normalization can convert quantities for this item correctly.
+        category_id is provided, a new InventoryItem shell is built (id=0) and
+        returned for the caller to persist. The shell sets stock_unit_id =
+        purchase_unit_id = stock_unit_id_for_inventory with factor 1.0.
+        Estructura enriches the purchase unit and factor later.
         """
         if not (ingredient.name or "").strip():
             raise ValueError("ingredient.name must be non-empty")
@@ -521,23 +509,10 @@ class Recipe:
                 raise ValueError(
                     "valid_inventory_unit_ids required when category_id is provided"
                 )
-            if unit_id_for_inventory is None or unit_id_for_inventory not in valid_inventory_unit_ids:
+            if stock_unit_id_for_inventory is None or stock_unit_id_for_inventory not in valid_inventory_unit_ids:
                 raise ValueError(
-                    "unit_id_for_inventory required and must be in valid_inventory_unit_ids when creating new InventoryItem"
+                    "stock_unit_id_for_inventory required and must be in valid_inventory_unit_ids when creating new InventoryItem"
                 )
-            if unit_requires_equivalence:
-                if equivalence_base_unit_id is None or equivalence_factor_to_base is None:
-                    raise ValueError(
-                        "equivalence_base_unit_id and equivalence_factor_to_base required when unit_requires_equivalence is True"
-                    )
-                if equivalence_base_unit_id not in valid_inventory_unit_ids:
-                    raise ValueError(
-                        f"equivalence_base_unit_id {equivalence_base_unit_id} must be in valid_inventory_unit_ids"
-                    )
-                if not math.isfinite(equivalence_factor_to_base) or equivalence_factor_to_base <= 0:
-                    raise ValueError(
-                        "equivalence_factor_to_base must be finite and > 0"
-                    )
             if family_id is not None:
                 if valid_family_inventory_ids is None or family_id not in valid_family_inventory_ids:
                     raise ValueError(
@@ -546,7 +521,9 @@ class Recipe:
             new_item = InventoryItem(
                 id=0,
                 name=ingredient.name.strip(),
-                unit_id=unit_id_for_inventory,
+                stock_unit_id=stock_unit_id_for_inventory,
+                purchase_unit_id=stock_unit_id_for_inventory,
+                purchase_to_stock_factor=1.0,
                 category_id=category_id,
                 family_id=family_id,
             )
@@ -705,7 +682,7 @@ class InventoryUnitRegistry:
         """Remove an InventoryUnit by id; optionally guard if any InventoryItem uses this unit_id."""
         if inventory_items is not None:
             for item in inventory_items:
-                if item.unit_id == unit_id:
+                if item.stock_unit_id == unit_id or item.purchase_unit_id == unit_id:
                     raise ValueError(
                         "Unit is in use; reassign or remove dependent entities first."
                     )
@@ -724,75 +701,6 @@ class InventoryUnitRegistry:
             if u.id == unit_id:
                 return u
         return None
-
-
-# --- Item-specific inventory unit equivalence (e.g. 1 box strawberries ≠ 1 box oranges) ---
-
-@dataclass
-class InventoryUnitEquivalence:
-    """Per-inventory-item equivalence: for this unit and item, 1 unit = factor_to_base in base_unit_id.
-
-    Example: (unit_id=Caja, inventory_item_id=Strawberries) -> base_unit_id=kg, factor_to_base=2.0
-    means 1 box of strawberries = 2 kg.
-    """
-
-    unit_id: int
-    inventory_item_id: int
-    base_unit_id: int
-    factor_to_base: float
-    equivalence_source: str = "operator"
-
-
-class InventoryUnitEquivalenceRegistry:
-    """Registry of item-specific unit equivalences. Key: (unit_id, inventory_item_id).
-
-    When creating a new inventory item that uses a non-standard unit, the caller
-    must persist the item, then add an equivalence here with the new item's id
-    (see Recipe.add_ingredient docstring for the full flow).
-    """
-
-    def __init__(self) -> None:
-        self._entries: dict[tuple[int, int], InventoryUnitEquivalence] = {}
-
-    def add(
-        self,
-        equivalence: InventoryUnitEquivalence,
-        unit_registry: InventoryUnitRegistry,
-    ) -> None:
-        """Add a per-item equivalence after validating referenced units and uniqueness."""
-        if equivalence.factor_to_base <= 0:
-            raise ValueError("factor_to_base must be > 0")
-        if unit_registry.get(equivalence.unit_id) is None:
-            raise ValueError(
-                f"unit_id {equivalence.unit_id} not found in unit registry"
-            )
-        if unit_registry.get(equivalence.base_unit_id) is None:
-            raise ValueError(
-                f"base_unit_id {equivalence.base_unit_id} not found in unit registry"
-            )
-        if equivalence.unit_id == equivalence.base_unit_id and equivalence.factor_to_base != 1.0:
-            raise ValueError(
-                "when unit_id == base_unit_id, factor_to_base must be 1.0"
-            )
-        key = (equivalence.unit_id, equivalence.inventory_item_id)
-        if key in self._entries:
-            raise ValueError(
-                f"duplicate equivalence for (unit_id={equivalence.unit_id}, "
-                f"inventory_item_id={equivalence.inventory_item_id})"
-            )
-        self._entries[key] = equivalence
-
-    def get(
-        self,
-        unit_id: int,
-        inventory_item_id: int,
-    ) -> Optional[InventoryUnitEquivalence]:
-        """Return an equivalence by (unit_id, inventory_item_id), or None if not found."""
-        return self._entries.get((unit_id, inventory_item_id))
-
-    def remove(self, unit_id: int, inventory_item_id: int) -> Optional[InventoryUnitEquivalence]:
-        """Remove and return an equivalence by key, or None if it did not exist."""
-        return self._entries.pop((unit_id, inventory_item_id), None)
 
 
 class CategoryRecipeRegistry:

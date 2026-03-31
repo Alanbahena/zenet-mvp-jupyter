@@ -83,11 +83,14 @@ def _create_tables(conn: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS inventory_item (
             id INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
-            unit_id INTEGER NOT NULL,
+            stock_unit_id INTEGER NOT NULL,
+            purchase_unit_id INTEGER NOT NULL,
             category_id INTEGER NOT NULL,
+            purchase_to_stock_factor REAL NOT NULL DEFAULT 1.0,
             family_id INTEGER,
             description TEXT,
-            FOREIGN KEY (unit_id) REFERENCES inventory_unit(id),
+            FOREIGN KEY (stock_unit_id) REFERENCES inventory_unit(id),
+            FOREIGN KEY (purchase_unit_id) REFERENCES inventory_unit(id),
             FOREIGN KEY (family_id) REFERENCES family_inventory(id)
         )
     """)
@@ -119,21 +122,7 @@ def _create_tables(conn: sqlite3.Connection) -> None:
         )
     """)
 
-    # 7. References inventory_unit and inventory_item
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS inventory_unit_equivalence (
-            unit_id INTEGER NOT NULL,
-            inventory_item_id INTEGER NOT NULL,
-            base_unit_id INTEGER NOT NULL,
-            factor_to_base REAL NOT NULL,
-            PRIMARY KEY (unit_id, inventory_item_id),
-            FOREIGN KEY (unit_id) REFERENCES inventory_unit(id),
-            FOREIGN KEY (inventory_item_id) REFERENCES inventory_item(id),
-            FOREIGN KEY (base_unit_id) REFERENCES inventory_unit(id)
-        )
-    """)
-
-    # 8a. Recipe unit conversions (composite key: recipe_unit_id + family_id + inventory_item_id)
+    # 7. Recipe unit conversions (composite key: recipe_unit_id + family_id + inventory_item_id)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS recipe_unit_conversion (
             recipe_unit_id    INTEGER NOT NULL,
@@ -178,7 +167,7 @@ def _create_tables(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_inventory_item_family_id ON inventory_item(family_id)"
     )
     cursor.execute(
-        "CREATE INDEX IF NOT EXISTS idx_inventory_item_unit_id ON inventory_item(unit_id)"
+        "CREATE INDEX IF NOT EXISTS idx_inventory_item_stock_unit_id ON inventory_item(stock_unit_id)"
     )
     cursor.execute(
         "CREATE INDEX IF NOT EXISTS idx_inventory_item_category_id ON inventory_item(category_id)"
@@ -191,9 +180,6 @@ def _create_tables(conn: sqlite3.Connection) -> None:
     )
     cursor.execute(
         "CREATE INDEX IF NOT EXISTS idx_recipe_ingredient_inventory_item_id ON recipe_ingredient(inventory_item_id)"
-    )
-    cursor.execute(
-        "CREATE INDEX IF NOT EXISTS idx_equivalence_inventory_item_id ON inventory_unit_equivalence(inventory_item_id)"
     )
     cursor.execute(
         "CREATE INDEX IF NOT EXISTS idx_family_inventory_base_unit_id ON family_inventory(base_unit_id)"

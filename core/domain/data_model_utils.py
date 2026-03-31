@@ -159,8 +159,8 @@ def validate_recipe_for_deduction(
         if item is None:
             issues.append(f"Ingredient {ing.name!r} has no inventory item")
             continue
-        if unit_registry.get(item.unit_id) is None:
-            issues.append(f"Unit id {item.unit_id} for item {item.name!r} not in registry")
+        if unit_registry.get(item.stock_unit_id) is None:
+            issues.append(f"Unit id {item.stock_unit_id} for item {item.name!r} not in registry")
     return issues
 
 
@@ -223,7 +223,7 @@ def units_used_by_recipe(
     """Return (recipe_unit_ids, inventory_unit_ids) used by this recipe.
 
     Recipe unit ids are from ingredient.unit_id; inventory unit ids are from
-    resolved inventory items' unit_id.
+    resolved inventory items' stock_unit_id.
     """
     recipe_ids: set[int] = set()
     inventory_ids: set[int] = set()
@@ -231,26 +231,30 @@ def units_used_by_recipe(
         recipe_ids.add(ing.unit_id)
         item = resolve_ingredient_to_inventory_item(ing, item_registry)
         if item is not None:
-            inventory_ids.add(item.unit_id)
+            inventory_ids.add(item.stock_unit_id)
     return (recipe_ids, inventory_ids)
 
 
 def create_inventory_item_from_ingredient(
     ingredient: Ingredient,
     category_id: int,
-    unit_id_for_inventory: int,
+    stock_unit_id: int,
+    purchase_unit_id: int,
+    purchase_to_stock_factor: float = 1.0,
     family_id: Optional[int] = None,
 ) -> InventoryItem:
     """Create an InventoryItem from an ingredient (id=0) for the caller to add to a registry.
 
-    No validation inside; callers must validate category_id and unit_id_for_inventory
+    No validation inside; callers must validate category_id and unit ids
     (e.g. against _valid_inventory_category_ids() and an inventory unit registry).
     """
     return InventoryItem(
         id=0,
         name=ingredient.name.strip(),
-        unit_id=unit_id_for_inventory,
+        stock_unit_id=stock_unit_id,
+        purchase_unit_id=purchase_unit_id,
         category_id=category_id,
+        purchase_to_stock_factor=purchase_to_stock_factor,
         family_id=family_id,
     )
 

@@ -11,6 +11,7 @@ from core.agents.classification_agent import ClassificationAgent
 from core.agents.configuration_agent import ConfigurationAgent
 from core.agents.consistency_check_agent import ConsistencyCheckAgent
 from core.agents.simple_agent import RestaurantInfoAgent
+from core.agents.structuring_agent import StructuringAgent
 from core.agents.utils import AgentRegistry, create_agent
 from core.agents.welcome_agent import WelcomeAgent
 
@@ -23,5 +24,6 @@ __all__ = [
     "ConsistencyCheckAgent",
     "create_agent",
     "RestaurantInfoAgent",
+    "StructuringAgent",
     "WelcomeAgent",
 ]
