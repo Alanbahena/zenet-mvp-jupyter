@@ -1,17 +1,15 @@
 """
-seed_data.py — Pre-populate the DataLake with test data for steps 1–6 (good scenario).
+seed_data_en_progreso.py — Pre-populate the DataLake with a gaps dataset (C/D scenario).
 
-This script seeds a complete, high-quality dataset that produces a B score (~80)
-in the Manual Operativo. All recipes have linked ingredients, enriched inventory
-units, and recipe_unit_conversion entries for pza-based ingredients.
+Same base data as seed_data.py but WITHOUT recipe_unit_conversion entries.
+This means the three pza-based ingredients (Chile poblano, Limón, Aguacate) cannot
+be converted to grams, so normalization.deductionCoveragePct = 0 % and the Resumen
+tab shows unit-mismatch warnings.
 
-Run this script once before launching the app:
+Expected score: C/D (~55).
 
-    uv run python scripts/seed_data.py
-
-To wipe and re-seed:
-
-    uv run python scripts/reset_session.py && uv run python scripts/seed_data.py
+Run:
+    uv run python scripts/reset_session.py && uv run python scripts/seed_data_en_progreso.py
 """
 import os
 import sys
@@ -24,13 +22,12 @@ from gradio_app.session import get_data_lake, stable_entity_id
 # Configuration
 # ---------------------------------------------------------------------------
 
-SESSION_ID   = "primary_session"
-ENTITY_ID    = stable_entity_id(SESSION_ID)
+SESSION_ID = "primary_session"
+ENTITY_ID  = stable_entity_id(SESSION_ID)
 
-# Step 1 — Restaurant (Bienvenida)
 RESTAURANT = {
     "id":                 ENTITY_ID,
-    "name":               "Mi Restaurante",
+    "name":               "Mi Restaurante (En Progreso)",
     "restaurant_type_id": 1,
 }
 
@@ -41,7 +38,6 @@ USER = {
     "role":  "owner",
 }
 
-# Step 2 — Classification (Clasificación)
 CLASSIFICATION = {
     "id":                    ENTITY_ID,
     "standardization_level": 1,
@@ -49,8 +45,6 @@ CLASSIFICATION = {
         "Restaurante de cocina mexicana contemporánea con menú de temporada."
     ),
 }
-
-# Step 3 — Configuration (Configuración)
 
 CATEGORY_RECIPES = [
     {"id": 1, "name": "Entradas"},
@@ -84,23 +78,19 @@ RECIPE_UNITS = [
     {"id": 13, "name": "manojo",       "symbol": "manojo"},
 ]
 
-# inventory_unit id=6 is a non-standard purchase unit (caja de tortillas = 25 pzas)
 INVENTORY_UNITS = [
-    {"id": 1, "name": "gramo",              "symbol": "g",    "is_standard": True,  "base_unit_id": None, "factor_to_base": 1.0},
-    {"id": 2, "name": "kilogramo",          "symbol": "kg",   "is_standard": True,  "base_unit_id": 1,    "factor_to_base": 1000.0},
-    {"id": 3, "name": "mililitro",          "symbol": "ml",   "is_standard": True,  "base_unit_id": None, "factor_to_base": 1.0},
-    {"id": 4, "name": "litro",              "symbol": "L",    "is_standard": True,  "base_unit_id": 3,    "factor_to_base": 1000.0},
-    {"id": 5, "name": "pieza",              "symbol": "pza",  "is_standard": True,  "base_unit_id": None, "factor_to_base": 1.0},
-    {"id": 6, "name": "caja de tortillas",  "symbol": "caja", "is_standard": False, "base_unit_id": 5,    "factor_to_base": 25.0},
+    {"id": 1, "name": "gramo",             "symbol": "g",    "is_standard": True,  "base_unit_id": None, "factor_to_base": 1.0},
+    {"id": 2, "name": "kilogramo",         "symbol": "kg",   "is_standard": True,  "base_unit_id": 1,    "factor_to_base": 1000.0},
+    {"id": 3, "name": "mililitro",         "symbol": "ml",   "is_standard": True,  "base_unit_id": None, "factor_to_base": 1.0},
+    {"id": 4, "name": "litro",             "symbol": "L",    "is_standard": True,  "base_unit_id": 3,    "factor_to_base": 1000.0},
+    {"id": 5, "name": "pieza",             "symbol": "pza",  "is_standard": True,  "base_unit_id": None, "factor_to_base": 1.0},
+    {"id": 6, "name": "caja de tortillas", "symbol": "caja", "is_standard": False, "base_unit_id": 5,    "factor_to_base": 25.0},
 ]
 
-# Step 4 — Alineamiento (inventory item shells, enriched with realistic purchase units)
-# category_id: 1=Perecedero, 2=No perecedero
 _P  = 1
 _NP = 2
 
 INVENTORY_ITEMS = [
-    # Perecederos
     {"id":  1, "name": "Bistec",            "stock_unit_id": 1, "purchase_unit_id": 2, "purchase_to_stock_factor": 1000.0, "category_id": _P,  "family_id": 1},
     {"id":  2, "name": "Pollo",             "stock_unit_id": 1, "purchase_unit_id": 2, "purchase_to_stock_factor": 1000.0, "category_id": _P,  "family_id": 1},
     {"id":  3, "name": "Jitomate",          "stock_unit_id": 1, "purchase_unit_id": 2, "purchase_to_stock_factor": 1000.0, "category_id": _P,  "family_id": 2},
@@ -113,7 +103,6 @@ INVENTORY_ITEMS = [
     {"id": 10, "name": "Crema",             "stock_unit_id": 3, "purchase_unit_id": 4, "purchase_to_stock_factor": 1000.0, "category_id": _P,  "family_id": 3},
     {"id": 11, "name": "Queso fresco",      "stock_unit_id": 1, "purchase_unit_id": 2, "purchase_to_stock_factor": 1000.0, "category_id": _P,  "family_id": 3},
     {"id": 12, "name": "Huevo",             "stock_unit_id": 5, "purchase_unit_id": 5, "purchase_to_stock_factor":    1.0, "category_id": _P,  "family_id": 1},
-    # No perecederos
     {"id": 13, "name": "Aceite vegetal",    "stock_unit_id": 3, "purchase_unit_id": 4, "purchase_to_stock_factor": 1000.0, "category_id": _NP, "family_id": 5},
     {"id": 14, "name": "Harina de trigo",   "stock_unit_id": 1, "purchase_unit_id": 2, "purchase_to_stock_factor": 1000.0, "category_id": _NP, "family_id": 4},
     {"id": 15, "name": "Arroz",             "stock_unit_id": 1, "purchase_unit_id": 2, "purchase_to_stock_factor": 1000.0, "category_id": _NP, "family_id": 4},
@@ -124,7 +113,7 @@ INVENTORY_ITEMS = [
     {"id": 20, "name": "Chile ancho seco",  "stock_unit_id": 1, "purchase_unit_id": 2, "purchase_to_stock_factor": 1000.0, "category_id": _NP, "family_id": 5},
 ]
 
-# Step 5 — Estructura (recipes with ingredients and steps)
+# Same 3 recipes as seed_data.py — pza ingredients present but unresolvable
 RECIPES = [
     {
         "id": 1,
@@ -140,12 +129,12 @@ RECIPES = [
             "Reincorporar el bistec, salpimentar y servir.",
         ],
         "ingredients": [
-            {"name": "Bistec",        "quantity": 200.0, "unit_id": 1, "inventory_item_id":  1},
-            {"name": "Jitomate",      "quantity": 100.0, "unit_id": 1, "inventory_item_id":  3},
-            {"name": "Cebolla",       "quantity":  50.0, "unit_id": 1, "inventory_item_id":  4},
-            {"name": "Chile poblano", "quantity":   1.0, "unit_id": 5, "inventory_item_id":  5},
-            {"name": "Aceite vegetal","quantity":  15.0, "unit_id": 3, "inventory_item_id": 13},
-            {"name": "Sal",           "quantity":   5.0, "unit_id": 1, "inventory_item_id": 17},
+            {"name": "Bistec",         "quantity": 200.0, "unit_id": 1, "inventory_item_id":  1},
+            {"name": "Jitomate",       "quantity": 100.0, "unit_id": 1, "inventory_item_id":  3},
+            {"name": "Cebolla",        "quantity":  50.0, "unit_id": 1, "inventory_item_id":  4},
+            {"name": "Chile poblano",  "quantity":   1.0, "unit_id": 5, "inventory_item_id":  5},
+            {"name": "Aceite vegetal", "quantity":  15.0, "unit_id": 3, "inventory_item_id": 13},
+            {"name": "Sal",            "quantity":   5.0, "unit_id": 1, "inventory_item_id": 17},
         ],
     },
     {
@@ -160,11 +149,11 @@ RECIPES = [
             "Rebanar y servir con rodajas de limón.",
         ],
         "ingredients": [
-            {"name": "Pollo",         "quantity": 250.0, "unit_id": 1, "inventory_item_id":  2},
-            {"name": "Limón",         "quantity":   2.0, "unit_id": 5, "inventory_item_id":  7},
-            {"name": "Cilantro",      "quantity":  10.0, "unit_id": 1, "inventory_item_id":  8},
-            {"name": "Aceite vegetal","quantity":  20.0, "unit_id": 3, "inventory_item_id": 13},
-            {"name": "Sal",           "quantity":   3.0, "unit_id": 1, "inventory_item_id": 17},
+            {"name": "Pollo",          "quantity": 250.0, "unit_id": 1, "inventory_item_id":  2},
+            {"name": "Limón",          "quantity":   2.0, "unit_id": 5, "inventory_item_id":  7},
+            {"name": "Cilantro",       "quantity":  10.0, "unit_id": 1, "inventory_item_id":  8},
+            {"name": "Aceite vegetal", "quantity":  20.0, "unit_id": 3, "inventory_item_id": 13},
+            {"name": "Sal",            "quantity":   3.0, "unit_id": 1, "inventory_item_id": 17},
         ],
     },
     {
@@ -180,34 +169,16 @@ RECIPES = [
             "Rectificar sazón y servir inmediatamente.",
         ],
         "ingredients": [
-            {"name": "Aguacate",  "quantity":   2.0, "unit_id": 5, "inventory_item_id":  9},
-            {"name": "Limón",     "quantity":   1.0, "unit_id": 5, "inventory_item_id":  7},
-            {"name": "Cebolla",   "quantity":  30.0, "unit_id": 1, "inventory_item_id":  4},
-            {"name": "Cilantro",  "quantity":   5.0, "unit_id": 1, "inventory_item_id":  8},
-            {"name": "Sal",       "quantity":   3.0, "unit_id": 1, "inventory_item_id": 17},
+            {"name": "Aguacate", "quantity":  2.0, "unit_id": 5, "inventory_item_id":  9},
+            {"name": "Limón",    "quantity":  1.0, "unit_id": 5, "inventory_item_id":  7},
+            {"name": "Cebolla",  "quantity": 30.0, "unit_id": 1, "inventory_item_id":  4},
+            {"name": "Cilantro", "quantity":  5.0, "unit_id": 1, "inventory_item_id":  8},
+            {"name": "Sal",      "quantity":  3.0, "unit_id": 1, "inventory_item_id": 17},
         ],
     },
 ]
 
-# Recipe unit conversions — resolves pza (recipe_unit_id=5) to grams for three items.
-# Entity ID format: "{recipe_unit_id}_{family_id}_{inventory_item_id}"
-RECIPE_UNIT_CONVERSIONS = [
-    # Chile poblano: 1 pza = 120 g
-    {
-        "entity_id": "5_None_5",
-        "data": {"quantity": 120.0, "base_unit_id": 1, "source": "manual"},
-    },
-    # Limón: 1 pza = 60 g
-    {
-        "entity_id": "5_None_7",
-        "data": {"quantity": 60.0, "base_unit_id": 1, "source": "manual"},
-    },
-    # Aguacate: 1 pza = 200 g
-    {
-        "entity_id": "5_None_9",
-        "data": {"quantity": 200.0, "base_unit_id": 1, "source": "manual"},
-    },
-]
+# NO recipe_unit_conversion entries — this is the gap that drives the C/D score.
 
 # ---------------------------------------------------------------------------
 # Seed
@@ -238,13 +209,10 @@ def main() -> None:
     for recipe in RECIPES:
         data_lake.save_entity("recipe", recipe["id"], recipe)
 
-    for ruc in RECIPE_UNIT_CONVERSIONS:
-        data_lake.save_entity("recipe_unit_conversion", ruc["entity_id"], ruc["data"])
-
     perecederos    = sum(1 for i in INVENTORY_ITEMS if i["category_id"] == 1)
     no_perecederos = sum(1 for i in INVENTORY_ITEMS if i["category_id"] == 2)
 
-    print(f"Seed complete (good scenario). Entity ID: {ENTITY_ID}")
+    print(f"Seed complete (en-progreso scenario). Entity ID: {ENTITY_ID}")
     print(f"  Restaurant:             {RESTAURANT['name']}")
     print(f"  Level:                  {CLASSIFICATION['standardization_level']}")
     print(f"  Categories:             {len(CATEGORY_RECIPES)}")
@@ -253,8 +221,8 @@ def main() -> None:
     print(f"  Inventory units:        {len(INVENTORY_UNITS)} (incl. 1 non-standard)")
     print(f"  Inventory items:        {len(INVENTORY_ITEMS)} ({perecederos} perecederos, {no_perecederos} no perecederos)")
     print(f"  Recipes:                {len(RECIPES)}")
-    print(f"  Unit conversions (pza): {len(RECIPE_UNIT_CONVERSIONS)}")
-    print("\nExpected score: B (~80). Launch the app and open Manual Operativo.")
+    print(f"  Unit conversions (pza): 0  ← gap intentional")
+    print("\nExpected score: C/D (~55). Unit mismatches visible in Manual Operativo Resumen.")
 
 
 if __name__ == "__main__":

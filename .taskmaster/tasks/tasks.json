@@ -1130,7 +1130,7 @@
             "title": "12.5 Unit tests",
             "description": "Create tests/unit/test_manual_operativo.py: build_manual_context cases (minimal, recipe, inventory, empty session), _build_resumen_md all-na KPIs, agent schema and _process_response mocked; 2 live tests skipped without ANTHROPIC_API_KEY.",
             "details": "See .taskmaster/docs/task-12/plan.md § Test strategy (unit and live tables).",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               "12.1"
             ],
