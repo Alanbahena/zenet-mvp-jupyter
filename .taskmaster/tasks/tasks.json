@@ -1093,7 +1093,7 @@
             "title": "12.2 Resumen tab",
             "description": "Resumen tab: overall score and grade, per-dimension Unicode/HTML progress bars from compute_readiness_report, logros checklist, areas of opportunity from KPI evidence; _build_resumen_md with registry-aware unit mismatch formatting (recipe unit vs stock unit symbols per plan).",
             "details": "See .taskmaster/docs/task-12/plan.md § Resumen tab layout and Áreas de oportunidad — unit mismatch formatting rule.",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               "12.1"
             ],
@@ -1105,7 +1105,7 @@
             "title": "12.3 Mi Restaurante + Recetas + Inventario tabs",
             "description": "Mi Restaurante tab: profile, standardization level, configuration counts. Recetas tab: catalog with deduction-readiness badges, expandable ingredients (linked/unlinked). Inventario tab: Perecederos / No Perecederos groups with purchase vs stock units, factor, family.",
             "details": "See .taskmaster/docs/task-12/plan.md § Mi Restaurante, Recetas, and Inventario tab layouts.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "12.1"
             ],

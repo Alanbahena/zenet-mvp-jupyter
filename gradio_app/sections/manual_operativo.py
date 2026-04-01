@@ -9,6 +9,7 @@ from core import (
     CategoryRecipeRegistry,
     FamilyInventoryRegistry,
     InventoryItemRegistry,
+    validate_recipe_for_deduction,
 )
 from core.domain.serialization import (
     restaurant_from_dict,
@@ -208,6 +209,141 @@ def _build_resumen_md(
         lines.append("**Áreas de oportunidad:**")
         lines.extend(areas_lines)
         lines.append("")
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Private helpers — Mi Restaurante / Recetas / Inventario tabs
+# ---------------------------------------------------------------------------
+
+def _build_mi_restaurante_md(
+    restaurant,
+    user_data: dict,
+    classification_data: dict,
+    *,
+    recipe_units: list,
+    inventory_units: list,
+    categories: list,
+    families: list,
+    recipes: list,
+    items: list,
+) -> str:
+    """Build the Mi Restaurante tab Markdown from loaded entities.
+
+    Pure function — no DataLake access.
+    """
+    lines = []
+
+    lines.append(f"## {restaurant.name}")
+    operator = user_data.get("name", "—")
+    std_level = classification_data.get("standardization_level", "N/D")
+    lines.append(
+        f"**Tipo:** {restaurant.restaurant_type_id}  |  "
+        f"**Operador:** {operator}  |  "
+        f"**Nivel de estandarización:** {std_level}"
+    )
+
+    description = classification_data.get("restaurant_description", "")
+    if description:
+        lines.append(f"_{description}_")
+
+    lines.append("")
+    lines.append("**Configuración:**")
+    lines.append(f"- Unidades de receta: {len(recipe_units)}")
+    lines.append(f"- Unidades de inventario: {len(inventory_units)}")
+    lines.append(f"- Categorías de receta: {len(categories)}")
+    lines.append(f"- Familias de inventario: {len(families)}")
+    lines.append(f"- Artículos de inventario: {len(items)}")
+    lines.append(f"- Recetas: {len(recipes)}")
+
+    return "\n".join(lines)
+
+
+def _build_recetas_md(
+    recipes: list,
+    recipe_unit_registry: RecipeUnitRegistry,
+    item_registry: InventoryItemRegistry,
+    category_registry: CategoryRecipeRegistry,
+    inventory_unit_registry: InventoryUnitRegistry,
+    conversion_table,
+    family_registry: FamilyInventoryRegistry,
+) -> str:
+    """Build the Recetas tab Markdown from loaded recipes and registries.
+
+    Pure function — no DataLake access. Badge determined by validate_recipe_for_deduction.
+    """
+    if not recipes:
+        return "_(Sin recetas capturadas)_"
+
+    lines = []
+    for recipe in recipes:
+        issues = validate_recipe_for_deduction(
+            recipe, item_registry, inventory_unit_registry, conversion_table, family_registry
+        )
+        badge = "✓ Lista para deducción" if not issues else "⚠ Incompleta"
+
+        cat = category_registry.get(recipe.category_id) if recipe.category_id is not None else None
+        cat_name = cat.name if cat else "—"
+
+        lines.append(f"### {recipe.name}  —  {badge}")
+        lines.append(f"Categoría: {cat_name}")
+        lines.append("")
+        lines.append("**Ingredientes:**")
+        for ing in recipe.ingredients:
+            unit = recipe_unit_registry.get(ing.unit_id)
+            unit_sym = unit.symbol if unit else str(ing.unit_id)
+            linked = ing.inventory_item_id is not None or item_registry.get_by_name(ing.name) is not None
+            link_label = "✓ vinculado" if linked else "⚠ sin vincular"
+            lines.append(f"  - {ing.name}: {ing.quantity} {unit_sym}  [{link_label}]")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def _build_inventario_md(
+    items: list,
+    inventory_unit_registry: InventoryUnitRegistry,
+    family_registry: FamilyInventoryRegistry,
+) -> str:
+    """Build the Inventario tab Markdown, grouped by Perecedero / No Perecedero.
+
+    Pure function — no DataLake access. Groups by fixed category_id (1=Perecedero, 2=No perecedero).
+    """
+    if not items:
+        return "_(Sin artículos de inventario)_"
+
+    perecederos = [i for i in items if i.category_id == 1]
+    no_perecederos = [i for i in items if i.category_id == 2]
+
+    lines = []
+
+    def _item_line(item) -> str:
+        pu = inventory_unit_registry.get(item.purchase_unit_id)
+        su = inventory_unit_registry.get(item.stock_unit_id)
+        fam = family_registry.get(item.family_id) if item.family_id else None
+        pu_sym = pu.symbol if pu else str(item.purchase_unit_id)
+        su_sym = su.symbol if su else str(item.stock_unit_id)
+        fam_name = fam.name if fam else "sin familia"
+        return (
+            f"  - {item.name}   compra: {pu_sym}   stock: {su_sym}   "
+            f"factor: {item.purchase_to_stock_factor}   familia: {fam_name}"
+        )
+
+    lines.append(f"## Perecederos ({len(perecederos)} artículos)")
+    if perecederos:
+        for item in perecederos:
+            lines.append(_item_line(item))
+    else:
+        lines.append("  _(sin artículos)_")
+
+    lines.append("")
+    lines.append(f"## No Perecederos ({len(no_perecederos)} artículos)")
+    if no_perecederos:
+        for item in no_perecederos:
+            lines.append(_item_line(item))
+    else:
+        lines.append("  _(sin artículos)_")
 
     return "\n".join(lines)
 
