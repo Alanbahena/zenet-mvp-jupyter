@@ -1117,7 +1117,7 @@
             "title": "12.4 Gradio wiring: two-state UI + agent sidebar + Regenerar",
             "description": "State 1: centered Generar Manual Operativo button. State 2: gr.Row scale 7 tabs + scale 3 persistent chat (render_chat_panel, create_agent(ManualOperativoAgent)). Wire generate_fn; Regenerar Manual refreshes tab Markdown in place. Pass manual_context on chat.",
             "details": "See .taskmaster/docs/task-12/plan.md § UI layout (generated state) and Two-state UI; Regenerar Manual behavior.",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [
               "12.2",
               "12.3"
