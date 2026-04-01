@@ -1083,7 +1083,7 @@
             "title": "12.1 _build_manual_context + ManualOperativoAgent + re-exports",
             "description": "Implement _build_manual_context(data_lake, session_id) in gradio_app/sections/manual_operativo.py (stable_entity_id, load all session entities, RecipeUnitConversionRegistry from SQLite, compute_readiness_report, plain-text return). Create core/agents/manual_operativo_agent.py (BaseAgent, context key manual_context, INPUT_SCHEMA user_message, OUTPUT_SCHEMA reply/raw_response, RESPONSE_MODEL None). Export ManualOperativoAgent from core/agents/__init__.py and core/__init__.py.",
             "details": "See .taskmaster/docs/task-12/plan.md § Subtask breakdown (12.1) and Files to create / modify.",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 12,
             "parentId": "undefined"
@@ -1093,7 +1093,7 @@
             "title": "12.2 Resumen tab",
             "description": "Resumen tab: overall score and grade, per-dimension Unicode/HTML progress bars from compute_readiness_report, logros checklist, areas of opportunity from KPI evidence; _build_resumen_md with registry-aware unit mismatch formatting (recipe unit vs stock unit symbols per plan).",
             "details": "See .taskmaster/docs/task-12/plan.md § Resumen tab layout and Áreas de oportunidad — unit mismatch formatting rule.",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [
               "12.1"
             ],
