@@ -1,3 +1,5 @@
+import re
+
 import gradio as gr
 
 from gradio_app.session import stable_entity_id
@@ -21,6 +23,198 @@ from core.domain.serialization import (
 from core.operations.normalization import RecipeUnitConversionRegistry
 from core.operations.readiness_kpis import compute_readiness_report
 
+# ---------------------------------------------------------------------------
+# Module-level constants
+# ---------------------------------------------------------------------------
+
+_SKIP_DIMENSIONS = {"taxonomy"}  # weight=0, always na — omit from progress bars
+
+_HIDDEN_KPI_IDS = {
+    "recipes.stepsPresentPct",
+    "recipes.ingredientsInventoryItemIdSetPct",
+    "inventory.itemsWithFamilyPct",
+    "inventory.itemsWithDescriptionPct",
+}
+
+_UNIT_MISMATCH_REASON = (
+    "Missing conversion entry "
+    "(ingredient unit family differs from inventory item unit family)"
+)
+
+
+# ---------------------------------------------------------------------------
+# Private helpers — unit mismatch resolution
+# ---------------------------------------------------------------------------
+
+def _parse_ingredient_name_from_ref(ref: str) -> str:
+    """Extract ingredient name from EvidenceRef.ref string like "Recipe#1: 'tortillas'".
+
+    ref format: "Recipe#N: 'ingredient_name'" (ingredient name via repr()).
+    Falls back to the full ref string if the pattern does not match.
+    Known limitation: ingredient names containing a single quote will not parse correctly.
+    """
+    m = re.search(r":\s*'(.+)'$", ref)
+    return m.group(1) if m else ref
+
+
+def _resolve_mismatch_units(
+    ing_name: str,
+    recipes: list,
+    recipe_unit_registry: RecipeUnitRegistry,
+    item_registry: InventoryItemRegistry,
+    inventory_unit_registry: InventoryUnitRegistry,
+) -> tuple[str | None, str | None]:
+    """Return (recipe_unit_symbol, inventory_unit_symbol) for a unit mismatch ingredient.
+
+    Searches all recipes for the first ingredient matching ing_name, then resolves
+    the recipe unit symbol and inventory item stock unit symbol.
+    Returns (None, None) if the ingredient or its linked inventory item cannot be found.
+    """
+    for recipe in recipes:
+        for ing in recipe.ingredients:
+            if ing.name == ing_name:
+                recipe_unit = recipe_unit_registry.get(ing.unit_id)
+                linked_item = (
+                    item_registry.get(ing.inventory_item_id)
+                    if ing.inventory_item_id
+                    else item_registry.get_by_name(ing.name)
+                )
+                if recipe_unit and linked_item:
+                    inv_unit = inventory_unit_registry.get(linked_item.stock_unit_id)
+                    return recipe_unit.symbol, (inv_unit.symbol if inv_unit else None)
+    return None, None
+
+
+# ---------------------------------------------------------------------------
+# Private helpers — Resumen tab
+# ---------------------------------------------------------------------------
+
+def _build_resumen_md(
+    report: dict,
+    recipe_unit_registry: RecipeUnitRegistry,
+    inventory_unit_registry: InventoryUnitRegistry,
+    item_registry: InventoryItemRegistry,
+    *,
+    recipes: list,
+    items: list,
+) -> str:
+    """Build the Resumen tab Markdown from a compute_readiness_report() output.
+
+    Pure function — no DataLake access. Returns a non-empty string even when
+    all KPIs are na (empty registries / no data).
+    """
+    lines = []
+
+    # a) Header and overall score
+    overall = report.get("overall", {})
+    score = overall.get("score_0_100") or 0
+    grade = overall.get("grade", "N/D")
+    lines.append("## Tu restaurante está estandarizado")
+    lines.append(f"**Puntuación general: {score:.0f} / 100 — Calificación: {grade}**")
+    lines.append("")
+
+    # b) Per-dimension progress bars
+    _STATUS_ICON = {"ok": "✓", "warn": "⚠", "fail": "✗"}
+    for dim in report.get("dimensions", []):
+        if dim.get("dimension_id") in _SKIP_DIMENSIONS:
+            continue
+        dim_score = dim.get("score_0_100") or 0
+        status = dim.get("status", "na")
+        title = dim.get("title", dim.get("dimension_id", ""))
+        filled = round(dim_score / 5)  # 0–20 blocks
+        bar = "█" * filled + "░" * (20 - filled)
+        icon = _STATUS_ICON.get(status, "-")
+        lines.append(f"`{title}`  {bar}  {dim_score:.0f}%  {icon}")
+    lines.append("")
+
+    # c) Deduction coverage line
+    ded_kpi = next(
+        (k for k in report.get("kpis", [])
+         if k.get("kpi_id") == "normalization.deductionCoveragePct"),
+        None,
+    )
+    if ded_kpi and ded_kpi.get("status") != "na":
+        numerator = ded_kpi.get("numerator", 0)
+        denominator = ded_kpi.get("denominator", 0)
+        lines.append(f"**Cobertura de deducción:** {numerator} de {denominator} ingredientes listos")
+        lines.append("")
+
+    # d) Logros completados
+    logros = []
+    logros.append("✓ Restaurante registrado")
+    logros.append("✓ Nivel de estandarización definido")
+    n_ru = len(recipe_unit_registry.valid_ids())
+    if n_ru > 0:
+        logros.append(f"✓ {n_ru} unidades de receta configuradas")
+    n_fam = len({it.family_id for it in items if it.family_id})
+    if n_fam > 0:
+        logros.append(f"✓ {n_fam} familias de inventario configuradas")
+    if len(recipes) > 0:
+        logros.append(f"✓ {len(recipes)} recetas capturadas")
+    if len(items) > 0:
+        logros.append(f"✓ {len(items)} artículos de inventario estructurados")
+
+    lines.append("**Logros completados:**")
+    for logro in logros:
+        lines.append(f"- {logro}")
+    lines.append("")
+
+    # e) Áreas de oportunidad — generic (top 3 fail/warn, hidden KPIs excluded)
+    fail_warn = [
+        k for k in report.get("kpis", [])
+        if k.get("status") in ("fail", "warn")
+        and k.get("kpi_id") not in _HIDDEN_KPI_IDS
+    ]
+    fail_warn.sort(key=lambda k: (
+        0 if k["status"] == "fail" else 1,
+        0 if k.get("severity") == "high" else 1,
+    ))
+
+    areas_lines = []
+    for kpi in fail_warn[:3]:
+        icon = "✗" if kpi["status"] == "fail" else "⚠"
+        evidence_items = kpi.get("evidence", {}).get("sample_missing", [])
+        generic_evs = [ev for ev in evidence_items if ev.get("reason") != _UNIT_MISMATCH_REASON]
+        areas_lines.append(f"{icon} **{kpi['title']}**")
+        for ev in generic_evs[:3]:
+            areas_lines.append(f"  - {ev['ref']}")
+
+    # f) Unit mismatch block — collected across ALL fail/warn KPIs
+    all_mismatch_evs = []
+    for kpi in report.get("kpis", []):
+        if kpi.get("status") not in ("fail", "warn"):
+            continue
+        for ev in kpi.get("evidence", {}).get("sample_missing", []):
+            if ev.get("reason") == _UNIT_MISMATCH_REASON:
+                all_mismatch_evs.append(ev)
+
+    if all_mismatch_evs:
+        areas_lines.append("✗ **Ingredientes sin conversión de unidades definida:**")
+        for ev in all_mismatch_evs[:5]:
+            ing_name = _parse_ingredient_name_from_ref(ev["ref"])
+            recipe_unit_sym, inv_unit_sym = _resolve_mismatch_units(
+                ing_name, recipes, recipe_unit_registry, item_registry, inventory_unit_registry
+            )
+            if recipe_unit_sym and inv_unit_sym:
+                areas_lines.append(
+                    f"  → {ing_name}: receta usa \"{recipe_unit_sym}\","
+                    f" inventario usa \"{inv_unit_sym}\""
+                )
+            else:
+                areas_lines.append(f"  → {ev['ref']}")
+        areas_lines.append("  *(Define la equivalencia para que Zenet pueda calcular el consumo)*")
+
+    if areas_lines:
+        lines.append("**Áreas de oportunidad:**")
+        lines.extend(areas_lines)
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Private helpers — manual context for agent
+# ---------------------------------------------------------------------------
 
 def _build_manual_context(data_lake, session_id: str) -> str:
     """
@@ -171,8 +365,9 @@ def _build_manual_context(data_lake, session_id: str) -> str:
         lines.append("ÁREAS DE OPORTUNIDAD")
         for kpi in fail_warn_kpis:
             lines.append(f"  [{kpi['status'].upper()}] {kpi['title']}")
-            for ev in (kpi.get("evidence") or [])[:5]:
-                lines.append(f"    - {ev}")
+            evidence_items = kpi.get("evidence", {}).get("sample_missing", [])
+            for ev in evidence_items[:5]:
+                lines.append(f"    - {ev['ref']}")
         lines.append("")
 
     lines.append(f"RECETAS ({len(recipes)} total)")
