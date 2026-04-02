@@ -43,32 +43,25 @@ Build the **cognitive-operational core** of Zenet:
 ## 🧱 Tech Stack
 
 ### Language
-- Python 3.10+
+- Python 3.13.5
 
 ### Prototyping
 - Jupyter Notebooks
 
-### UI Layer (temporary)
+### UI Layer
 - Gradio UI
 
 ### LLM & AI Frameworks
-- LangChain  
-- LangGraph  
-- CrewAI  
+- Anthropic Claude SDK  
+- LangGraph (agent graph orchestration)  
 - OpenAI SDK  
-- Claude AI SDK  
-- Autogen  
-
-### Orchestration
-- Custom workflow engine
 
 ### Persistence
-- JSON  
-- SQLite  
+- SQLite (primary)
+- JSON (fallback)
 
 ### Data Architecture
-- Local data lake  
-- Structured data pipelines  
+- Local data lake (DataLake abstraction over SQLite/JSON backends)
 
 ---
 
@@ -107,22 +100,24 @@ Build the **cognitive-operational core** of Zenet:
    ```bash
    uv sync
    ```
-   Or to install into an already-active env: `uv sync --active`.
 
    With **pip**:
    ```bash
-   pip install -e .
+   pip install -r requirements.txt
    ```
-   Or install from a locked list: `pip install -r requirements.txt`.
 
 4. **Environment variables.**  
-   Copy or create a `.env` file in the project root for API keys (e.g. `OPENAI_API_KEY`). Do not commit `.env`.
+   Create a `.env` file in the project root with the following keys (do not commit `.env`):
+   ```
+   ANTHROPIC_API_KEY=sk-ant-...
+   OPENAI_API_KEY=sk-...
+   ```
 
 ### Basic usage
 
-- **Run the main script:**
+- **Launch the Gradio app:**
   ```bash
-  python main.py
+  uv run python -m gradio_app.app
   ```
 
 - **Start Jupyter** (for notebooks):
@@ -131,16 +126,21 @@ Build the **cognitive-operational core** of Zenet:
   ```
   Open notebooks from the `notebooks/` directory.
 
-- **Gradio UI:**
+- **Pre-populate demo data:**
   ```bash
-  python -m gradio_app.app
+  uv run python scripts/seed_data.py
+  ```
+
+- **Wipe and re-seed:**
+  ```bash
+  uv run python scripts/reset_session.py && uv run python scripts/seed_data.py
   ```
 
 ### Development workflow
 
 - Add dependencies with **uv**: `uv add <package-name>` (updates `pyproject.toml` and installs into the env).
 - Regenerate **requirements.txt**: `uv export --no-dev -o requirements.txt`.
-- Deactivate the environment when done: `deactivate`.
+- Run tests: `uv run python -m pytest tests/`
 
 ---
 
@@ -170,14 +170,20 @@ See `docs/Architecture/` for detailed documentation:
 
 | Topic | Document |
 |-------|----------|
-| Data model (entities, registries, templates, workflows) | [architecture-data-model.md](docs/Architecture/architecture-data-model.md) |
+| Data model (entities, registries, templates) | [architecture-data-model.md](docs/Architecture/architecture-data-model.md) |
 | Normalization (equivalence, conversion, deduction) | [architecture-normalization.md](docs/Architecture/architecture-normalization.md) |
 | Taxonomy (ingredient, inventory, recipe hierarchies) | [architecture-taxonomy.md](docs/Architecture/architecture-taxonomy.md) |
 | Data model helpers (format, validation, resolution) | [architecture-data-model-utils.md](docs/Architecture/architecture-data-model-utils.md) |
 | Readiness report (schema, KPIs, recommendations) | [architecture-readiness-kpis.md](docs/Architecture/architecture-readiness-kpis.md) |
-| **Persistence (storage layer, JSON/SQLite, DataLake API)** | **[architecture-persistence.md](docs/Architecture/architecture-persistence.md)** |
+| Persistence (storage layer, JSON/SQLite, DataLake API) | [architecture-persistence.md](docs/Architecture/architecture-persistence.md) |
 | Agent framework (BaseAgent, tool calling, memory, state, retry) | [architecture-agent-framework.md](docs/Architecture/architecture-agent-framework.md) |
 | Gradio UI foundation and LangGraph pattern | [architecture-gradio-and-langgraph.md](docs/Architecture/architecture-gradio-and-langgraph.md) |
+| Bienvenida section (pipeline step 1) | [sections/bienvenida.md](docs/Architecture/sections/bienvenida.md) |
+| Clasificación section (pipeline step 2) | [sections/clasificacion.md](docs/Architecture/sections/clasificacion.md) |
+| Configuración section (pipeline step 3) | [sections/configuracion.md](docs/Architecture/sections/configuracion.md) |
+| Alineamiento section (pipeline step 4) | [sections/alineamiento.md](docs/Architecture/sections/alineamiento.md) |
+| Estructura section (pipeline step 5) | [sections/estructura.md](docs/Architecture/sections/estructura.md) |
+| Manual Operativo section (pipeline step 6) | [sections/manual_operativo.md](docs/Architecture/sections/manual_operativo.md) |
 
 ---
 
@@ -205,7 +211,7 @@ Full implementation details for each subtask are in `task-2/<subtask-id>/plan.md
 MVP Jupyter/
 │
 ├── core/
-│   ├── __init__.py
+│   ├── __init__.py              # Re-exports from all core subpackages
 │   ├── domain/
 │   │   ├── data_model.py        # Entities and registries (Recipe, Restaurant, InventoryItem, etc.)
 │   │   ├── data_model_utils.py  # Format, validation, and resolution helpers
@@ -218,21 +224,28 @@ MVP Jupyter/
 │   │   ├── persistence.py       # JsonStorage, SqliteStorage, DataLake (save/load API)
 │   │   └── schema.py            # SQLite schema (CREATE TABLE statements)
 │   ├── ai/
-│   │   ├── providers.py         # LlmProvider, OpenAiProvider, ClaudeProvider, ToolRegistry
+│   │   ├── providers.py         # LlmProvider, ClaudeProvider, OpenAiProvider, ToolRegistry
 │   │   ├── memory.py            # ConversationMemory
 │   │   ├── prompts.py           # Prompt engineering utilities
 │   │   └── utils.py             # parse_structured_output and helpers
 │   └── agents/
-│       ├── base_agent.py        # BaseAgent abstract class (run, validate, tool loop, memory)
+│       ├── base_agent.py        # BaseAgent abstract class (run, tool loop, memory, retry)
 │       ├── simple_agent.py      # RestaurantInfoAgent — minimal concrete agent
+│       ├── welcome_agent.py     # WelcomeAgent (pipeline step 1)
+│       ├── classification_agent.py    # ClassificationAgent (pipeline step 2)
+│       ├── configuration_agent.py     # ConfigurationAgent (pipeline step 3)
+│       ├── consistency_check_agent.py # ConsistencyCheckAgent (step 3 validation)
+│       ├── alignment_agent.py         # AlignmentAgent (pipeline step 4)
+│       ├── structuring_agent.py       # StructuringAgent (pipeline step 5)
+│       ├── manual_operativo_agent.py  # ManualOperativoAgent (pipeline step 6)
 │       ├── utils.py             # create_agent() factory, AgentRegistry
 │       └── graph_utils.py       # BaseGraphState, make_agent_node(), build_sequential_graph()
 │
 ├── gradio_app/
 │   ├── app.py                   # build_app() — gr.Blocks with 6 tabs
-│   ├── session.py               # get_data_lake(), create_session()
+│   ├── session.py               # get_data_lake(), stable_entity_id()
 │   ├── components.py            # render_chat_panel()
-│   └── sections/                # One stub per pipeline section (replaced by Tasks 7–12)
+│   └── sections/                # One file per pipeline section
 │       ├── bienvenida.py
 │       ├── clasificacion.py
 │       ├── configuracion.py
@@ -247,16 +260,20 @@ MVP Jupyter/
 │
 ├── docs/
 │   └── Architecture/            # Detailed architecture docs (see table above)
+│       └── sections/            # Per-section UI and agent docs
 │
 ├── .taskmaster/
 │   └── docs/                    # Task plans: README (conventions), project-level docs, task-N/subtask/
 │
 ├── tests/
-│   └── unit/                    # Unit tests for every core module and gradio_app
+│   └── unit/                    # Unit tests for every core module and gradio_app section
+│
+├── scripts/
+│   ├── seed_data.py             # Pre-populate DB with demo data
+│   └── reset_session.py         # Wipe DB for a clean re-seed
 │
 ├── notebooks/                   # Jupyter notebooks (pipeline stages)
 ├── data/                        # raw, processed, normalized, outputs, sessions/
-├── main.py
 └── README.md
 ```
 
@@ -271,17 +288,17 @@ Zenet includes comprehensive test coverage for all core modules and LLM integrat
 Unit tests use mocked API responses and run quickly without requiring API keys:
 
 ```bash
-# Run all unit tests (462 tests)
-python -m pytest tests/unit/ -v
+# Run all unit tests (~560 tests)
+uv run python -m pytest tests/unit/ -v
 
 # Run specific test file
-python -m pytest tests/unit/test_data_model.py -v
+uv run python -m pytest tests/unit/test_data_model.py -v
 
 # Run tests for a specific module
-python -m pytest tests/unit/test_llm_framework.py -v
+uv run python -m pytest tests/unit/test_llm_framework.py -v
 
 # Skip live tests explicitly
-python -m pytest tests/unit/ -k "not Live" -v
+uv run python -m pytest tests/unit/ -k "not Live" -v
 ```
 
 ### Live Integration Tests (Real API Calls)
@@ -293,15 +310,10 @@ Live tests make **real API calls** to OpenAI and Anthropic. They are **optional*
 
 #### Setup for Live Tests
 
-1. **Copy `.env.example` to `.env`** (if you haven't already):
+1. **Create a `.env` file** in the project root (if you haven't already) and add your API keys:
    ```bash
-   cp .env.example .env
-   ```
-
-2. **Add your API keys** to `.env`:
-   ```bash
-   OPENAI_API_KEY=sk-your-openai-key-here
    ANTHROPIC_API_KEY=sk-ant-your-anthropic-key-here
+   OPENAI_API_KEY=sk-your-openai-key-here
    ```
 
 3. **(Optional) Override test models** in `.env`:
@@ -315,19 +327,16 @@ Live tests make **real API calls** to OpenAI and Anthropic. They are **optional*
 
 ```bash
 # Run only live tests (requires API keys)
-python -m pytest tests/unit/ -k Live -v
+uv run python -m pytest tests/unit/ -k Live -v
 
 # Run all tests (live tests run if API keys present, skip otherwise)
-python -m pytest tests/unit/ -v
+uv run python -m pytest tests/unit/ -v
 
 # Run OpenAI live tests only
-python -m pytest tests/unit/ -k LiveOpenAi -v
+uv run python -m pytest tests/unit/ -k LiveOpenAi -v
 
 # Run Claude live tests only
-python -m pytest tests/unit/ -k LiveClaude -v
-
-# Run cross-provider tests
-python -m pytest tests/unit/ -k LiveProviderComparison -v
+uv run python -m pytest tests/unit/ -k LiveClaude -v
 ```
 
 #### One-Time Model Override
@@ -335,11 +344,8 @@ python -m pytest tests/unit/ -k LiveProviderComparison -v
 Test with production models without editing `.env`:
 
 ```bash
-# Test OpenAI with gpt-4o (production model)
-TEST_OPENAI_MODEL=gpt-4o python -m pytest tests/unit/ -k LiveOpenAi -v
-
 # Test Claude with sonnet (production model)
-TEST_ANTHROPIC_MODEL=claude-sonnet-4-5 python -m pytest tests/unit/ -k LiveClaude -v
+TEST_ANTHROPIC_MODEL=claude-sonnet-4-6 uv run python -m pytest tests/unit/ -k LiveClaude -v
 ```
 
 #### Cost Considerations
@@ -372,7 +378,16 @@ TEST_ANTHROPIC_MODEL=claude-sonnet-4-5 python -m pytest tests/unit/ -k LiveClaud
 | LLM Utils | 8 | Structured output parsing |
 | Prompts | 7 | Template rendering |
 | Memory | 33 | Conversation memory |
-| Agent framework | 55 | BaseAgent lifecycle, tool calling, state, retry, RestaurantInfoAgent |
-| **Live Tests** | **13** | **Real API integration** |
-| **Total** | **462** | **100% core coverage** |
+| Agent framework | 55 | BaseAgent lifecycle, tool calling, state, retry |
+| Graph utils | 12 | LangGraph node and graph construction |
+| Gradio session | 8 | DataLake session helpers |
+| Welcome agent | 20 | Bienvenida section agent |
+| Classification agent | 18 | Clasificación section agent |
+| Configuration agent | 22 | Configuración section agent |
+| Alignment agent | 23 | Alineamiento section agent |
+| Structuring agent | 14 | Estructura section agent |
+| Readiness KPIs | 6 | Report schema and KPI edge cases |
+| Manual Operativo | 14 | Tab builders, context assembly, agent |
+| **Live Tests** | **~20** | **Real API integration (Claude + OpenAI)** |
+| **Total** | **~560** | |
 

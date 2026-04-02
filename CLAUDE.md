@@ -178,15 +178,15 @@ Tasks and subtasks are tracked in `.taskmaster/tasks/tasks.json`.
 | 9  | Configuración section agent           | **done** |
 | 10 | Alineamiento section                   | **done** |
 | 11 | Estructura section                     | **done** |
-| 12 | Manual operativo section               | pending  |
+| 12 | Manual operativo section               | **done** |
 | 13 | Gradio UI entry point (cancelled)      | cancelled |
 | 14 | Notebook pipeline orchestration (cancelled) | cancelled |
-| 15 | Unit and integration tests             | pending  |
-| 16 | Documentation and user guide           | pending  |
+| 15 | Unit and integration tests             | **done** |
+| 16 | Documentation and user guide           | **done** |
 | 17 | Restaurant profile enrichment          | **done** |
 | 18 | ngrok demo deployment                  | pending  |
 
-**Task 12** (Manual operativo section) is next.
+**Task 18** (ngrok demo deployment) is next.
 
 ### TaskMaster docs
 
