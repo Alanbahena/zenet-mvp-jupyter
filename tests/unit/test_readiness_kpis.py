@@ -184,6 +184,39 @@ class TestReadinessKpis(unittest.TestCase):
         self.assertIn("rec.increaseDeductionCoverage", _rec_ids(report))
 
 
+class TestReadinessReportSchema(unittest.TestCase):
+    """Edge-case tests for report structure with empty registries."""
+
+    def _empty_report(self):
+        return compute_readiness_report(
+            Restaurant(id=1, name="T", restaurant_type_id=1),
+            recipes=[],
+            recipe_unit_registry=RecipeUnitRegistry(),
+            inventory_unit_registry=InventoryUnitRegistry(),
+            category_recipe_registry=CategoryRecipeRegistry(),
+            family_inventory_registry=FamilyInventoryRegistry(),
+            inventory_item_registry=InventoryItemRegistry(),
+            conversion_table=RecipeUnitConversionRegistry(),
+        )
+
+    def test_empty_registries_returns_zero_score_and_d_grade(self):
+        report = self._empty_report()
+        # _overall_score returns 0.0 when no dimension has a computable score
+        self.assertEqual(report["overall"]["score_0_100"], 0.0)
+        # _grade_from_score(0.0) → "D"; "N/D" is only a UI fallback, never a report value
+        self.assertEqual(report["overall"]["grade"], "D")
+
+    def test_report_has_required_top_level_keys(self):
+        report = self._empty_report()
+        for key in ("schema_version", "generated_at", "overall", "dimensions", "kpis"):
+            self.assertIn(key, report)
+
+    def test_deduction_coverage_kpi_is_present(self):
+        report = self._empty_report()
+        kpi_ids = [k.get("kpi_id") for k in report.get("kpis", [])]
+        self.assertIn("normalization.deductionCoveragePct", kpi_ids)
+
+
 if __name__ == "__main__":
     unittest.main()
 
