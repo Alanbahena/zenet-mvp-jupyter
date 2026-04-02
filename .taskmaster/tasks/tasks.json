@@ -1076,8 +1076,81 @@
         "dependencies": [
           "11"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "12.1 _build_manual_context + ManualOperativoAgent + re-exports",
+            "description": "Implement _build_manual_context(data_lake, session_id) in gradio_app/sections/manual_operativo.py (stable_entity_id, load all session entities, RecipeUnitConversionRegistry from SQLite, compute_readiness_report, plain-text return). Create core/agents/manual_operativo_agent.py (BaseAgent, context key manual_context, INPUT_SCHEMA user_message, OUTPUT_SCHEMA reply/raw_response, RESPONSE_MODEL None). Export ManualOperativoAgent from core/agents/__init__.py and core/__init__.py.",
+            "details": "See .taskmaster/docs/task-12/plan.md § Subtask breakdown (12.1) and Files to create / modify.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 12,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "12.2 Resumen tab",
+            "description": "Resumen tab: overall score and grade, per-dimension Unicode/HTML progress bars from compute_readiness_report, logros checklist, areas of opportunity from KPI evidence; _build_resumen_md with registry-aware unit mismatch formatting (recipe unit vs stock unit symbols per plan).",
+            "details": "See .taskmaster/docs/task-12/plan.md § Resumen tab layout and Áreas de oportunidad — unit mismatch formatting rule.",
+            "status": "done",
+            "dependencies": [
+              "12.1"
+            ],
+            "parentTaskId": 12,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "12.3 Mi Restaurante + Recetas + Inventario tabs",
+            "description": "Mi Restaurante tab: profile, standardization level, configuration counts. Recetas tab: catalog with deduction-readiness badges, expandable ingredients (linked/unlinked). Inventario tab: Perecederos / No Perecederos groups with purchase vs stock units, factor, family.",
+            "details": "See .taskmaster/docs/task-12/plan.md § Mi Restaurante, Recetas, and Inventario tab layouts.",
+            "status": "done",
+            "dependencies": [
+              "12.1"
+            ],
+            "parentTaskId": 12,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "12.4 Gradio wiring: two-state UI + agent sidebar + Regenerar",
+            "description": "State 1: centered Generar Manual Operativo button. State 2: gr.Row scale 7 tabs + scale 3 persistent chat (render_chat_panel, create_agent(ManualOperativoAgent)). Wire generate_fn; Regenerar Manual refreshes tab Markdown in place. Pass manual_context on chat.",
+            "details": "See .taskmaster/docs/task-12/plan.md § UI layout (generated state) and Two-state UI; Regenerar Manual behavior.",
+            "status": "done",
+            "dependencies": [
+              "12.2",
+              "12.3"
+            ],
+            "parentTaskId": 12,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "12.5 Unit tests",
+            "description": "Create tests/unit/test_manual_operativo.py: build_manual_context cases (minimal, recipe, inventory, empty session), _build_resumen_md all-na KPIs, agent schema and _process_response mocked; 2 live tests skipped without ANTHROPIC_API_KEY.",
+            "details": "See .taskmaster/docs/task-12/plan.md § Test strategy (unit and live tables).",
+            "status": "done",
+            "dependencies": [
+              "12.1"
+            ],
+            "parentTaskId": 12,
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "12.6 Architecture doc + task closure",
+            "description": "Create docs/Architecture/sections/manual_operativo.md. Update CLAUDE.md (Task 12 done). Update .taskmaster/tasks/tasks.json Task 12 status to done when verified.",
+            "details": "See .taskmaster/docs/task-12/plan.md § Files to create / modify and Deliverable checklist.",
+            "status": "in-progress",
+            "dependencies": [
+              "12.4",
+              "12.5"
+            ],
+            "parentTaskId": 12,
+            "parentId": "undefined"
+          }
+        ]
       },
       {
         "id": "13",
