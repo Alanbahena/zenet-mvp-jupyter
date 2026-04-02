@@ -35,7 +35,7 @@ from core.operations.normalization import RecipeUnitConversionRegistry
 from core.operations.readiness_kpis import compute_readiness_report
 from core.storage.persistence import DataLake
 from gradio_app.sections.manual_operativo import (
-    _build_inventario_md,
+    _build_inventario_rows,
     _build_manual_context,
     _build_recetas_md,
     _build_resumen_md,
@@ -138,7 +138,8 @@ class TestBuildResumenMd(unittest.TestCase):
             items=[],
         )
         self.assertIsInstance(result, str)
-        self.assertIn("0 / 100", result)
+        self.assertIn(">0<", result)
+        self.assertIn("/ 100", result)
 
 
 # ---------------------------------------------------------------------------
@@ -179,25 +180,25 @@ class TestBuildRecetasMd(unittest.TestCase):
             RecipeUnitConversionRegistry(),
             FamilyInventoryRegistry(),
         )
-        self.assertIn("✓ vinculado", result)
+        self.assertIn("&#9679; vinculado", result)
 
 
 # ---------------------------------------------------------------------------
-# TestBuildInventarioMd — 1 mocked test
+# TestBuildInventarioRows — 1 mocked test
 # ---------------------------------------------------------------------------
 
-class TestBuildInventarioMd(unittest.TestCase):
+class TestBuildInventarioRows(unittest.TestCase):
 
     def test_groups_by_category(self):
-        item_p = InventoryItem(id=1, name="Carne", stock_unit_id=1, purchase_unit_id=1, category_id=1)
-        item_np = InventoryItem(id=2, name="Sal", stock_unit_id=1, purchase_unit_id=1, category_id=2)
-        result = _build_inventario_md(
+        item_p  = InventoryItem(id=1, name="Carne", stock_unit_id=1, purchase_unit_id=1, category_id=1)
+        item_np = InventoryItem(id=2, name="Sal",   stock_unit_id=1, purchase_unit_id=1, category_id=2)
+        perecederos, no_perecederos = _build_inventario_rows(
             [item_p, item_np], InventoryUnitRegistry(), FamilyInventoryRegistry()
         )
-        self.assertIn("Perecederos", result)
-        self.assertIn("No Perecederos", result)
-        self.assertIn("Carne", result)
-        self.assertIn("Sal", result)
+        self.assertEqual(len(perecederos), 1)
+        self.assertEqual(len(no_perecederos), 1)
+        self.assertEqual(perecederos[0][0], "Carne")
+        self.assertEqual(no_perecederos[0][0], "Sal")
 
 
 # ---------------------------------------------------------------------------

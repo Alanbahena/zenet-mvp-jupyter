@@ -1076,7 +1076,7 @@
         "dependencies": [
           "11"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -1142,7 +1142,7 @@
             "title": "12.6 Architecture doc + task closure",
             "description": "Create docs/Architecture/sections/manual_operativo.md. Update CLAUDE.md (Task 12 done). Update .taskmaster/tasks/tasks.json Task 12 status to done when verified.",
             "details": "See .taskmaster/docs/task-12/plan.md § Files to create / modify and Deliverable checklist.",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               "12.4",
               "12.5"
@@ -1211,7 +1211,7 @@
           "11",
           "12"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
