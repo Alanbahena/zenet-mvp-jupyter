@@ -427,6 +427,20 @@ def _make_confirm_fn(data_lake: Any):
                     family_name_to_id[e["name"]] = int(eid)
 
             # --- Save new inventory proposals ---
+            # Resolve default stock/purchase unit: prefer g, then kg, then pza, then first available.
+            default_unit_id = (
+                iu_symbol_to_id.get("g")
+                or iu_symbol_to_id.get("kg")
+                or iu_symbol_to_id.get("pza")
+                or next(iter(iu_symbol_to_id.values()), None)
+            )
+            if default_unit_id is None:
+                yield (
+                    "Error: no hay unidades de inventario configuradas. "
+                    "Completa la sección de Configuración antes de guardar recetas."
+                ), False
+                return
+
             proposal_name_to_id: dict[str, int] = {}
             for proposal in (inventory_proposals or []):
                 name = proposal.get("name", "")
@@ -437,7 +451,7 @@ def _make_confirm_fn(data_lake: Any):
                     cat_id  = _INVENTORY_CATEGORY_IDS.get(cat_str, 1)
                     fam_name = proposal.get("family")
                     fam_id  = family_name_to_id.get(fam_name) if fam_name else None
-                    unit_id = iu_symbol_to_id.get("g", 1)
+                    unit_id = default_unit_id
                     item = InventoryItem(
                         id=next_item_id,
                         name=name,
@@ -559,7 +573,6 @@ def render(session_id: gr.State, data_lake: Any) -> None:
             # Image support deferred to post-MVP (requires Claude vision API extension)
             file_upload = gr.File(
                 label="Subir archivo de recetas",
-                visible=False,
                 file_types=[".pdf", ".xlsx", ".xls", ".jpg", ".jpeg", ".png", ".webp"],
             )
 
@@ -592,7 +605,7 @@ def render(session_id: gr.State, data_lake: Any) -> None:
         message, history, sid,
         recipe_source, page_index, recipe_count,
     ):
-        history, text, draft, proposals, show_file, ready, new_count = chat_fn(
+        history, text, draft, proposals, _show_file, ready, new_count = chat_fn(
             message, history, sid, recipe_source, page_index,
         )
         resolved_count = new_count if new_count is not None else recipe_count
@@ -608,7 +621,6 @@ def render(session_id: gr.State, data_lake: Any) -> None:
             text,
             draft,
             proposals,
-            gr.update(visible=show_file),
             ready,
             resolved_count,
             gr.update(interactive=ready),
@@ -621,7 +633,7 @@ def render(session_id: gr.State, data_lake: Any) -> None:
     def _handle_file_upload(file_obj, history, sid, page_index, recipe_count):
         """Extract text from uploaded file and run one agent turn."""
         if file_obj is None:
-            return history, "", {}, [], gr.update(), False, None, gr.update(interactive=False), "", [], [], gr.update()
+            return history, "", {}, [], False, None, gr.update(interactive=False), "", [], [], gr.update()
         text = _extract_file_text(
             file_obj.name if hasattr(file_obj, "name") else str(file_obj),
             client=provider.client,
@@ -632,7 +644,7 @@ def render(session_id: gr.State, data_lake: Any) -> None:
                 "role": "assistant",
                 "content": "No pude extraer texto del archivo. Intenta con un PDF o Excel con texto.",
             })
-            return history, "", {}, [], gr.update(), False, None, gr.update(interactive=False), "", [], [], gr.update()
+            return history, "", {}, [], False, None, gr.update(interactive=False), "", [], [], gr.update()
         # Inject file content as user turn
         return _chat_and_format(
             f"[Contenido de archivo]\n{text}", history, sid, "file_content", page_index, recipe_count,
@@ -725,7 +737,7 @@ def render(session_id: gr.State, data_lake: Any) -> None:
         outputs=[
             chatbot, textbox,
             recipe_draft_state, inventory_proposals_state,
-            file_upload, recipe_ready_state, recipe_count_state,
+            recipe_ready_state, recipe_count_state,
             confirm_btn, recipe_name_md, ingredients_tbl, proposals_tbl,
             progress_md,
         ],
@@ -737,7 +749,7 @@ def render(session_id: gr.State, data_lake: Any) -> None:
         outputs=[
             chatbot, textbox,
             recipe_draft_state, inventory_proposals_state,
-            file_upload, recipe_ready_state, recipe_count_state,
+            recipe_ready_state, recipe_count_state,
             confirm_btn, recipe_name_md, ingredients_tbl, proposals_tbl,
             progress_md,
         ],
