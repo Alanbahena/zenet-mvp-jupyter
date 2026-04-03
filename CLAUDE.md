@@ -47,6 +47,14 @@ uv run python scripts/seed_data.py
 
 # Wipe DB and re-seed
 uv run python scripts/reset_session.py && uv run python scripts/seed_data.py
+
+# Launch app for external access (ngrok demo)
+uv run python main.py        # Terminal 1 — starts Gradio on 0.0.0.0:7860
+ngrok http 7860               # Terminal 2 — opens public tunnel; copy the https URL
+
+# One-time ngrok setup (do once per machine)
+brew install ngrok
+ngrok config add-authtoken <your-token>   # token from dashboard.ngrok.com
 ```
 
 ### Environment variables
@@ -184,7 +192,7 @@ Tasks and subtasks are tracked in `.taskmaster/tasks/tasks.json`.
 | 15 | Unit and integration tests             | **done** |
 | 16 | Documentation and user guide           | **done** |
 | 17 | Restaurant profile enrichment          | **done** |
-| 18 | ngrok demo deployment                  | pending  |
+| 18 | ngrok demo deployment                  | **done** |
 
 **Task 18** (ngrok demo deployment) is next.
 

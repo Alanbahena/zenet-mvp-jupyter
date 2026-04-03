@@ -117,7 +117,7 @@ Build the **cognitive-operational core** of Zenet:
 
 - **Launch the Gradio app:**
   ```bash
-  uv run python -m gradio_app.app
+  uv run python main.py
   ```
 
 - **Start Jupyter** (for notebooks):
