@@ -888,6 +888,38 @@ def render(session_id: gr.State, data_lake) -> None:
     def regen_fn(sid: str):
         return _make_content(data_lake, sid)
 
+    def reset_fn(sid: str):
+        data_lake.reset_all()
+        return (
+            gr.update(visible=True),   # state1_col shown
+            gr.update(visible=False),  # state2_col hidden
+            False,                     # confirm_chk unchecked
+            gr.update(interactive=False),  # reset_btn disabled
+            "Sesión reiniciada. Todos los datos fueron eliminados.",
+        )
+
+    def seed_fn(sid: str):
+        import sys, os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+        from scripts.seed_data import seed
+        seed(data_lake)
+        resumen, mi_rest, recetas, inv_header, perecederos, no_perecederos = _make_content(data_lake, sid)
+        return (
+            resumen, mi_rest, recetas, inv_header, perecederos, no_perecederos,
+            "Datos de demo cargados. Puntaje esperado: B (~80).",
+        )
+
+    def seed_en_progreso_fn(sid: str):
+        import sys, os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+        from scripts.seed_data_en_progreso import seed_en_progreso
+        seed_en_progreso(data_lake)
+        resumen, mi_rest, recetas, inv_header, perecederos, no_perecederos = _make_content(data_lake, sid)
+        return (
+            resumen, mi_rest, recetas, inv_header, perecederos, no_perecederos,
+            "Datos de demo (en progreso) cargados. Puntaje esperado: C/D (~55).",
+        )
+
     # ------------------------------------------------------------------
     # State 1 — empty state: single generate button
     # ------------------------------------------------------------------
@@ -934,6 +966,34 @@ def render(session_id: gr.State, data_lake) -> None:
                             interactive=False,
                             wrap=True,
                         )
+                    with gr.Tab("Herramientas"):
+                        gr.Markdown("### Gestión de sesión")
+                        gr.Markdown(
+                            "Usa estos controles para reiniciar o recargar los datos de la sesión."
+                        )
+                        gr.Markdown("---")
+                        gr.Markdown("**Cargar datos de demostración**")
+                        gr.Markdown(
+                            "Carga el escenario de demo (Casa Huerta — puntaje B ~80). "
+                            "Puedes usarlo en cualquier momento; no borra datos existentes, los sobreescribe."
+                        )
+                        seed_btn = gr.Button("Cargar datos de demo (B ~80)", variant="primary")
+                        gr.Markdown(
+                            "Carga el escenario en progreso (sin conversiones de unidades — puntaje C/D ~55). "
+                            "Muestra advertencias de normalización en el Resumen."
+                        )
+                        seed_en_progreso_btn = gr.Button("Cargar datos en progreso (C/D ~55)", variant="secondary")
+                        gr.Markdown("---")
+                        gr.Markdown("**Reiniciar sesión**")
+                        gr.Markdown(
+                            "Borra **todos** los datos permanentemente. Esta acción no se puede deshacer."
+                        )
+                        confirm_chk = gr.Checkbox(
+                            label="Confirmo que quiero borrar todos los datos",
+                            value=False,
+                        )
+                        reset_btn = gr.Button("Reiniciar sesión", variant="stop", interactive=False)
+                        herramientas_status = gr.Markdown("")
             with gr.Column(scale=3):
                 gr.Markdown("### Asistente Operativo")
                 render_chat_panel(chat_fn, session_id, data_lake)
@@ -947,4 +1007,24 @@ def render(session_id: gr.State, data_lake) -> None:
         fn=regen_fn,
         inputs=[session_id],
         outputs=[resumen_md, mi_rest_md, recetas_md, inv_header_md, perecederos_tbl, no_perecederos_tbl],
+    )
+    confirm_chk.change(
+        fn=lambda checked: gr.update(interactive=checked),
+        inputs=[confirm_chk],
+        outputs=[reset_btn],
+    )
+    reset_btn.click(
+        fn=reset_fn,
+        inputs=[session_id],
+        outputs=[state1_col, state2_col, confirm_chk, reset_btn, herramientas_status],
+    )
+    seed_btn.click(
+        fn=seed_fn,
+        inputs=[session_id],
+        outputs=[resumen_md, mi_rest_md, recetas_md, inv_header_md, perecederos_tbl, no_perecederos_tbl, herramientas_status],
+    )
+    seed_en_progreso_btn.click(
+        fn=seed_en_progreso_fn,
+        inputs=[session_id],
+        outputs=[resumen_md, mi_rest_md, recetas_md, inv_header_md, perecederos_tbl, no_perecederos_tbl, herramientas_status],
     )
