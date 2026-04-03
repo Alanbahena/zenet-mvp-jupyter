@@ -30,14 +30,14 @@ ENTITY_ID    = stable_entity_id(SESSION_ID)
 # Step 1 — Restaurant (Bienvenida)
 RESTAURANT = {
     "id":                 ENTITY_ID,
-    "name":               "Mi Restaurante",
+    "name":               "Casa Huerta",
     "restaurant_type_id": 1,
 }
 
 USER = {
     "id":    ENTITY_ID,
-    "name":  "Operador Demo",
-    "email": "demo@mirestaurante.com",
+    "name":  "Alan Hernández",
+    "email": "alan@casahuerta.mx",
     "role":  "owner",
 }
 

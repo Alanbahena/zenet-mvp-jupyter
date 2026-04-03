@@ -1359,7 +1359,7 @@
         "testStrategy": "Launch app with server_name=0.0.0.0, start ngrok tunnel, open URL on iPad, verify chat and file upload work end-to-end. Confirm two-column layout is usable in landscape mode.",
         "priority": "high",
         "dependencies": [],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": []
       }
     ],
