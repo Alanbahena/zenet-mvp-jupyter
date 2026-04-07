@@ -213,9 +213,12 @@ RECIPE_UNIT_CONVERSIONS = [
 # Seed
 # ---------------------------------------------------------------------------
 
-def main() -> None:
-    data_lake = get_data_lake()
+def seed(data_lake) -> None:
+    """Populate data_lake with the full demo dataset (Casa Huerta, B-score scenario).
 
+    Importable by other modules (e.g. the Herramientas tab in Manual Operativo).
+    Safe to call multiple times — save_entity overwrites existing entities.
+    """
     data_lake.save_entity("restaurant",     ENTITY_ID, RESTAURANT)
     data_lake.save_entity("user",           ENTITY_ID, USER)
     data_lake.save_entity("classification", ENTITY_ID, CLASSIFICATION)
@@ -240,6 +243,11 @@ def main() -> None:
 
     for ruc in RECIPE_UNIT_CONVERSIONS:
         data_lake.save_entity("recipe_unit_conversion", ruc["entity_id"], ruc["data"])
+
+
+def main() -> None:
+    data_lake = get_data_lake()
+    seed(data_lake)
 
     perecederos    = sum(1 for i in INVENTORY_ITEMS if i["category_id"] == 1)
     no_perecederos = sum(1 for i in INVENTORY_ITEMS if i["category_id"] == 2)

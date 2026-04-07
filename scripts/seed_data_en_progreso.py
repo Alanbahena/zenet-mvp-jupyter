@@ -184,9 +184,17 @@ RECIPES = [
 # Seed
 # ---------------------------------------------------------------------------
 
-def main() -> None:
-    data_lake = get_data_lake()
+def seed_en_progreso(data_lake) -> None:
+    """Populate data_lake with the en-progreso demo dataset.
 
+    Same inventory and recipes as seed_data.py but without recipe_unit_conversion
+    entries. The three pza-based ingredients (Chile poblano, Limón, Aguacate)
+    cannot be resolved to grams, so normalization.deductionCoveragePct = 0 % and
+    the Resumen tab shows unit-mismatch warnings.
+
+    Importable by other modules (e.g. the Herramientas tab in Manual Operativo).
+    Safe to call multiple times — save_entity overwrites existing entities.
+    """
     data_lake.save_entity("restaurant",     ENTITY_ID, RESTAURANT)
     data_lake.save_entity("user",           ENTITY_ID, USER)
     data_lake.save_entity("classification", ENTITY_ID, CLASSIFICATION)
@@ -209,6 +217,11 @@ def main() -> None:
     for recipe in RECIPES:
         data_lake.save_entity("recipe", recipe["id"], recipe)
 
+
+def main() -> None:
+    data_lake = get_data_lake()
+    seed_en_progreso(data_lake)
+
     perecederos    = sum(1 for i in INVENTORY_ITEMS if i["category_id"] == 1)
     no_perecederos = sum(1 for i in INVENTORY_ITEMS if i["category_id"] == 2)
 
@@ -221,7 +234,7 @@ def main() -> None:
     print(f"  Inventory units:        {len(INVENTORY_UNITS)} (incl. 1 non-standard)")
     print(f"  Inventory items:        {len(INVENTORY_ITEMS)} ({perecederos} perecederos, {no_perecederos} no perecederos)")
     print(f"  Recipes:                {len(RECIPES)}")
-    print(f"  Unit conversions (pza): 0  ← gap intentional")
+    print(f"  Unit conversions (pza): 0  <- gap intentional")
     print("\nExpected score: C/D (~55). Unit mismatches visible in Manual Operativo Resumen.")
 
 
