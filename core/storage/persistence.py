@@ -142,6 +142,34 @@ class SqliteStorage:
         """Close the database connection. No-op if already closed."""
         self._conn.close()
 
+    def truncate_all(self) -> None:
+        """Delete all rows from every table, preserving the schema.
+
+        Disables FK enforcement during the clear so tables can be wiped in any
+        order, then re-enables it. The connection stays open and valid — safe to
+        call while the app is running.
+        """
+        tables = [
+            "recipe_ingredient",
+            "recipe_unit_conversion",
+            "agent_state",
+            "classification",
+            "recipe",
+            "inventory_item",
+            "family_inventory",
+            "inventory_unit",
+            "category_recipe",
+            "recipe_unit",
+            "restaurant",
+            "user",
+        ]
+        cursor = self._conn.cursor()
+        cursor.execute("PRAGMA foreign_keys = OFF")
+        for table in tables:
+            cursor.execute(f"DELETE FROM {table}")  # noqa: S608 — table names are a fixed literal list
+        cursor.execute("PRAGMA foreign_keys = ON")
+        self._conn.commit()
+
     def save(self, entity_type: str, entity_id: int | str, data_dict: dict[str, Any]) -> None:
         """Persist data_dict for the given entity. Upsert by entity_id (or composite key)."""
         if entity_type not in _SQLITE_ENTITY_TYPES:
@@ -594,6 +622,16 @@ class DataLake:
     def list_entity_ids(self, entity_type: str) -> list[str]:
         """Return list of entity_id strings for this entity_type."""
         return self._storage.list_ids(entity_type)
+
+    def reset_all(self) -> None:
+        """Wipe all entity data while keeping the connection open.
+
+        SQLite backend: truncates every table (schema preserved, connection valid).
+        JSON backend: no-op (JSON files are not managed by this method).
+        Subsequent writes work normally — no reconnection needed.
+        """
+        if hasattr(self._storage, "truncate_all"):
+            self._storage.truncate_all()
 
     def close(self) -> None:
         """Close backend resources; no-op for JSON, closes DB for SQLite."""
