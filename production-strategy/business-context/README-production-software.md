@@ -22,7 +22,7 @@ Existing tools (POS systems, inventory apps, Excel) don't solve this because the
 Zenet guides restaurants through three phases:
 
 1. **Onboarding** — Set up account and restaurant profile with AI assistance
-2. **Standardization** — Structure recipes, inventory units, families, and categories through a 5-section guided experience
+2. **Standardization** — Structure recipes, inventory units, families, and categories through a 6-section guided experience
 3. **Manual Operativo** — See the living result: KPIs, standardization dimensions, improvement areas, and AI insights
 
 Every step is guided by an AI assistant that understands the restaurant's context and helps translate messy real-world knowledge into clean operational data.
@@ -32,16 +32,16 @@ Every step is guided by an AI assistant that understands the restaurant's contex
 ## Key Features (v1.0)
 
 ### Onboarding Phase
-- Account creation with Google/Apple sign-in
-- Restaurant profile setup (name, locations, cuisine type)
-- AI assistant introduction and discovery conversation
+- Account creation with email/password via Supabase Auth
+- Restaurant profile setup (name, type, address, contact info)
+- AI assistant introduction and guided classification
 
-### Standardization Phase (5 Sections)
-- **Clasificacion** — Restaurant type and operational profile
-- **Configuracion** — Units, families, categories setup
-- **Alineamiento** — Recipe upload and ingredient-to-inventory mapping
-- **Estructura** — Inventory enrichment (units, conversion factors, families)
-- **Normalizacion** — Automated validation and consistency checks
+### Standardization Phase (6 Sections)
+- **Clasificacion** — Restaurant type, profile, and operational style
+- **Configuracion** — Recipe categories, inventory families, recipe units, inventory units
+- **Alineamiento** — Recipe-by-recipe entry and ingredient-to-inventory mapping
+- **Estructura** — Inventory enrichment (stock/purchase units, conversion factors, families)
+- **Normalizacion** — Detect and resolve unit mismatches between recipe and inventory units via AI agent
 
 ### Manual Operativo Phase
 - KPI dashboard (standardization scores and progress)
@@ -232,6 +232,7 @@ zenet/
 │   │   │   ├── configuration_agent.py
 │   │   │   ├── alignment_agent.py
 │   │   │   ├── structuring_agent.py
+│   │   │   ├── normalization_agent.py
 │   │   │   └── interpretation_agent.py
 │   │   │
 │   │   ├── core/                      # Core domain logic
@@ -326,13 +327,14 @@ zenet/
 
 ### Restaurant Standardization
 
-Zenet structures a restaurant through 5 progressive sections:
+Zenet structures a restaurant through 6 progressive sections:
 
 1. **Clasificacion** — Restaurant type, profile, and operational style
-2. **Configuracion** — Measurement system (units, families, categories)
-3. **Alineamiento** — Recipes mapped to inventory items
-4. **Estructura** — Inventory enriched with metadata (units, factors, families)
-5. **Normalizacion** — Validation and consistency checks
+2. **Configuracion** — Recipe categories, inventory families, recipe units, inventory units
+3. **Alineamiento** — Recipes entered recipe-by-recipe, ingredients mapped to inventory items
+4. **Estructura** — Inventory items enriched with stock/purchase units, conversion factors, families
+5. **Normalizacion** — Unit mismatches between recipes and inventory detected and resolved via AI agent
+6. **Review** — Operator confirms each section's output before advancing
 
 Each section builds on the previous one, progressively creating a complete operational model.
 
@@ -382,37 +384,55 @@ Full API documentation available at `/api/docs` (Swagger/OpenAPI).
 
 ## Database Schema (Overview)
 
-### Core Entities
+17 tables across 6 layers. All IDs are UUIDs. All tenant-scoped tables include `tenant_id`, `created_at`, `updated_at`, and soft delete (`deleted_at`).
 
-- **restaurants** — Restaurant profile and metadata
-- **locations** — Individual restaurant locations
-- **recipes** — Standardized recipes
-- **recipe_ingredients** — Ingredients in recipes
-- **inventory_items** — Standardized inventory items
-- **inventory_units** — Measurement units (kg, L, pza, box, etc.)
-- **families** — Ingredient families (Lacteos, Carnes, etc.)
-- **categories** — Item categories (Perecedero, No perecedero)
-- **users** — User accounts and roles
-- **user_restaurants** — User-restaurant relationships (multi-tenancy)
+### Auth & Tenancy
+- **tenant** — Top-level business entity (one per restaurant business)
+- **profile** — Extends Supabase Auth users with app-specific data
+- **tenant_member** — Junction: user-to-tenant with roles (owner, admin, chef, staff)
 
-See `/docs/database/schema.md` for complete schema.
+### Configuration
+- **restaurant** — Restaurant profile (name, type, address, contact, operating hours)
+- **recipe_unit** — Units for recipe instructions (g, kg, cucharada, porcion)
+- **inventory_unit** — Units for inventory tracking (kg, caja, bolsa) with self-referential equivalence chains
+- **category_recipe** — Recipe categories (Entradas, Platos Fuertes, Bebidas)
+- **family_inventory** — Inventory grouping (Carnes, Lacteos, Verduras)
+
+### Recipe & Inventory
+- **recipe** — Recipes with category, steps, servings, prep/cook time
+- **recipe_ingredient** — Ingredients per recipe with FK to inventory_item (not name-based)
+- **inventory_item** — Items with dual units (stock + purchase), conversion factor, stock levels, cost
+
+### Normalization
+- **recipe_unit_conversion** — Context-sensitive conversion between recipe and inventory units
+
+### Operations
+- **classification** — Structured restaurant classification (not JSON blob)
+- **standardization_progress** — Per-section completion tracking for KPI dashboard
+- **deduction_log** — Historical record of inventory deductions
+
+### AI & Sessions
+- **conversation** / **conversation_message** — Persisted chat history per section
+- **agent_state** — Agent state with JSONB and schema versioning
+
+See `/docs/data-model-overview.md` for complete schema, relationships, and RLS policies.
 
 ---
 
 ## Multi-Tenancy
 
-Zenet supports multiple restaurants per account and multiple users per restaurant.
+Zenet uses a tenant-based multi-tenancy model. One tenant = one restaurant business (v1: one restaurant per tenant). Users can belong to multiple tenants (e.g., a consultant managing several restaurants).
 
 **Data Isolation:**
-- PostgreSQL Row-Level Security (RLS) enforces restaurant-level isolation
-- JWT includes `restaurant_id` for authorization
-- All queries filtered by `user_restaurant_id`
+- PostgreSQL Row-Level Security (RLS) enforces tenant-level isolation
+- JWT contains `user_id`; RLS policies join through `tenant_member` to determine access
+- All tenant-scoped tables include `tenant_id` with RLS policies for SELECT, INSERT, UPDATE, DELETE
 
-**User Roles:**
-- **Owner** — Full access (billing, team, all sections)
-- **Manager** — Limited access (standardization, manual operativo)
-- **Chef** — Standardization and manual operativo access
-- **Admin** — Read-only access to data and exports
+**User Roles (via `tenant_member`):**
+- **Owner** — Full access (billing, team management, all sections, delete tenant)
+- **Admin** — Everything except billing
+- **Chef** — Recipes, inventory, manual operativo
+- **Staff** — Read-only access to manual operativo and KPIs
 
 ---
 
@@ -449,26 +469,27 @@ cd frontend && npm run test:e2e
 
 ## Roadmap
 
-### v1.0 (Current)
-- [x] Three-phase user experience
-- [x] AI assistant integration
-- [x] Five standardization sections
-- [x] Manual Operativo dashboard
-- [x] Multi-tenancy foundation
-- [x] Basic authentication
+**Timeline:** April 2026 — October 2026 (7 months)
 
-### v1.1 (Next)
-- [ ] File export (PDF, Excel)
-- [ ] Team collaboration features
-- [ ] Advanced KPI insights
-- [ ] Batch operations
+| Month | Phase | Key Deliverables |
+|-------|-------|-----------------|
+| April | Foundation | Supabase schema, API scaffold, frontend scaffold, deployment pipeline |
+| May | Onboarding | Auth, Bienvenida, AI assistant infrastructure, profile, Clasificacion |
+| June | Configuracion | Agent, recipe categories, inventory families, recipe/inventory units, multi-input |
+| July | Alineamiento | Recipe agent, recipe-by-recipe input, ingredient-to-inventory linking |
+| August | Estructura | Inventory agent, structuring, perecedero/no perecedero flow |
+| September | Normalizacion | Normalization agent, per-recipe mismatch table, chat-based resolution |
+| October | Manual Operativo | KPIs, standardization dimensions, improvement areas, AI chat, admin panel |
 
-### v2.0 (Future)
+**37 features** across 7 months. See `/docs/feature-roadmap.md` for detailed feature breakdown, dependencies, and success criteria.
+
+### Future (v2.0+)
+- [ ] Multi-location support
+- [ ] Mobile app
+- [ ] POS integrations
 - [ ] Forecasting module
 - [ ] Supply chain optimization
 - [ ] Advanced analytics
-- [ ] POS integrations
-- [ ] Mobile app
 
 ---
 
@@ -499,8 +520,8 @@ See `/docs/security.md` for detailed security information.
 
 - **Business Context:** `/docs/business-context.md` — Problem, solution, market, value proposition, validation status
 - **Core User Experience:** `/docs/core-user-experience.md` — Three-phase UX flow, personas, AI assistant behavior
-- **Production Strategy:** `/docs/production-strategy.md` — Technical architecture, stack decisions, deployment
-- **Database Schema:** `/docs/database-schema.md` — Entity definitions, relationships, RLS policies
+- **Feature Roadmap:** `/docs/feature-roadmap.md` — 37 features across 7 months, dependencies, success criteria
+- **Data Model Overview:** `/docs/data-model-overview.md` — 17 tables, relationships, RLS policies, migration strategy
 - **API Design:** `/docs/api-design.md` — Endpoint conventions, versioning, error handling
 - **API Reference:** http://localhost:8000/docs (interactive Swagger UI)
 
